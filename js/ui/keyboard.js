@@ -11,7 +11,11 @@ export function startKeyboardWatch() {
   if (!vv || root.dataset.kbWatch) return; root.dataset.kbWatch = "1";
   let open = false;
   const update = () => {
-    const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    // iOS keeps innerHeight (the layout viewport) the same and shrinks only the visual viewport,
+    // then pans it (offsetTop) to the field — so the keyboard is innerHeight − vv.height. Taking
+    // offsetTop off as well (as the first version did) cancelled out once iOS panned, so the fix
+    // never switched on and the sheet's bottom was shown instead of the field.
+    const kb = Math.max(0, Math.round(window.innerHeight - vv.height));
     open = kb > 120; // anything smaller is the Safari toolbar, not a keyboard
     root.style.setProperty("--vv-top", `${Math.round(vv.offsetTop)}px`);
     root.style.setProperty("--vv-h", `${Math.round(vv.height)}px`);
