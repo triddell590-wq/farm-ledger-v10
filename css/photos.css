@@ -1,0 +1,68 @@
+/* Photos on records: the strip inside record sheets, the full-screen viewer, the ledger's photo
+   gallery. Tokens only (tokens.css). Touch targets 48px+. */
+.ph-strip{margin-top:16px}
+.ph-head{display:flex;align-items:baseline;gap:8px;padding:0 4px 8px}
+.ph-head .ph-title{font-size:15px;line-height:20px;font-weight:700;color:var(--ink)}
+.ph-head .ph-count{font-size:14px;font-weight:600;color:var(--ink-2)}
+.ph-head .ph-hint{font-size:14px;line-height:19px;color:var(--ink-2);margin-left:auto;text-align:right}
+.ph-row{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;padding:2px 2px 6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.ph-row::-webkit-scrollbar{display:none}
+.ph-tile{position:relative;flex:none;width:88px;height:88px;border-radius:var(--r-sm);overflow:hidden;scroll-snap-align:start;background:var(--surface-2)}
+.ph-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--grass);background:var(--surface);
+  box-shadow:inset 0 0 0 1.5px var(--hair);font-size:13px;line-height:16px;font-weight:700;text-align:center;padding:4px}
+.ph-add svg{width:28px;height:28px}
+.ph-add:active,.ph-thumb:active{transform:scale(.96)}
+.ph-add.lib{color:var(--ink-2)}
+.ph-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.ph-thumb{animation:ph-in var(--d-base) var(--ease-out)}
+@keyframes ph-in{from{opacity:0;transform:scale(.9)}}
+.ph-wait{position:absolute;left:4px;right:4px;bottom:4px;display:flex;align-items:center;justify-content:center;gap:3px;height:22px;border-radius:var(--r-full);
+  background:var(--due-soft);color:var(--due-ink);font-size:12px;font-weight:700}
+.ph-wait svg{width:13px;height:13px}
+.ph-busy{display:grid;place-items:center}
+.ph-busy::after{content:"";width:26px;height:26px;border-radius:50%;border:3px solid var(--hair);border-top-color:var(--grass);animation:spin .9s linear infinite}
+.ph-note{font-size:14px;line-height:19px;color:var(--ink-2);margin:2px 4px 0}
+.ph-note.due{color:var(--due-ink)}
+.ph-empty{font-size:15px;color:var(--ink-3);padding:4px}
+.reduce-motion .ph-thumb{animation:none}
+@media (prefers-reduced-motion:reduce){.ph-thumb{animation:none}}
+
+/* full-screen viewer (always dark, like a camera roll) */
+.ph-viewer{position:fixed;inset:0;z-index:70;background:var(--photo-bg);color:var(--photo-ink);display:flex;flex-direction:column;color-scheme:dark;touch-action:none;outline:none}
+.ph-top,.ph-foot{position:absolute;left:0;right:0;z-index:2;background:var(--photo-glass);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:opacity var(--d-quick) var(--ease-out)}
+.ph-top{top:0;display:flex;align-items:center;gap:4px;padding:calc(var(--safe-t, 0px) + 4px) 4px 4px}
+.ph-top .ph-n{flex:1;text-align:center;font-weight:700;font-size:16px}
+.ph-viewer .icon-btn{color:var(--photo-ink)}
+.ph-viewer .icon-btn[hidden]{display:none}
+.ph-foot{bottom:0;padding:12px 16px calc(12px + var(--safe-b, 0px))}
+.ph-viewer.chrome-off .ph-top,.ph-viewer.chrome-off .ph-foot{opacity:0;pointer-events:none}
+.ph-cap{font-size:17px;line-height:23px;font-weight:600;min-height:23px;word-break:break-word}
+.ph-cap-btn{color:var(--photo-ink);font-weight:600;font-size:16px;min-height:48px;display:inline-flex;align-items:center;gap:6px;padding:0;opacity:.9}
+.ph-cap-edit{display:flex;gap:8px;align-items:center}
+.ph-cap-edit input{flex:1;height:48px;border-radius:var(--r-sm);border:0;padding:0 12px;font:inherit;font-size:16px;background:rgba(242,245,240,.14);color:var(--photo-ink)}
+.ph-cap-edit button{height:48px;padding:0 16px;border-radius:var(--r-sm);background:var(--photo-ink);color:var(--photo-bg);font-weight:700}
+.ph-meta{font-size:14px;line-height:19px;color:var(--photo-ink-2);margin-top:4px}
+.ph-meta .ph-waitline{color:var(--photo-wait);font-weight:700}
+.ph-track{flex:1;display:flex;height:100%;will-change:transform}
+.ph-slide{flex:none;width:100vw;height:100%;display:grid;place-items:center;overflow:hidden;position:relative}
+.ph-slide img{max-width:100%;max-height:100%;object-fit:contain;transform-origin:50% 50%;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.ph-slide img.low{filter:blur(6px);transform:scale(1.02)}
+.ph-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:48px;height:48px;border-radius:50%;background:var(--photo-glass);color:var(--photo-ink);display:none;place-items:center}
+.ph-nav.prev{left:12px}.ph-nav.next{right:12px}
+@media (hover:hover) and (pointer:fine){.ph-nav{display:grid}.ph-nav[hidden]{display:none}}
+.ph-confirm{position:absolute;inset:0;z-index:3;display:grid;place-items:end center;background:rgba(0,0,0,.45);padding:16px 16px calc(16px + var(--safe-b, 0px))}
+.ph-confirm[hidden]{display:none}
+.ph-confirm .box{width:100%;max-width:420px;background:var(--surface);color:var(--ink);border-radius:var(--r-lg);padding:20px 16px 12px;color-scheme:light dark}
+.ph-confirm h2{font-size:20px;line-height:26px;font-weight:800}
+.ph-confirm p{color:var(--ink-2);margin:6px 0 16px}
+.ph-confirm .btn+.btn{margin-top:8px}
+
+/* gallery (ledger More → Photos) */
+.ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border-radius:var(--r-md);overflow:hidden}
+.ph-grid .ph-tile{width:auto;height:auto;aspect-ratio:1;border-radius:0}
+.ph-cell-label{position:absolute;left:0;right:0;bottom:0;padding:14px 6px 5px;font-size:12px;line-height:15px;font-weight:700;color:var(--photo-ink);background:linear-gradient(transparent,var(--photo-glass));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+
+/* "Photos" evidence button on checklist rows (one-tap checklists) */
+.main > .row-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:2px}
+.row [data-evidence].text-btn{min-height:48px;padding:0 4px;margin-left:-4px;font-size:15px}
+.row [data-evidence] svg{width:20px;height:20px}

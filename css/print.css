@@ -1,0 +1,14 @@
+/* One print stylesheet for every register (design/00 §6.18). The register view puts its
+   table inside .print-view; everything else is hidden when printing. */
+.print-view{background:#fff;color:#000;font-size:13px;line-height:17px;padding:16px;border-radius:var(--r-md)}
+.print-view table{width:100%;border-collapse:collapse}
+.print-view th,.print-view td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:top}
+.print-view th{background:#eee;font-weight:700}
+.print-view .ph{display:flex;justify-content:space-between;gap:16px;margin-bottom:8px}
+.print-view .pf{margin-top:8px;font-size:11px;color:#444}
+@media print{
+  @page{size:A4 landscape;margin:12mm}
+  body *{visibility:hidden}
+  .print-view,.print-view *{visibility:visible}
+  .print-view{position:absolute;left:0;top:0;width:100%;padding:0;border-radius:0}
+}

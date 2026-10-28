@@ -1,0 +1,192 @@
+/* Sheep ledger (design/11). Only what the shared components don't already give. */
+.sheep-page{padding-bottom:104px} /* nothing sits under the + button (design/11 §19) */
+.sheep-page .section{margin-top:20px}
+/* the sheep year strip (signature component §3.1) */
+.ystrip{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:var(--surface);border-radius:var(--r-md);padding:4px;margin-top:12px}
+.ystrip a,.ystrip button{min-height:44px;border-radius:12px;font-size:13px;line-height:16px;font-weight:600;color:var(--ink-2);display:flex;align-items:center;justify-content:center;text-align:center;padding:0 2px;text-decoration:none}
+.ystrip [aria-current=true]{background:var(--sheep-soft);color:var(--sheep-ink)}
+.ytrack{position:relative;height:4px;border-radius:2px;background:var(--hair);margin:10px 6px 0}
+.ytrack i{position:absolute;left:0;top:0;bottom:0;background:var(--sheep);border-radius:2px}
+.ytrack b{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--sheep);border:3px solid var(--bg)}
+.ynote{font-size:14px;line-height:19px;color:var(--ink-2);margin:6px 4px 0;font-weight:600}
+.stage-chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r-full);background:var(--accent-soft);color:var(--accent-ink);font-size:14px;font-weight:600;margin-top:8px}
+/* hero + tiles */
+.s-hero{background:var(--surface);border-radius:var(--r-lg);padding:16px;display:block;color:var(--ink);text-decoration:none}
+.s-hero .k{font-size:14px;line-height:19px;color:var(--ink-2);font-weight:500}
+.s-hero .big{font-size:34px;line-height:40px;font-weight:800;letter-spacing:-.02em;margin:2px 0}
+.s-hero .sub{font-size:15px;line-height:20px;color:var(--ink-2)}
+.s-tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.s-tiles .num-tile{color:var(--ink);text-decoration:none;min-height:104px}
+.num-tile .value small{font-size:15px;font-weight:600;color:var(--ink-2);margin-left:4px}
+.num-tile .value.late,.v-late{color:var(--late-ink)} .num-tile .value.ok,.v-ok{color:var(--ok-ink)} .num-tile .value.due,.v-due{color:var(--due-ink)}
+.mini-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:18px 4px 8px}
+.mini-head h3{font-size:14px;line-height:19px;font-weight:600;color:var(--ink-2);margin:0}
+.mini-head .text-btn{min-height:32px}
+/* raddle swatch: colour + word, never colour alone */
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:6px;box-shadow:0 0 0 1px var(--hair) inset}
+.sw.lg{width:28px;height:28px;border-radius:8px;vertical-align:middle}
+.sw.clear{background:repeating-linear-gradient(45deg,var(--surface),var(--surface) 3px,var(--hair) 3px,var(--hair) 6px)!important}
+.kv-v{font-weight:700;text-align:right;white-space:nowrap;font-size:19px}
+.kv-v small{font-size:13px;color:var(--ink-2);font-weight:600;margin-left:3px}
+/* stacked bar (scan results) */
+.sbar{display:flex;height:28px;border-radius:8px;overflow:hidden;background:var(--surface-2);margin:10px 0 6px}
+.sbar i{display:block;height:100%}
+.sbar i:nth-child(1){background:var(--ink-3)} .sbar i:nth-child(2){background:var(--sheep-soft)} .sbar i:nth-child(3){background:var(--sheep)} .sbar i:nth-child(4){background:var(--sheep-ink)}
+.sbar-key{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:14px;color:var(--ink-2)}
+.sbar-key b{color:var(--ink)}
+/* funnel */
+.funnel{background:var(--surface);border-radius:var(--r-lg);padding:12px 16px}
+.f-step{display:grid;grid-template-columns:118px 1fr auto;align-items:center;gap:10px;min-height:36px;color:var(--ink);text-decoration:none}
+.f-step .lab{font-size:15px;line-height:19px}
+.f-step .bar{height:14px;border-radius:7px;background:var(--surface-2);position:relative;overflow:hidden}
+.f-step .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--sheep);border-radius:7px}
+.f-step .bar u{position:absolute;left:0;top:0;bottom:0;border:2px dashed var(--ink-3);border-radius:7px;text-decoration:none}
+.f-step .n{font-weight:800;font-variant-numeric:tabular-nums;min-width:44px;text-align:right}
+.f-step .n small{display:block;font-size:12px;font-weight:600;color:var(--ink-2);line-height:14px}
+.f-loss{font-size:13px;line-height:17px;color:var(--late-ink);margin:-2px 0 6px 128px;font-weight:600}
+.f-foot{font-size:14px;line-height:19px;color:var(--ink-2);padding-top:8px;border-top:1px solid var(--hair);margin-top:6px}
+/* mob rows */
+.mob-row .count{font-size:22px;line-height:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.mob-row .tile{background:var(--sheep-soft);color:var(--sheep-ink)}
+.mob-strip,.foot-note{font-size:15px;line-height:20px;color:var(--ink-2);padding:12px 4px}
+/* tally (scanning, BCS) */
+.tally{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tally.seven{grid-template-columns:repeat(4,1fr)}
+.tally button{min-height:88px;border-radius:var(--r-md);background:var(--surface);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-weight:700;font-size:15px;box-shadow:var(--e-1);touch-action:manipulation}
+.tally button b{font-size:30px;line-height:34px;font-weight:800;font-variant-numeric:tabular-nums}
+.tally button:active{transform:scale(.97);background:var(--accent-soft)}
+.tally-sum{font-size:22px;line-height:28px;font-weight:700;margin:16px 4px 2px}
+.tally-sub{font-size:15px;color:var(--ink-2);margin:0 4px}
+.hist{display:flex;align-items:flex-end;gap:6px;height:72px;margin:12px 4px 0}
+.hist i{flex:1;background:var(--sheep);border-radius:4px 4px 0 0;min-height:2px;position:relative}
+.hist i.on{background:var(--ok)}
+.hist-x{display:flex;gap:6px;margin:2px 4px 0;font-size:12px;color:var(--ink-2)} .hist-x span{flex:1;text-align:center}
+/* big stepper with jumps (raddle check, lame count) */
+.bigstep{display:flex;align-items:center;gap:12px;justify-content:center;margin:8px 0}
+.bigstep button{width:64px;height:64px;border-radius:50%;background:var(--surface);font-size:30px;font-weight:700;color:var(--ink);box-shadow:var(--e-1)}
+.bigstep output{font-size:48px;line-height:56px;font-weight:800;min-width:96px;text-align:center;font-variant-numeric:tabular-nums}
+.jumps{display:flex;gap:8px;justify-content:center;margin-bottom:8px}
+.jumps button{height:44px;padding:0 16px;border-radius:var(--r-full);background:var(--surface);font-weight:700;color:var(--ink)}
+.live-pct{text-align:center;font-size:19px;font-weight:700;margin:4px 0 12px}
+/* chips in forms */
+.field.chips-field{flex-direction:column;align-items:stretch;gap:8px;padding:10px 16px 14px}
+.field.chips-field > .label{font-size:14px;color:var(--ink-2);font-weight:500}
+.field.chips-field .chip{height:44px}
+.form-label{font-size:14px;line-height:19px;font-weight:600;color:var(--ink-2);margin:18px 4px 8px;display:flex;justify-content:space-between;align-items:center}
+.pick-row{width:100%;text-align:left;color:var(--ink)}
+.pick-row .pick-val{flex:1;min-width:0;text-align:right;color:var(--accent-ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick-row.unset .pick-val{color:var(--ink-3);font-weight:500}
+.pick-row svg{flex:none;color:var(--ink-3)}
+.calc{background:var(--surface);border-radius:var(--r-md);padding:12px 16px;margin-top:12px;font-size:17px;line-height:24px}
+.calc b{font-size:19px}
+.calc .hint{margin:4px 0 0}
+.wd-line{margin:12px 4px;font-weight:600}
+/* buckets (draft) */
+.buckets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.buckets div{background:var(--surface);border-radius:var(--r-md);padding:12px;text-align:center}
+.buckets b{display:block;font-size:30px;line-height:34px;font-weight:800}
+.buckets span{font-size:14px;color:var(--ink-2);font-weight:600}
+.buckets .now{box-shadow:0 0 0 2px var(--ok) inset}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.keypad button{height:60px;border-radius:var(--r-md);background:var(--surface);font-size:26px;font-weight:700;color:var(--ink)}
+.keypad button.next{background:var(--grass);color:var(--on-grass);font-size:19px}
+.weigh-v{font-size:52px;line-height:60px;font-weight:800;text-align:center;background:var(--surface);border-radius:var(--r-lg);padding:8px;font-variant-numeric:tabular-nums}
+.weigh-v small{font-size:22px;font-weight:600;color:var(--ink-2);margin-left:6px}
+/* pens board */
+.pens{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pen{background:var(--surface);border-radius:var(--r-md);padding:10px;min-height:84px;display:flex;flex-direction:column;gap:2px;font-size:14px;line-height:18px;color:var(--ink);text-align:left}
+.pen b{font-size:17px}
+.pen.free{opacity:.6}
+.pen.ready{box-shadow:0 0 0 2px var(--due) inset}
+.pen.out{box-shadow:0 0 0 2px var(--ok) inset}
+/* lambing shed — always dark (design/11 §4) */
+.shed{position:fixed;inset:0;z-index:120;display:flex;flex-direction:column;color-scheme:dark;
+  --bg:#121714; --surface:#1B221D; --surface-2:#232B25; --ink:#EEF1EC; --ink-2:#A9B4AB; --ink-3:#7F8A81; --hair:rgba(238,241,236,.10);
+  --grass:#7FB98A; --on-grass:#0F1A12; --late:#FF8A80; --late-soft:#43201D; --late-ink:#FFB4AB; --ok:#7FCB92; --ok-soft:#1F3526; --ok-ink:#A9E0B7;
+  --due:#E8B83E; --due-soft:#3A3016; --sheep:#A9BCDD; --sheep-soft:#232C3D; --sheep-ink:#A9BCDD; --accent:var(--sheep); --accent-soft:var(--sheep-soft); --accent-ink:var(--sheep-ink);
+  background:var(--bg);color:var(--ink);padding:max(8px,var(--safe-t)) 16px 0}
+.shed .top{display:grid;grid-template-columns:72px 1fr 72px;align-items:center;min-height:48px}
+.shed .top h2{margin:0;text-align:center;font-size:17px}
+.shed .top .text-btn{min-height:48px;justify-self:start;color:var(--grass);font-weight:700}
+.shed .clock{justify-self:end;font-variant-numeric:tabular-nums;color:var(--ink-2);font-weight:700}
+.shed .tonight{font-weight:700;margin:4px 0 8px} .shed .tonight b{color:var(--sheep);font-variant-numeric:tabular-nums}
+.shed .sbody{flex:1;overflow-y:auto;padding-bottom:16px;-webkit-overflow-scrolling:touch}
+.shed .lbl{font-size:14px;color:var(--ink-2);font-weight:600;margin:14px 0 6px}
+.shed .eweBox{background:var(--surface);border-radius:var(--r-lg);padding:12px}
+.shed .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.shed .t72{min-height:72px;border-radius:var(--r-md);background:var(--surface-2);color:var(--ink);font-weight:700;font-size:17px;padding:0 8px}
+.shed .t72[aria-pressed=true],.shed .tg[aria-pressed=true]{background:var(--sheep);color:var(--bg)}
+.shed .count4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.shed .count4 button{min-height:72px;font-size:28px}
+.shed .lrow{display:grid;grid-template-columns:62px 1fr 1fr;gap:6px;align-items:center;margin-top:8px}
+.shed .lrow .pair{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.shed .tg{min-height:64px;border-radius:var(--r-sm);background:var(--surface-2);color:var(--ink);font-weight:700;font-size:16px;padding:0 4px}
+.shed .tg.dead[aria-pressed=true]{background:var(--late);color:var(--bg)}
+.shed .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.shed .penrow{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.shed .penrow button{flex:none;width:64px;min-height:64px;border-radius:var(--r-sm);background:var(--surface-2);color:var(--ink);font-weight:800;font-size:20px}
+.shed .penrow button[aria-pressed=true]{background:var(--sheep);color:var(--bg)}
+.shed .penrow button:disabled{opacity:.35}
+.shed .chips .chip{min-height:56px}
+.shed .save{padding:12px 0 max(12px,var(--safe-b))}
+.shed .save .btn{min-height:72px;font-size:19px}
+.shed .mobline{font-size:15px;color:var(--ink-2);margin-top:8px}
+.shed .fly{position:fixed;left:16px;right:16px;bottom:120px;background:var(--sheep);color:var(--bg);border-radius:var(--r-lg);padding:16px;font-weight:700;pointer-events:none}
+.shed details{margin-top:14px;background:var(--surface);border-radius:var(--r-md);padding:4px 12px}
+.shed summary{min-height:56px;display:flex;align-items:center;font-weight:700;cursor:pointer}
+/* banners */
+.banner{display:flex;gap:10px;align-items:flex-start;border-radius:var(--r-md);padding:12px 14px;margin-top:12px;font-size:15px;line-height:20px}
+.banner.late{background:var(--late-soft);color:var(--late-ink)} .banner.info{background:var(--info-soft);color:var(--info-ink)}
+.banner svg{flex:none;width:20px;height:20px;margin-top:1px}
+.banner b{display:block}
+/* registers, print */
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:0 16px}
+.table-scroll .print-view{min-width:820px}
+.print-float{position:fixed;left:-9999px;top:0}
+@media print{.print-float{left:0}}
+.reg-line .secondary b{color:var(--ink)}
+.status-row .pill{flex:none}
+.check-res{font-size:15px;line-height:20px;color:var(--ink-2)}
+.chart{width:100%;height:120px;display:block}
+.chart path.l{fill:none;stroke:var(--sheep);stroke-width:2.5}
+.chart line.t{stroke:var(--late);stroke-dasharray:4 4;stroke-width:1.5}
+.chart text{fill:var(--ink-2);font-size:11px}
+.doc-preview{background:var(--surface);border-radius:var(--r-lg);padding:16px;font-size:15px;line-height:22px}
+.doc-preview h3{margin:0 0 6px;font-size:17px}
+.doc-preview dl{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:0}
+.doc-preview dt{color:var(--ink-2)} .doc-preview dd{margin:0;font-weight:600}
+.serial{font-variant-numeric:tabular-nums;font-weight:800;letter-spacing:.02em}
+.check-list{list-style:none;padding:0;margin:12px 0 0;display:flex;flex-direction:column;gap:8px}
+.check-list li{display:flex;gap:10px;align-items:flex-start;border-radius:var(--r-md);padding:10px 12px;font-size:15px;line-height:20px}
+.check-list li.block{background:var(--late-soft);color:var(--late-ink)} .check-list li.warn{background:var(--due-soft);color:var(--due-ink)} .check-list li.info{background:var(--info-soft);color:var(--info-ink)}
+.check-list svg{flex:none;width:20px;height:20px}
+.rot{display:flex;flex-direction:column;gap:8px}
+.rot div{display:grid;grid-template-columns:120px 1fr 28px;align-items:center;gap:8px;font-size:15px}
+.rot i{display:block;height:12px;border-radius:6px;background:var(--sheep)}
+.tool-answer{font-size:40px;line-height:46px;font-weight:800;letter-spacing:-.02em;margin:4px 0}
+.source{font-size:13px;line-height:17px;color:var(--ink-3);margin-top:4px}
+/* inspection, FQAS, tools, money (sheep pages only) */
+.sheep-page .inspect-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+.sheep-page .inspect-tile{display:flex;flex-direction:column;gap:8px;justify-content:center;min-height:112px;background:var(--surface);border-radius:var(--r-lg);padding:16px;color:var(--ink);text-decoration:none;font-weight:700;font-size:17px;line-height:22px}
+.sheep-page .inspect-tile svg{color:var(--sheep-ink)}
+.sheep-page .fqa-item{align-items:flex-start}
+.sheep-page .fqa-item .pill{flex:none;margin-top:2px}
+.sheep-page .row-actions{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px}
+.sheep-page .row-actions .text-btn{min-height:36px;padding:0}
+.sheep-page .auto-tag{font-size:12px;font-weight:700;color:var(--sheep-ink);background:var(--sheep-soft);border-radius:var(--r-full);padding:1px 8px;vertical-align:1px}
+.sheep-page .mini-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:15px;font-variant-numeric:tabular-nums}
+.sheep-page .mini-table th{font-size:13px;color:var(--ink-2);font-weight:600;text-align:left;padding:4px 6px;border-bottom:1px solid var(--hair)}
+.sheep-page .mini-table td{padding:6px;border-bottom:1px solid var(--hair)}
+.sheep-page .bench{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.sheep-page .bench div{display:grid;grid-template-columns:132px 1fr 52px;gap:8px;align-items:center;font-size:15px}
+.sheep-page .bench i{display:block;height:12px;border-radius:6px;background:var(--surface-2)}
+.sheep-page .bench .me i{background:var(--sheep)}
+.sheep-page .bench b{text-align:right;font-variant-numeric:tabular-nums}
+.pack .pack-cover{page-break-after:always;padding:24px 0}
+.pack .pack-cover h1{font-size:26px;margin:0 0 12px}
+.pack .pack-cover .small{font-size:11px;color:#444}
+.shed .lrow b{font-size:15px;white-space:nowrap}
+.num-tile .value.words{font-size:22px;line-height:28px;letter-spacing:-.01em} .num-tile.hero .value.words{font-size:26px;line-height:32px}
+.tally button{min-width:0;text-align:center;padding:4px 6px;line-height:18px}
+.sheep-page form .group-label{margin-top:24px} .sheep-page form > .group-label:first-child{margin-top:16px}
+[data-sector=sheep] .group-label{align-items:center} [data-sector=sheep] .group-label .text-btn{min-height:40px;padding:0;font-size:15px}

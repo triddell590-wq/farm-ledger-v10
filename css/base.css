@@ -1,0 +1,49 @@
+/* Base: reset, type scale, page frame. Tokens only (see tokens.css). */
+*,*::before,*::after{box-sizing:border-box}
+html{font-family:var(--font);font-size:var(--body-size);line-height:24px;color:var(--ink);background:var(--bg);
+  font-variant-numeric:tabular-nums;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;text-rendering:optimizeLegibility}
+body{margin:0;min-height:100dvh;background:var(--bg);overscroll-behavior-y:none;overflow-x:clip}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+a{color:var(--grass);text-decoration:none}
+img,svg{display:block}
+h1,h2,h3,p{margin:0}
+[hidden]{display:none !important}
+:focus-visible{outline:3px solid var(--grass);outline-offset:2px;border-radius:var(--r-xs)}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Type scale (design §4.1) */
+.t-hero{font-size:56px;line-height:56px;font-weight:800;letter-spacing:-.03em}
+.t-display{font-size:34px;line-height:38px;font-weight:800;letter-spacing:-.02em}
+.t-title{font-size:24px;line-height:30px;font-weight:700;letter-spacing:-.01em}
+.t-headline{font-size:19px;line-height:24px;font-weight:700}
+.t-body{font-size:var(--body-size);line-height:24px;font-weight:400}
+.t-strong{font-size:var(--body-size);line-height:24px;font-weight:600}
+.t-callout{font-size:15px;line-height:20px;font-weight:400}
+.t-footnote{font-size:14px;line-height:19px;font-weight:500}
+.t-caption{font-size:13px;line-height:17px;font-weight:600;letter-spacing:.01em}
+.ink-2{color:var(--ink-2)} .ink-3{color:var(--ink-3)}
+.prose{font-variant-numeric:proportional-nums;max-width:34em}
+.prose p+p,.prose ul,.prose h2{margin-top:var(--s-3)}
+.prose h2{font-size:19px;line-height:24px;font-weight:700;margin-top:var(--s-6)}
+.prose ul{padding-left:1.2em}
+.money-sign{color:var(--ink-2)}
+.tag-num{font-weight:500;letter-spacing:.01em}
+.tag-num b{font-weight:800}
+
+/* Page frame */
+#app{min-height:100dvh;position:relative}
+.stage{position:relative;min-height:100dvh;overflow:clip}
+.screen{position:relative;min-height:100dvh;width:100%;background:var(--bg);
+  padding:0 var(--gutter) calc(var(--tabbar-h) + 32px + 12px + var(--safe-b))}
+.screen.no-chrome{padding-bottom:calc(32px + var(--safe-b))}
+.screen-in{position:absolute;inset:0 0 auto 0}
+.page{max-width:640px;margin:0 auto}
+.page.wide{max-width:1080px}
+.section{margin-top:28px}
+.group-label{font-size:14px;line-height:19px;font-weight:500;color:var(--ink-2);margin:0 4px 8px;display:flex;justify-content:space-between;gap:8px}
+.card + .card{margin-top:16px}
+.stack > * + *{margin-top:16px}
+.row-gap{display:flex;gap:8px;flex-wrap:wrap}
+.center{text-align:center}
+.spacer{flex:1}
