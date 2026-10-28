@@ -116,7 +116,7 @@ export default async function today(farm, params) {
       await new Promise((r) => setTimeout(r, 200));
     }
     const mod = await sectorModule(target.type);
-    return mod.fab && mod.fab({ ledger: target, role: target.role });
+    return mod.fab && mod.fab({ ledger: target, role: target.role, where: (mod.tabs && mod.tabs[0] && mod.tabs[0].id) || "" });
   } : null;
   return { el: body, title: farm?.farmName || "Your farm", fab };
 }

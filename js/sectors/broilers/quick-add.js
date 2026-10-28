@@ -2,7 +2,7 @@
 // delivery, Medicine (in water), Note. During turnaround (no crop in any house) the grid becomes
 // Litter out · Washed · Disinfected · Swab · Re-bedded · Note.
 import { loadBroilers } from "./data.js";
-import { quickAddSheet, taskSheet } from "../generic.js";
+import { quickAddSheet, taskSheet, focusFor } from "../generic.js";
 import { canWrite } from "../../core/policy.js";
 import { openMoneySheet } from "../../ui/money-sheet.js";
 import { currentCrop, openTurnaround, listOf } from "./model/crop.js";
@@ -68,7 +68,10 @@ export default async function quickAdd(ctx) {
   const money = canWrite(snap.role, "finance") ? [{ id: "money", label: "Money", icon: "money", run: () => openMoneySheet(snap.ledger) }] : [];
   if (!canWrite(snap.role, "checks")) return quickAddSheet(ctx.ledger, money);
   if (!snap.ix.houses.length) return quickAddSheet(ctx.ledger, [{ id: "house", label: "Add a house", icon: "house", run: () => FLOWS.house.run(snap) }, { id: "note", label: "Note", icon: "message", run: () => FLOWS.note.run(snap) }, ...money]);
-  return quickAddSheet(ctx.ledger, [...quickAddIds(snap).map((id) => ({ id, label: FLOWS[id].label, icon: FLOWS[id].icon, run: () => FLOWS[id].run(snap) })), ...money]);
+  const ids = quickAddIds(snap);
+  const FOCUS = { growth: ["weigh", "feed"], paperwork: ["medicine", "visitor", "alarm", "water"], money: ["money"] };
+  const all = [...new Set([...ids, "visitor", "alarm", "water"])];
+  return quickAddSheet(ctx.ledger, [...all.map((id) => ({ id, label: FLOWS[id].label, icon: FLOWS[id].icon, run: () => FLOWS[id].run(snap) })), ...money], { focus: focusFor(FOCUS, ctx.where) || ids });
 }
 /** Run a flow by id with a fresh snapshot (buttons on screens, tests). */
 export async function runFlow(id, ledger, extra) { const snap = await loadBroilers(ledger); return FLOWS[id].run(snap, extra); }

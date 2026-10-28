@@ -110,12 +110,7 @@ export function openSheet(o = {}) {
     [grab, head].filter(Boolean).forEach((h) => { h.addEventListener("pointerdown", start); h.style.touchAction = "none"; });
     sh.addEventListener("pointermove", move); sh.addEventListener("pointerup", end); sh.addEventListener("pointercancel", end);
   }
-  // keyboard: footer rides up with the on-screen keyboard
-  if (window.visualViewport && !dialog) {
-    const vv = window.visualViewport;
-    const fit = () => { const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop); sh.style.bottom = kb + "px"; };
-    vv.addEventListener("resize", fit); done.then(() => vv.removeEventListener("resize", fit));
-  }
+  // keyboard: handled for every sheet by ui/keyboard.js (the sheet layer follows the visible area)
   return entry;
 }
 

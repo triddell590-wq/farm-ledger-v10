@@ -149,6 +149,7 @@ function moreSheet(snap, a, cls) {
     female && ["calving", "Record a calving", "birth"], female && ["service", "Bull in or AI", "beef"], female && ["scan", "Scan result", "search"], female && ["heat", "Seen bulling", "clock"],
     ["bvd", "BVD result", "syringe"], ["retag", "Replace a tag", "tag"], ["vetop", "Castration or disbudding", "syringe"], ["edit", "Edit identity", "edit"],
     ["death", "Record a death", "alert"],
+    ["delete", "Delete this animal (added by mistake)", "trash"],
   ].filter(Boolean);
   const body = el(html`<div><p class="sheet-title-sm">${shortName(a) || tagParts(a.tag).tail}</p><div class="list">${items.map(([k, l, ic]) => html`<button type="button" class="row" data-k="${k}"><span class="tile">${raw(icon(ic))}</span><span class="main"><span class="primary">${l}</span></span></button>`)}</div></div>`);
   const sh = openSheet({ size: "small", body, label: "More for this animal", auto: true });
@@ -164,5 +165,11 @@ function moreSheet(snap, a, cls) {
     if (k === "vetop") (await import("./flows/vetop.js")).default(snap, { animalIds: ids });
     if (k === "edit") (await import("./flows/animal-edit.js")).editIdentitySheet(snap, a);
     if (k === "death") (await import("./flows/death.js")).default(snap, { animalId: a.id });
+    if (k === "delete") {
+      const { confirmSheet } = await import("../../ui/sheet.js"); const { softDelete, restore } = await import("./actions.js"); const { toast } = await import("../../ui/toast.js");
+      if (!(await confirmSheet({ title: `Delete ${shortName(a) || a.tag}?`, body: "Only for an animal added by mistake — if it died or was sold, record that instead so the herd register stays right. It goes to Recently deleted for 30 days.", confirm: "Delete animal", danger: true }))) return;
+      softDelete(snap.lid, "animals", a.id); toast("Animal deleted", { action: "Undo", duration: 6000, onAction: () => restore(snap.lid, "animals", a.id) });
+      history.back();
+    }
   };
 }

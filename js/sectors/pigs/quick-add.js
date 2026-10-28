@@ -1,7 +1,7 @@
 // Quick add (design/13 §2.2). The grid depends on the system; Visitor and Alarm test are always
 // on the last row.
 import { loadPigs } from "./data.js";
-import { quickAddSheet, taskSheet } from "../generic.js";
+import { quickAddSheet, taskSheet, focusFor } from "../generic.js";
 import { canWrite } from "../../core/policy.js";
 import { openMoneySheet } from "../../ui/money-sheet.js";
 import { tabSetFor } from "./model/settings.js";
@@ -61,8 +61,15 @@ export default async function quickAdd(ctx) {
   const snap = await loadPigs(ctx.ledger);
   const money = canWrite(snap.role, "finance") ? [{ id: "money", label: "Money", icon: "money", run: () => openMoneySheet(snap.ledger) }] : [];
   if (!canWrite(snap.role, "deaths")) return quickAddSheet(ctx.ledger, money);
-  const ids = quickAddIds(tabSetFor(snap.s), snap.role);
-  return quickAddSheet(ctx.ledger, [...ids.map((id) => ({ id, label: FLOWS[id].label, icon: FLOWS[id].icon, run: () => FLOWS[id].run(snap) })), ...money]);
+  const set = tabSetFor(snap.s); const ids = quickAddIds(set, snap.role);
+  const treat = set === "small" ? "treatAny" : "treat";
+  const FOCUS = {
+    sows: ["farrowing", "served", "weaned", "treatSow", "death"], rooms: ["check", "death", treat, "feed", "readings"],
+    batches: ["pigsIn", "pigsOut", "death", treat, "feed"], litters: ["litter", "death", "treatAny"], sales: ["sold", "feedBought"],
+    paperwork: ["visitor", "alarm", treat, "death"], money: ["money"],
+  };
+  const all = [...new Set([...ids, "treatSow", "readings", treat])];
+  return quickAddSheet(ctx.ledger, [...all.map((id) => ({ id, label: FLOWS[id].label, icon: FLOWS[id].icon, run: () => FLOWS[id].run(snap) })), ...money], { focus: focusFor(FOCUS, ctx.where) || ids });
 }
 /** Run a flow by id with a fresh snapshot (buttons on screens, tests). */
 export async function runFlow(id, ledger, extra) { const snap = await loadPigs(ledger); return FLOWS[id].run(snap, extra); }

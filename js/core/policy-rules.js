@@ -95,6 +95,7 @@ export function allowed(ctx) {
       if (!hasRole(lid, ["owner", "manager"])) return false;
       const ch = changedKeys(before, after);
       if (any(ch, ["type", "createdAt", "farmId"])) return false;
+      if (any(ch, ["deletedAt", "deletedBy"]) && roleIn(lid) !== "owner") return false;
       if (!ch.includes("ownerUid")) return true;
       const to = after.ownerUid;
       return roleIn(lid) === "owner" && !!ctx.get(`${ledgerPath}/members/${to}`)

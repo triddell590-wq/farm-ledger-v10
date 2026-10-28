@@ -17,6 +17,8 @@ export function defineRoutes() {
   define(/^\/l\/(?<lid>[^/]+)\/more\/people$/, S("people"));
   define(/^\/l\/(?<lid>[^/]+)\/more\/settings$/, S("ledger-settings"));
   define(/^\/l\/(?<lid>[^/]+)\/more\/photos$/, S("photos"));
+  define(/^\/l\/(?<lid>[^/]+)\/more\/records(?:\/(?<view>bin))?$/, S("records-browser"));
+  define(/^\/settings\/bin$/, S("ledger-bin"));
   define(/^\/l\/(?<lid>[^/]+)(?:\/(?<rest>.*))?$/, S("ledger"));
   define(/^\/invite\/(?<code>[A-Za-z0-9-]+)$/, S("invite"));
   define(/^\/settings$/, S("settings"));
