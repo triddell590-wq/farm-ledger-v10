@@ -22,7 +22,7 @@ export default async function feed(ctx) {
   const body = el(html`<div class="beef-page"></div>`);
   const { first, stop } = liveSnap(ctx.ledger, (snap) => { const y = window.scrollY; body.replaceChildren(render(snap)); if (y) window.scrollTo(0, y); });
   await first;
-  return { el: body, title: "Feed & silage", depth: 1, tab: "more", destroy: stop };
+  return { el: body, title: "Feed & silage", depth: 1, tab: "today", destroy: stop };
 }
 
 function winterStart(today) { const y = Number(today.slice(0, 4)); const md = today.slice(5); return md >= "09-01" ? `${y}-09-01` : `${y - 1}-09-01`; }
@@ -34,7 +34,7 @@ function render(snap) {
   const firstPit = pitGeom(pits[0] || {});
   const winter = feedEaten(data.feedGroups, data.feedAdjust, data, winterStart(today), today, firstPit ? firstPit.blockKg : 0);
   const canSil = canWriteMeta(snap.role, "silage"); const canFeed = canWrite(snap.role, "feedGroups");
-  const node = el(html`<div>${backLink(`#/l/${lid}/more`, "More")}${largeTitle("Feed & silage", `Winter ${winterStart(today).slice(0, 4)}/${String(Number(winterStart(today).slice(0, 4)) + 1).slice(2)}`)}
+  const node = el(html`<div>${backLink(`#/l/${lid}/today`, "Today")}${largeTitle("Feed & silage", `Winter ${winterStart(today).slice(0, 4)}/${String(Number(winterStart(today).slice(0, 4)) + 1).slice(2)}`)}
     ${bud ? html`<div class="card"><div class="card-head">Fodder budget</div><div class="list">
         <div class="row no-lead kv-row"><span class="main"><span class="primary">Silage lasts until</span></span><span class="kv-v" style="font-size:22px">${bud.runOut ? listDate(bud.runOut).slice(4) + " " + bud.runOut.slice(0, 4) : "—"}</span></div>
         <div class="row no-lead kv-row"><span class="main"><span class="primary">Turnout planned</span></span><button type="button" class="text-btn" data-turnout>${sil.turnout ? listDate(sil.turnout).slice(4) : "Add a date"}</button></div>

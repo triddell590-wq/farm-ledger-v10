@@ -117,3 +117,10 @@ export function toHtmlTable(doc) {
     <div class="pf">${e(doc.note || "")} Printed from Farm Ledger on ${new Date().toLocaleDateString("en-GB")}.</div>`;
 }
 export { CLASS_NAMES, normTag };
+
+/** The Herd tab's views (All cattle · Groups · Finishing) as one row of big pills. Each view is
+ *  its own page, so Back and links still work; the Herd tab stays lit on all three. */
+export function herdViews(lid, current) {
+  const V = [["herd", "All cattle"], ["groups", "Groups"], ["finishing", "Finishing"]];
+  return html`<nav class="view-pills" aria-label="Herd views">${V.map(([k, l]) => html`<a href="#/l/${lid}/${k}" class="${k === current ? "on" : ""}" ${k === current ? raw('aria-current="page"') : ""}>${l}</a>`)}</nav>`;
+}

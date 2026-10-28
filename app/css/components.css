@@ -404,3 +404,9 @@ button.num-tile{box-shadow:var(--e-1)}
 .kb-open .sheet-foot{padding-bottom:8px}
 .kb-open .tabbar,.kb-open .fab{visibility:hidden}
 html{scroll-padding-bottom:calc(var(--kb,0px) + 24px)}
+
+/* ---------- view pills: sibling pages under one bottom tab (e.g. Herd: All cattle · Groups · Finishing) ---------- */
+.view-pills{display:flex;gap:8px;margin:8px 0 4px;overflow-x:auto;scrollbar-width:none}
+.view-pills::-webkit-scrollbar{display:none}
+.view-pills a{flex:1 0 auto;display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:999px;background:var(--surface-2);color:var(--ink-2);font-size:15px;font-weight:600;white-space:nowrap}
+.view-pills a.on{background:var(--ink);color:var(--bg)}

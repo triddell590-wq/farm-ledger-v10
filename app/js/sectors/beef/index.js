@@ -61,15 +61,13 @@ const M = {
   async moreRows(ctx) {
     const lid = ctx.ledger.id; const money = canRead(ctx.role, "finance"); const ops = OPS.includes(ctx.role);
     return [
-      ops && { label: "Feed & silage", sub: "Silage pits, fodder budget, meal", icon: "feed", href: `#/l/${lid}/feed` },
       money && { label: "Money & margins", sub: "This ledger's money, cost per head, scheme payments", icon: "money", href: `#/l/${lid}/money` },
-      ops && { label: "Finishing planner", sub: "BCRS and processor deadlines, ready dates", icon: "scale", href: `#/l/${lid}/finishing` },
-      ops && { label: "Groups and sheds", sub: "Management groups, housing", icon: "grid", href: `#/l/${lid}/groups` },
       ops && { label: "Tools", sub: "Calving date, dose by weight, max bid, 200-day weight…", icon: "grid", href: `#/l/${lid}/tools` },
-      ops && { label: "Targets and scheme rules", sub: "Herd register (NIFAIS), SC Scheme, BCRS, processor spec", icon: "settings", href: `#/l/${lid}/targets` },
-      ops && { label: "Sire report", sub: "Calving ease, weights and sale value by sire", icon: "birth", href: `#/l/${lid}/sires` },
-      ops && { label: "Report a disease suspicion", sub: "Bluetongue, TB, BSE — who to phone", icon: "alert", href: `#/l/${lid}/disease` },
     ].filter(Boolean);
+  },
+  /** Rows shown in Ledger settings (set-once-a-year things live there, not in More). */
+  async settingsRows(ctx) {
+    return OPS.includes(ctx.role) ? [{ label: "Targets and scheme rules", sub: "Herd register (NIFAIS), SC Scheme, BCRS, processor spec, housing", icon: "settings", href: `#/l/${ctx.ledger.id}/targets` }] : [];
   },
   async headline(ledger) {
     if (!OPS.includes(ledger.role)) return { value: "", unit: "", line: "Beef money is in Money" };

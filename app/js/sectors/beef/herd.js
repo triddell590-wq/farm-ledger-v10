@@ -10,7 +10,7 @@ import { daysBetween } from "../../core/dates.js";
 import { num } from "../../ui/format.js";
 import { largeTitle, groupLabel, emptyState } from "../../screens/common.js";
 import { liveSnap } from "./data.js";
-import { animalRow, urgentPill } from "./ui.js";
+import { animalRow, urgentPill, herdViews } from "./ui.js";
 import { onFarm, classOf, CLASS_NAMES, withdrawal, lastWeight, dlwg, ageDays } from "./model/animals.js";
 import { tagMatches } from "./model/tags.js";
 import { birthsToRegister, dueInfo } from "./model/breeding.js";
@@ -80,6 +80,7 @@ function render(snap, st, repaint) {
   const gName = st.filter.startsWith("group:") ? ix.groups.get(st.filter.slice(6))?.name : null;
   const node = el(html`<div>
     <div class="title-row">${largeTitle("Herd", context)}${live.length && canEdit ? html`<button type="button" class="text-btn" data-select>${st.select ? "Cancel" : "Select"}</button>` : ""}</div>
+    ${herdViews(snap.lid, "herd")}
     ${snap.data.animals.length ? html`<div class="filter-bar">
       <div class="search-field">${raw(icon("search"))}<input type="search" placeholder="Search tag, name or last 5 digits" aria-label="Search the herd" data-q value="${st.q}" autocomplete="off"></div>
       <div class="chips scroll-chips" role="group" aria-label="Kind of animal">${chip("data-cls", "all", "All", live.length, st.cls === "all")}${CLASSES.filter((c) => by[c]).map((c) => chip("data-cls", c, CLASS_NAMES[c], by[c], st.cls === c))}</div>

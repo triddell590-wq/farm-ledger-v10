@@ -36,7 +36,8 @@ function render(snap, st, repaint) {
   const node = el(html`<div>${largeTitle("Breeding", `${num(cows.length)} cows · ${num(calvedSeason)} calved this season`)}
     <div class="seg-wrap">${segmented("seg", SEGS.map(([value, label]) => ({ value, label })), st.seg)}</div>
     <div data-body style="margin-top:16px"></div>
-    <div class="section"><div class="list"><a class="row" href="#/l/${snap.lid}/breeding/fertility"><span class="tile">${raw(icon("birth"))}</span><span class="main"><span class="primary">Fertility</span><span class="secondary">Calving interval, spread, born and weaned per 100 cows, SC Scheme year</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div></div></div>`);
+    <div class="section"><div class="list"><a class="row" href="#/l/${snap.lid}/breeding/fertility"><span class="tile">${raw(icon("birth"))}</span><span class="main"><span class="primary">Fertility</span><span class="secondary">Calving interval, spread, born and weaned per 100 cows, SC Scheme year</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
+      <a class="row" href="#/l/${snap.lid}/sires"><span class="tile">${raw(icon("beef"))}</span><span class="main"><span class="primary">Sire report</span><span class="secondary">Calving ease, weights and sale value by sire</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div></div></div>`);
   const f = wireForm(node);
   f.onChange((n) => { if (n === "seg") { st.seg = f.values().seg; history.replaceState(history.state, "", `#/l/${snap.lid}/breeding/${st.seg}`); paintBody(); } });
   const paintBody = () => node.querySelector("[data-body]").replaceChildren(({ calving, board, register, heifers })[st.seg](snap, st, paintBody));

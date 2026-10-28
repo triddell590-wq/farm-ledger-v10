@@ -56,6 +56,7 @@ function render(snap) {
     <div class="section">${groupLabel("Plans and certificates")}<div class="list">
       ${plan("healthPlanSigned", "Animal health plan", "signed")}${plan("hparDate", "Health, performance & antibiotic review", "done")}
       <a class="row" href="#/farm/documents"><span class="main"><span class="primary">Training records, bait plan, emergency info, complaints</span><span class="secondary">Kept in the farm's Documents</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div></div>
+    <div class="section"><div class="list"><a class="row" href="#/l/${lid}/disease"><span class="tile late">${raw(icon("alert"))}</span><span class="main"><span class="primary">Report a disease suspicion</span><span class="secondary">Bluetongue, TB, BSE — who to phone, and what happens next</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div></div>
     <div class="section"><a class="btn" href="#/l/${lid}/paperwork/inspect">${raw(icon("shield"))}Inspector is here</a></div>
   </div>`);
   node.querySelectorAll("[data-plan]").forEach((b) => (b.onclick = () => planSheet(snap, b.dataset.plan)));
