@@ -1,4 +1,4 @@
-// build fl10-f27161110bb8
+// build fl10-44159f8cbbc9
 // Farm Ledger 10 service worker: keeps a full copy of the app on the phone so it opens with no
 // signal. Same network strategy as v9.14 (which works): the page itself tries the network for
 // at most 3s then uses the saved copy; every other app file is phone-copy-first per version;
@@ -14,12 +14,18 @@ const NET_WAIT_MS = 3000;
 self.addEventListener("install", (e) => {
   // Fetch each file with the version in the address so GitHub's servers can't hand back a copy
   // they cached before this release was published (that left phones with old files), then save it
-  // under its plain address.
-  e.waitUntil(caches.open(CACHE).then((c) => Promise.all(self.ASSETS.map(async (u) => {
-    const res = await fetch(new Request(`${u}${u.includes("?") ? "&" : "?"}v=${CACHE}`, { cache: "reload" }));
-    if (!res.ok) throw new Error(`precache ${u}: ${res.status}`);
-    await c.put(u, res);
-  }))));
+  // under its plain address. 12 at a time with one retry: 450 requests at once got refused.
+  e.waitUntil(caches.open(CACHE).then(async (c) => {
+    const one = async (u) => {
+      for (let i = 0; i < 3; i++) {
+        try { const res = await fetch(new Request(`${u}${u.includes("?") ? "&" : "?"}v=${CACHE}`, { cache: "reload" })); if (res.ok) { await c.put(u, res); return; } } catch (err) { /* retry */ }
+        await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+      }
+      throw new Error(`precache failed: ${u}`);
+    };
+    const list = [...self.ASSETS];
+    await Promise.all(Array.from({ length: 12 }, async () => { while (list.length) await one(list.shift()); }));
+  }));
   self.skipWaiting();
 });
 self.addEventListener("activate", (e) => {
