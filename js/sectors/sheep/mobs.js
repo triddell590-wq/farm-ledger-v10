@@ -1,5 +1,6 @@
 // Sheep → Mobs (design/11 §5.1): mob cards with count, field, last dose, lame %; rams; the
 // optional individual sheep (EID) are reached inside a mob or by searching a tag.
+import { viewPills } from "../../ui/view-pills.js";
 import { html, raw } from "../../core/html.js";
 import { el } from "../../ui/dom.js";
 import { icon } from "../../ui/icons.js";
@@ -27,7 +28,7 @@ export default async function mobs(ctx) {
     const t = snap.totals; const list = activeMobs(snap.data); const write = canWrite(snap.role, "mobs");
     const closed = (snap.data.mobs || []).filter((m) => m.active === false);
     const ctxLine = `${plural(t.ewes, "ewe")} · ${plural(t.rams, "ram")} · ${plural(t.eweLambs, "ewe lamb")} · ${plural(t.lambs, "lamb")}${t.goats ? " · " + plural(t.goats, "goat") : ""}`;
-    return html`<div>${largeTitle("Mobs", ctxLine)}
+    return html`<div>${largeTitle("Mobs", ctxLine)}${viewPills(snap.lid, [["mobs", "Mobs"], ["worms", "Worm & fluke"]], "mobs", "Mob views")}
       ${write && list.length ? html`<div style="display:flex;justify-content:flex-end;margin-top:-4px"><button type="button" class="text-btn" data-flow="newMob">${raw(icon("plus"))} New mob</button></div>` : ""}
       <div class="field search-field card" style="display:flex;align-items:center;gap:8px;padding:0 14px;margin:8px 0 12px">${raw(icon("search"))}<input type="search" placeholder="Find a sheep: tag or last 5 digits" aria-label="Find a sheep by tag" data-q style="flex:1;border:0;background:transparent;font:inherit;min-height:48px;color:var(--ink);outline:none"></div><div data-hits></div>
       ${list.length ? html`<div class="list">${list.map((m) => mobRow(snap, m, { lines: mobLines(snap, m) }))}</div>`

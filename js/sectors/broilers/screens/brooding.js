@@ -2,6 +2,7 @@
 // ready-for-chicks checks, chicks arrived (delivery note), crop-fill at 8 h and 24 h, chick
 // behaviour days 1–3, the 7-day weight and mortality. Each row shows when it's due, the reading,
 // the time and who. A chick quality complaint can be sent to the integrator in days 0–7.
+import { viewPills } from "../../../ui/view-pills.js";
 import { html, raw } from "../../../core/html.js";
 import { icon } from "../../../ui/icons.js";
 import { canWrite } from "../../../core/policy.js";
@@ -26,9 +27,9 @@ function pick(snap, cropId) {
 
 function paint(snap, cropId) {
   const { ix, s, today, lid } = snap; const L = (h) => `#/l/${lid}/${h}`;
-  const back = backLink(L(cropId ? "crop" : "more"), cropId ? "Crop" : "More");
+  const back = cropId ? backLink(L("crop"), "Crop") : "";
   const crop = pick(snap, cropId);
-  if (!crop) return html`<div>${back}${largeTitle("Brooding set-up", "Days 0–3 and day 7")}
+  if (!crop) return html`<div>${back}${largeTitle("Brooding set-up", "Days 0–3 and day 7")}${viewPills(snap.lid, [["crop", "This crop"], ["brooding", "Brooding set-up"], ["turnaround", "Turnaround"]], "brooding", "Crop views")}
     ${emptyState({ sector: "broilers", title: "No chicks in brooding", body: "The checklist opens for each crop from pre-heat to day 7. Start a crop when chicks are placed.", action: ix.houses.length && canWrite(snap.role, "crops") ? "Start a crop" : null, actAttr: `data-flow="startCrop"` })}
     ${targets(snap)}</div>`;
   const house = ix.houseById.get(crop.houseId) || {}; const b = ix.brooding.get(crop.id) || {}; const day = cropDay(crop, today);

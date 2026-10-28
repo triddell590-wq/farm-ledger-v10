@@ -15,7 +15,7 @@ export default async function disease(ctx) {
   return liveScreen(ctx, { title: "Disease suspicion", tab: "paperwork", paint: (snap) => {
     const r = restriction(snap.data); const can = canWrite(snap.role, "diseaseReports");
     const list = (snap.data.diseaseReports || []).slice().sort((a, b) => b.date.localeCompare(a.date));
-    return html`<div>${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Report a disease suspicion", "Scab and bluetongue — DAERA")}
+    return html`<div>${backLink(`#/l/${snap.lid}/paperwork`, "Paperwork")}${largeTitle("Report a disease suspicion", "Scab and bluetongue — DAERA")}
       ${r ? banner("late", `Flock restricted (${r.disease}) since ${short(r.date)}`, " Moves are stopped until your vet confirms in writing.") : html`<div class="info-card">${raw(icon("check"))}<span>Flock status: not restricted.</span></div>`}
       <div class="warn-card" style="margin:12px 0">${raw(icon("alert"))}<span>Suspected sheep scab and bluetongue must be reported to DAERA — it's an offence not to.</span></div>
       ${can ? html`<div class="btn-col">${r ? html`<button type="button" class="btn" data-clear="${r.id}">Add vet's letter — lift restriction</button>` : ""}<button type="button" class="btn ${r ? "secondary" : ""}" data-report>Report a suspicion</button></div>` : ""}

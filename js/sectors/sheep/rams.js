@@ -1,5 +1,6 @@
 // Rams (design/11 §5.6, §3.6): working / resting, ewes per ram against the guide, ram MOT
 // checklist (Teeth · Toes · Testicles · Tone · Body condition) per ram with date.
+import { viewPills } from "../../ui/view-pills.js";
 import { html, raw } from "../../core/html.js";
 import { el } from "../../ui/dom.js";
 import { icon } from "../../ui/icons.js";
@@ -22,10 +23,10 @@ export function motSheet(snap, ram) {
 }
 
 export default async function rams(ctx) {
-  return liveScreen(ctx, { title: "Rams", tab: "more", paint: (snap) => {
+  return liveScreen(ctx, { title: "Rams", tab: "flock", depth: 0, paint: (snap) => {
     const r = ramSummary(snap.data); const ewes = ewesToRam(snap.data, snap.cy) || snap.totals.ewes; const epr = ewesPerRam(ewes, r, snap.s); const w = canWrite(snap.role, "sheep");
     const motBy = addDays(snap.cy.nextRamsIn, -30);
-    return html`<div>${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Rams", `${r.total} rams · ${r.working} working · ${r.resting} resting`)}
+    return html`<div>${largeTitle("Rams", `${r.total} rams · ${r.working} working · ${r.resting} resting`)}${viewPills(snap.lid, [["flock", "Flock"], ["rams", "Rams"]], "rams", "Flock views")}
       <div class="s-tiles">${raw(`<div class="num-tile"><span class="label">Ewes per ram</span><span class="value ${epr.ratio && !epr.ok ? "due" : ""}">${epr.ratio ?? "–"}</span><span class="delta">guide 1:${snap.s.ramGuideMature} mature, 1:${snap.s.ramGuideLamb} ram lambs</span></div>`)}${raw(`<div class="num-tile"><span class="label">Ram MOT</span><span class="value">${r.lastMot ? short(r.lastMot) : "Not done"}</span><span class="delta">before ${short(motBy)}</span></div>`)}</div>
       <p class="source">${SOURCES.ramGuide}</p>
       ${w ? html`<div class="btn-col" style="margin-top:12px"><button type="button" class="btn secondary" data-add>${raw(icon("plus", { size: 20 }))} Add a ram</button></div>` : ""}

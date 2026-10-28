@@ -48,6 +48,7 @@ export default async function paperwork(ctx) {
       <div class="section">${groupLabel("Returns")}<div class="list">
         ${R(L("emb"), `eMB-Pigs ${e.label.split(" ")[0]} antibiotics`, e.done ? "uploaded" : `by ${d2(e.due)}`, e.done ? "ok" : e.level === "late" ? "late" : e.level === "due" ? "due" : "")}
         ${R(L("inventory"), "Pig inventory (1 June)", snap.data.inventories.some((x) => x.date === inv.date) ? "done" : d2(inv.date), inv.level === "due" ? "due" : "")}
-        ${R(L("plans"), "Plans: health, tail-biting, emergency, extreme weather, biosecurity", `${plansOn} of 6`)}</div></div></div>`;
+        ${R(L("plans"), "Plans: health, tail-biting, emergency, extreme weather, biosecurity", `${plansOn} of 6`)}</div></div>
+      <div class="section"><div class="list">${R(L("disease"), "Report a disease suspicion", "", "", "alert", "African swine fever and notifiable disease — DAERA")}</div></div></div>`;
   } });
 }

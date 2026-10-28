@@ -34,6 +34,7 @@ export default async function paperwork(ctx) {
         ${row(L("paperwork/vetops"), "Vet operations (castration, docking)", "")}
         ${row(L("paperwork/feed"), "Feed records (3 years)", "")}
       </div></div>
+      <div class="section"><div class="list">${row(L("paperwork/disease"), "Report a disease suspicion", "Scab, bluetongue — who to phone at DAERA")}</div></div>
       <div class="section"><a class="btn" href="${L("paperwork/inspect")}">Inspector is here</a></div></div>`;
   } });
 }

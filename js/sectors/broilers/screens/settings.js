@@ -1,6 +1,7 @@
 // Broiler settings and targets (design/15 §15). Owner and manager edit (meta/settings); others
 // read. Defaults that are guesses or guidance say so beside the setting (model/settings.js SOURCES).
-import { html } from "../../../core/html.js";
+import { html, raw } from "../../../core/html.js";
+import { icon } from "../../../ui/icons.js";
 import { el } from "../../../ui/dom.js";
 import { toast } from "../../../ui/toast.js";
 import { wireForm, checkRow, chipGroup } from "../../../ui/form.js";
@@ -19,7 +20,7 @@ const chips = (name, label, options, value) => html`<div class="field chips-fiel
 export default async function settings(ctx) {
   ensureCss();
   const snap = await loadBroilers(ctx.ledger); const s = snap.s; const can = canWriteMeta(snap.role, "settings");
-  const body = el(html`<div class="br-page push">${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Broiler settings and targets", can ? "Changes apply straight away" : "Only the owner or a manager can change these")}
+  const body = el(html`<div class="br-page push">${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Broiler settings and targets", can ? "Changes apply straight away" : "Only the owner or a manager can change these")}<div class="list" style="margin-bottom:8px"><a class="row" href="#/l/${snap.lid}/houses"><span class="tile">${raw(icon("house"))}</span><span class="main"><span class="primary">Houses</span><span class="secondary">House names and usable floor area</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div>
     <form novalidate ${can ? "" : "inert"}>
     <p class="form-label">Birds and crop plan</p><div class="form-group">
       ${chips("breedStdId", "Hybrid and breed objective", BREED_STANDARDS.map((b) => [b.id, b.hybrid]), s.breedStdId)}

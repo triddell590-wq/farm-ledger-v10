@@ -10,13 +10,13 @@ import { breedingKpis, farrowRateByBatch, parityProfile, PARITY_GUIDE, BENCH, BE
 import { cycles } from "../model/week.js";
 
 export default async function kpis(ctx) {
-  return liveScreen(ctx, { title: "Herd performance", tab: "more", paint: (snap) => {
+  return liveScreen(ctx, { title: "Herd performance", tab: null, paint: (snap) => {
     const d = snap.data; const k = breedingKpis({ sows: d.sows, services: d.services, litters: d.litters, deaths: d.deaths }, snap.today); const t = snap.s.targets;
     const row = (label, val, formula, bench, tone = "") => html`<div class="row no-lead pg-kpi"><span class="main"><span class="primary">${label}</span><span class="secondary">${formula}</span>${bench ? html`<span class="secondary pg-bench">AHDB ${bench}</span>` : ""}</span><span class="v ${tone}">${val}</span></div>`;
     const fr = farrowRateByBatch(d.batches, d.services, d.litters, snap.today);
     const pp = parityProfile(cycles(snap.c).filter((x) => x.sow.type !== "boar").map((x) => x.c.parity)); const totalP = pp.reduce((a, b) => a + b, 0) || 1;
     const closed = d.batches.filter((b) => b.closed).slice(-6);
-    return html`<div>${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Herd performance", `Last 12 months · ${n1(k.avgSows, 0)} average sows and served gilts`)}
+    return html`<div>${backLink(`#/l/${snap.lid}/${snap.s.breeding ? "sows" : "batches"}`, snap.s.breeding ? "Sows" : "Batches")}${largeTitle("Herd performance", `Last 12 months · ${n1(k.avgSows, 0)} average sows and served gilts`)}
       ${snap.s.breeding ? html`<div class="list">
         ${row("Pigs weaned / sow / year", k.pwsy != null ? n1(k.pwsy) : "—", `weaned in 12 months (${k.weaned}) ÷ average sows + served gilts`, `${BENCH.pwsy[0]} → ${BENCH.pwsy[1]}`, k.pwsy != null && k.pwsy < t.pwsy ? "due" : "")}
         ${row("Born alive / litter", k.bornAlive != null ? n1(k.bornAlive) : "—", `born alive ÷ litters (${k.litters})`, `${BENCH.bornAlive[0]} → ${BENCH.bornAlive[1]}`)}

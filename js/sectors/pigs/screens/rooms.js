@@ -20,6 +20,6 @@ export default async function rooms(ctx) {
       ${occ.length ? html`<div class="list"><a class="row no-lead pg-kv" href="#/l/${lid}/rooms" data-flow="check"><span class="main"><span class="primary">Today's room checks</span><span class="secondary">The law asks for every pig to be inspected once a day</span></span><span class="v ${checked < occ.length ? "due" : "ok"}">${checked} of ${occ.length}</span></a></div>` : ""}
       ${allEmpty ? html`<p class="pg-quiet">All rooms empty — record pigs in or a weaning to start.</p>` : ""}
       ${groups.map(([name, list]) => html`<div class="section">${groupLabel(name, list.length > 1 ? list.length : "")}<div class="pg-rb">${list.map((x) => roomTile(lid, x, { full: true }))}</div></div>`)}
-      ${canWrite(snap.role, "rooms") ? html`<div class="section"><a class="btn secondary" href="#/l/${lid}/setup/rooms">Rooms, pens and crates</a></div>` : ""}</div>`;
+      ${canWrite(snap.role, "rooms") ? html`<div class="section"><a class="btn secondary" href="#/l/${lid}/setup">Set up rooms, bins and semen</a></div>` : ""}</div>`;
   } });
 }

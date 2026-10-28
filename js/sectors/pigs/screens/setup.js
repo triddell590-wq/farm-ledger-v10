@@ -13,12 +13,12 @@ import { saveSow } from "../actions.js";
 
 export default async function setup(ctx) {
   const what = ctx.match.groups.what;
-  return liveScreen(ctx, { title: "Rooms, bins and semen", tab: "more", paint: (snap) => {
+  return liveScreen(ctx, { title: "Rooms, bins and semen", tab: "rooms", paint: (snap) => {
     const lid = snap.lid; const can = canWrite(snap.role, "rooms");
     if (what === "sows") return importHtml(snap);
     const rooms = snap.data.rooms.slice().sort(sortRooms);
     const show = (k) => !what || what === k;
-    return html`<div>${backLink(`#/l/${lid}/more`, "More")}${largeTitle("Rooms, bins and semen", `${plural(rooms.length, "room")} · ${plural(snap.data.bins.length, "bin")}`)}
+    return html`<div>${backLink(`#/l/${lid}/rooms`, "Rooms")}${largeTitle("Rooms, bins and semen", `${plural(rooms.length, "room")} · ${plural(snap.data.bins.length, "bin")}`)}
       ${show("rooms") ? html`<div class="section">${groupLabel("Rooms", "in the order the pigs move")}<div class="list">${rooms.length ? rooms.map((r) => html`<button type="button" class="row" ${raw(can ? `data-flow="room" data-arg='${flowArg({ id: r.id })}'` : "")}><span class="tile">${raw(icon("house"))}</span><span class="main"><span class="primary">${r.name}</span><span class="secondary">${[KIND_NAME[r.kind], r.house, r.kind === "farrowing" ? plural(r.crates || 0, "crate") : r.pens?.length ? `${plural(r.pens.length, "pen")}${r.pens[0]?.areaM2 ? ` × ${r.pens[0].areaM2} m²` : " · no pen area"}` : null, r.places ? `${r.places} places` : null].filter(Boolean).join(" · ")}</span></span>${can ? html`<span class="text-btn">Edit</span>` : ""}</button>`) : html`<div class="row no-lead"><span class="main"><span class="secondary">No rooms yet. Start with the room you use most.</span></span></div>`}</div>
         ${can ? html`<button type="button" class="btn" style="margin-top:12px" data-flow="room">${raw(icon("plus"))}Add a room</button>` : ""}
         ${!rooms.length && can ? html`<button type="button" class="btn secondary" style="margin-top:8px" data-starter>Add a starter set (${snap.s.breeding ? "service, farrowing, weaner, finisher" : "two finisher rooms"})</button>` : ""}</div>` : ""}

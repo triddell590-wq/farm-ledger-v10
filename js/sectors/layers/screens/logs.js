@@ -14,16 +14,17 @@ import { buildRegister } from "../model/registers.js";
 import { sortedHouses, flockIn } from "../model/flock.js";
 
 
+const HOUSE_LOGS = ["feed", "alarm", "manure"]; // these live under Houses; the rest under Paperwork
 export default async function logs(ctx) {
   const kind = ctx.match.groups.kind;
-  return liveScreen(ctx, { title: LOGS[kind]?.title || "Log", tab: "more", paint: (snap) => paint(snap, kind), after: (node, snap) => {
+  return liveScreen(ctx, { title: LOGS[kind]?.title || "Log", tab: HOUSE_LOGS.includes(kind) ? "houses" : "more", paint: (snap) => paint(snap, kind), after: (node, snap) => {
     const s = node.querySelector("[data-docs]"); if (s && LOGS[kind]) s.replaceWith(docButtons(() => buildRegister(snap.c, kind, { from: "2000-01-01" })));
   } });
 }
 
 function paint(snap, kind) {
   const L = (h) => `#/l/${snap.lid}/${h}`; const Lg = LOGS[kind];
-  const back = backLink(L("more"), "More");
+  const back = HOUSE_LOGS.includes(kind) ? backLink(L("houses"), "Houses") : backLink(L("layers-paperwork"), "Paperwork");
   if (!Lg) return html`<div>${back}${largeTitle("Not found")}</div>`;
   const list = [...(snap.data[Lg.coll] || [])].sort((a, b) => String(b.date || b.from).localeCompare(String(a.date || a.from)));
   const hn = (id) => (id ? snap.data.houses.find((h) => h.id === id)?.name || "" : "All houses");

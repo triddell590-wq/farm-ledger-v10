@@ -1,6 +1,7 @@
 // Dairy → More → Calves (design/12 §7.2, §4.2 calf card): calf shed board by pen, today's
 // mixing sheet from the feeding plans, heifer growth vs % of mature weight, calf details
 // (colostrum, disbudding with anaesthetic + pain relief, stage, weaning) and weighings.
+import { viewPills } from "../../../ui/view-pills.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -24,7 +25,7 @@ export default async function calves(ctx) {
   const body = el(html`<div class="dairy-page"></div>`);
   const { first, stop } = liveSnap(ctx.ledger, (snap) => { const y = window.scrollY; body.replaceChildren(render(snap)); if (y) window.scrollTo(0, y); });
   await first;
-  return { el: body, title: "Calves", tab: "more", destroy: stop };
+  return { el: body, title: "Calves", tab: "cows", depth: 0, destroy: stop };
 }
 
 const age = (a, today) => { const d = daysBetween(a.dob, today); return d < 28 ? `${d} day${d === 1 ? "" : "s"}` : d < 120 ? `${Math.floor(d / 7)} wk` : `${Math.floor(d / 30.4)} mo`; };
@@ -44,7 +45,7 @@ function render(snap) {
     return html`<button type="button" class="row cow-row" data-calf="${a.id}"><span class="cow-no" style="font-size:20px">${cowLabel(a)}</span><span class="main"><span class="primary">${age(a, today)} · ${/b|m|steer/i.test(a.sex || "") ? "bull calf" : "heifer calf"}${c.stage ? " · " + c.stage : ""}</span>
       <span class="secondary">${col?.litres ? `Colostrum ${col.litres} L${col.time ? " at " + col.time : ""}${col.brix ? ` · Brix ${col.brix}%` : ""}` : "Colostrum not recorded"}${c.disbud?.date ? ` · disbudded${c.disbud.anaesthetic && c.disbud.analgesic ? " ✓" : " (pain relief?)"}` : ""}${c.weanDate ? ` · weaned ${c.weanDate.slice(8)}/${c.weanDate.slice(5, 7)}` : ""}</span></span>
       ${!col?.litres ? pill("due", "Colostrum") : brix === false ? pill("due", "Low Brix") : c.destination === "Sell" ? pill("neutral", "To sell") : ""}</button>`; };
-  const node = el(html`<div>${backLink(`#/l/${lid}/more`, "More")}${largeTitle("Calves", `${num(kids.length)} calves · ${num(pens.size)} pen${pens.size === 1 ? "" : "s"}`)}
+  const node = el(html`<div>${largeTitle("Calves", `${num(kids.length)} calves · ${num(pens.size)} pen${pens.size === 1 ? "" : "s"}`)}${viewPills(lid, [["cows", "All cows"], ["calves", "Calves"], ["scores", "Mobility & BCS"]], "calves", "Cow views")}
     ${sectionOf("Today's mixing sheet", mixRows.length ? html`<div class="card pad">${mixRows.map(({ p, n, m }) => html`<p class="t-callout" style="margin:0 0 8px"><b>${p.pen || "Pen"}:</b> ${n} calves × ${p.lPerFeed} L × ${p.feedsPerDay} feeds = <b>${num(m.litresDay, 1)} L</b> → <b>${num(m.kgDay, 1)} kg powder</b> (${p.gPerL} g/L)${w ? html` <button type="button" class="text-btn" data-plan="${p.id}" style="min-height:28px;padding:0 4px">Edit</button>` : ""}</p>`)}
         <p class="t-head" style="margin:4px 0 0">Whole shed: ${num(tot.L, 1)} L · ${num(tot.kg, 1)} kg a day</p><p class="formula">Calves × litres per feed × feeds a day; × grams per litre ÷ 1000. Per feed: ${num(tot.L / Math.max(1, s.calfPlan.feedsPerDay), 1)} L.</p></div>`
       : html`<p class="hint">Add a feeding plan per pen and the mixing sheet works itself out (e.g. 6 calves × 3 L × 2 feeds = 36 L → 5.4 kg at 150 g/L).</p>`)}

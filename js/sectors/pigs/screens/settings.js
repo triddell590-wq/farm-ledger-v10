@@ -1,7 +1,8 @@
 // Pig settings and targets (design/13 §13). Owner and manager edit (meta/settings); others read.
 // Guesses made into settings are labelled: water-drop alert 15%, visitor downtime 48 h,
 // feed intake table, rearing growth.
-import { html } from "../../../core/html.js";
+import { html, raw } from "../../../core/html.js";
+import { icon } from "../../../ui/icons.js";
 import { el } from "../../../ui/dom.js";
 import { toast } from "../../../ui/toast.js";
 import { wireForm, checkRow, chipGroup } from "../../../ui/form.js";
@@ -18,7 +19,7 @@ const chips = (name, label, options, value) => html`<div class="field chips-fiel
 
 export default async function settings(ctx) {
   const snap = await loadPigs(ctx.ledger); const s = snap.s; const t = s.targets; const can = canWriteMeta(snap.role, "settings");
-  const body = el(html`<div class="pg-page push">${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Pig settings and targets", can ? "Changes apply straight away" : "Only the owner or a manager can change these")}
+  const body = el(html`<div class="pg-page push">${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Pig settings and targets", can ? "Changes apply straight away" : "Only the owner or a manager can change these")}<div class="list" style="margin-bottom:8px"><a class="row" href="#/l/${snap.lid}/setup"><span class="tile">${raw(icon("house"))}</span><span class="main"><span class="primary">Rooms, bins and semen</span><span class="secondary">Houses, rooms, pens, crates, feed bins</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div>
     <form novalidate ${can ? "" : "inert"}>
     <p class="form-label">The unit</p><div class="form-group">
       ${chips("system", "System", Object.entries(SYSTEMS), s.system)}

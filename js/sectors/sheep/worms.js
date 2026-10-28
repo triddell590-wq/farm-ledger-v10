@@ -1,5 +1,6 @@
 // Worm and fluke plan (design/11 §7): this year's rotation by wormer group, seasonal risk content
 // (with its updated date), and a timeline per mob of doses, FEC results and drench checks.
+import { viewPills } from "../../ui/view-pills.js";
 import { html, raw } from "../../core/html.js";
 import { icon } from "../../ui/icons.js";
 import { canWrite } from "../../core/policy.js";
@@ -19,13 +20,13 @@ export function wormTimeline(data, mobId) {
 }
 
 export default async function worms(ctx) {
-  return liveScreen(ctx, { title: "Worm and fluke plan", tab: "more", paint: (snap) => {
+  return liveScreen(ctx, { title: "Worm and fluke plan", tab: "mobs", depth: 0, paint: (snap) => {
     const { data, today, s, lid } = snap; const year = today.slice(0, 4); const rot = rotation(data, year); const max = Math.max(1, ...Object.values(rot));
     const write = canWrite(snap.role, "medicines"); const season = seasonalFor(today); const due = drenchChecksDue(data, s, today);
     const mobs = activeMobs(data).filter((m) => m.class !== "rams" || doses(data, m.id).length);
     const any = data.medicines.some((m) => m.wormerGroup || m.reason === "Worms" || m.reason === "Fluke");
     const used = Object.entries(rot).filter(([, n]) => n).map(([g, n]) => `${WORMER_GROUPS[g].label} ${n}`).join(" · ");
-    return html`<div>${backLink(`#/l/${lid}/more`, "More")}${largeTitle("Worm and fluke plan", used || `No wormers recorded in ${year}`)}
+    return html`<div>${largeTitle("Worm and fluke plan", used || `No wormers recorded in ${year}`)}${viewPills(lid, [["mobs", "Mobs"], ["worms", "Worm & fluke"]], "worms", "Mob views")}
       ${season.map((x) => html`<div class="info-card" style="margin-bottom:8px">${raw(icon("info"))}<span><b>${x.title}:</b> ${x.text} <span class="ink-3">(Updated ${short(x.updated)} · ${x.source})</span></span></div>`)}
       ${write ? html`<div class="btn-col" style="margin:12px 0"><button type="button" class="btn" data-flow="treat">Record a dose</button><button type="button" class="btn secondary" data-flow="fec">FEC result</button></div>` : ""}
       ${!any ? emptyState({ sector: "sheep", title: "No doses recorded", body: "Record each dose with its wormer group so you can see what you've used.", action: write ? "Record a dose" : null, actAttr: 'data-flow="treat"' }) : html`

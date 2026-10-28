@@ -49,18 +49,10 @@ const M = {
   async moreRows(ctx) {
     const lid = ctx.ledger.id; const money = canRead(ctx.role, "finance"); const ops = OPS.includes(ctx.role);
     return [
-      ops && { label: "Paperwork and Red Tractor", sub: "Based on Red Tractor Dairy v5 (modified), 1 Feb 2025", icon: "records", href: `#/l/${lid}/paperwork` },
-      ops && { label: "Calves", sub: "Calf shed, colostrum, mixing sheet, heifer growth", icon: "birth", href: `#/l/${lid}/calves` },
-      ops && { label: "Feed and silage", sub: "Deliveries, concentrate per litre, silage", icon: "feed", href: `#/l/${lid}/feed` },
+      ops && { label: "Paperwork and Red Tractor", sub: "Registers, Red Tractor check, slurry, training, disease report", icon: "records", href: `#/l/${lid}/paperwork` },
       money && { label: "Milk money", sub: "Milk cheques, MOPF, what if", icon: "money", href: `#/l/${lid}/money` },
-      ops && { label: "Slurry and nutrients", sub: "22-week storage, derogation dates", icon: "water", href: `#/l/${lid}/slurry` },
-      ops && { label: "Mobility and BCS", sub: "Scoring sessions, foot trimming", icon: "scale", href: `#/l/${lid}/scores` },
-      ops && { label: "Milking machine", sub: "ISO 6690 test, service, liner changes", icon: "settings", href: `#/l/${lid}/parlour-machine` },
       ops && { label: "Tools", sub: "Dates, cheque check, MOPF, cull ranking, weigh tape…", icon: "grid", href: `#/l/${lid}/tools` },
-      ops && { label: "Imports", sub: "Milk recording and robot (CSV)", icon: "download", href: `#/l/${lid}/imports` },
-      ops && { label: "Training and induction", sub: "Relief milkers, medicine course", icon: "people", href: `#/l/${lid}/training` },
-      ops && { label: "Dairy settings", sub: "Milking times, waiting period, processor, bands", icon: "settings", href: `#/l/${lid}/dairy-settings` },
-      ops && { label: "Report a disease suspicion", sub: "Bluetongue and notifiable disease", icon: "alert", href: `#/l/${lid}/tools/disease` },
+      ops && { label: "Dairy settings", sub: "Milking times, waiting period, processor, bands, imports", icon: "settings", href: `#/l/${lid}/dairy-settings` },
     ].filter(Boolean);
   },
   async headline(ledger) {

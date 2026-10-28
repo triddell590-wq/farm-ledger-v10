@@ -49,6 +49,7 @@ export default async function sows(ctx) {
         <div class="pg-progress ${t.served >= t.target ? "" : "due"}"><i style="width:${Math.min(100, (t.served / (t.target || 1)) * 100)}%"></i></div>
         <p class="pg-note" style="margin:6px 0 0">${t.served >= t.target ? "Target reached." : left ? `Still to serve: ${left}` : `${t.target - t.served} short — bring in gilts?`}</p></a></div>` : ""}
       <div class="section" data-list></div>
+      <div class="section"><div class="list"><a class="row" href="#/l/${lid}/kpis"><span class="tile">${raw(icon("chart"))}</span><span class="main"><span class="primary">Herd performance</span><span class="secondary">Pigs weaned per sow, farrowing rate, parity profile</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div></div>
       ${can ? html`<div class="pg-acts"><button type="button" class="btn secondary" data-flow="sow">${raw(icon("plus"))}Add a sow</button><a class="btn secondary" href="#/l/${lid}/setup/sows">${raw(icon("download"))}Import a list</a></div>` : ""}
     </div>`);
     node.querySelector("[data-list]").replaceChildren(el(html`<div>${list()}</div>`));

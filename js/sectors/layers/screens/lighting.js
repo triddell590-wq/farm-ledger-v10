@@ -16,7 +16,7 @@ import { standardFor } from "../model/standards.js";
 import { saveLightPlan } from "../actions.js";
 
 export default async function lighting(ctx) {
-  return liveScreen(ctx, { title: "Lighting", tab: "more", paint, after: (node, snap) => {
+  return liveScreen(ctx, { title: "Lighting", tab: "houses", paint, after: (node, snap) => {
     node.querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => { const f = snap.data.flocks.find((x) => x.id === b.dataset.edit); if (f) editPlan(snap, f); }));
   } });
 }
@@ -24,7 +24,7 @@ export default async function lighting(ctx) {
 function paint(snap) {
   const L = (h) => `#/l/${snap.lid}/${h}`; const c = snap.c; const T = snap.today;
   const live = sortedHouses(c).map((h) => ({ h, f: flockIn(c, h.id) })).filter((x) => x.f);
-  const back = backLink(L("more"), "More");
+  const back = backLink(L("houses"), "Houses");
   if (!live.length) return html`<div>${back}${largeTitle("Lighting programme")}${emptyState({ sector: "layers", title: "No flock in your houses", body: "A lighting programme belongs to a flock. Place a flock and its plan starts from the breed guide.", action: null })}</div>`;
   const can = canWrite(snap.role, "lightPlans");
   return html`<div>${back}${largeTitle("Lighting programme", "Hours of light by week of age")}

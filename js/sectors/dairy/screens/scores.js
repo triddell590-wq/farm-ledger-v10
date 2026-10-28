@@ -1,5 +1,6 @@
 // Dairy → More → Mobility and BCS (design/12 §6.5): latest % lame and trend, the list for the
 // foot trimmer, BCS sessions (Red Tractor FW.1: twice a year), foot-trimming records.
+import { viewPills } from "../../../ui/view-pills.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -16,7 +17,7 @@ export default async function scores(ctx) {
   const body = el(html`<div class="dairy-page"></div>`);
   const { first, stop } = liveSnap(ctx.ledger, (snap) => body.replaceChildren(render(snap)));
   await first;
-  return { el: body, title: "Mobility and BCS", tab: "more", destroy: stop };
+  return { el: body, title: "Mobility and BCS", tab: "cows", depth: 0, destroy: stop };
 }
 
 function render(snap) {
@@ -28,7 +29,7 @@ function render(snap) {
   const age = last ? daysBetween(last.date, today) : null; const dueWk = snap.s.mobilityWeeks;
   const trims = snap.data.footTrims.filter((x) => !x.deleted).sort((a, b) => b.date.localeCompare(a.date));
   const cowOf = (r) => (r.animalId && snap.ix.byId.get(r.animalId)) || snap.ix.byNo.get(String(r.cowNo));
-  const node = el(html`<div>${backLink(`#/l/${lid}/more`, "More")}${largeTitle("Mobility and BCS", last ? `Last mobility score ${dm(last.date)} (${age} days ago)` : "Not scored yet")}
+  const node = el(html`<div>${largeTitle("Mobility and BCS", last ? `Last mobility score ${dm(last.date)} (${age} days ago)` : "Not scored yet")}${viewPills(lid, [["cows", "All cows"], ["calves", "Calves"], ["scores", "Mobility & BCS"]], "scores", "Cow views")}
     <div class="tiles2">${numTile({ label: "Lame (score 2–3)", value: sm ? `${sm.pct}%` : "—", delta: sm ? `${sm.lame} of ${sm.n} cows · ${sm.severe} severe` : "Score the herd to see it", tone: sm && sm.pct > 15 ? "late" : sm ? "ok" : "" })}
       ${numTile({ label: "Next mobility score", value: age == null ? "Due" : age > dueWk * 7 ? "Overdue" : `${dueWk * 7 - age} d`, delta: `every ${dueWk} weeks (setting)`, tone: age == null || age > dueWk * 7 ? "due" : "" })}</div>
     ${can ? html`<div class="act-grid" style="margin-top:12px"><button type="button" class="btn" data-mob>Mobility session</button><button type="button" class="btn secondary" data-bcs>BCS session</button><button type="button" class="btn secondary" data-trim>Foot trim</button></div>` : ""}
