@@ -1,0 +1,9 @@
+{
+  "name": "farm-ledger-notify",
+  "private": true,
+  "type": "module",
+  "description": "Hourly sender for Farm Ledger phone notifications (GitHub Actions). See README.md.",
+  "engines": { "node": ">=20" },
+  "scripts": { "send": "node send.mjs", "dry-run": "node send.mjs --dry-run" },
+  "dependencies": { "firebase-admin": "12.7.0" }
+}

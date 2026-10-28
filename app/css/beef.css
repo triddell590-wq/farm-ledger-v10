@@ -1,0 +1,158 @@
+/* Beef ledger (design/10). Only what the shared components don't already give. */
+.beef-page{padding-bottom:96px} /* nothing sits under the + button (coordinator 2026-10-15) */
+.mode-chip{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:var(--r-full);background:var(--accent-soft);color:var(--accent-ink);font-size:15px;font-weight:600;margin-top:8px}
+.mode-chip svg{width:18px;height:18px}
+.season{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.season .num-tile{color:var(--ink);text-decoration:none}
+.season .num-tile.hero{min-height:132px}
+.num-tile .value.late{color:var(--late-ink)} .num-tile .value.ok{color:var(--ok-ink)} .num-tile .value.due{color:var(--due-ink)}
+.num-tile .sub{font-size:15px;line-height:20px;color:var(--ink-2)}
+.num-tile .sub.late{color:var(--late-ink)} .num-tile .sub.ok{color:var(--ok-ink)}
+.spark{display:flex;align-items:flex-end;gap:3px;height:28px;margin-top:8px}
+.spark i{flex:1;background:var(--accent);border-radius:3px 3px 0 0;min-width:4px;opacity:.85}
+.progress-line{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;margin-top:8px}
+.progress-line i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.herd-strip{font-size:15px;line-height:20px;color:var(--ink-2);padding:12px 4px}
+.tag-num{font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.tag-num b{font-weight:800}
+.animal-row .tile{position:relative;flex-direction:column}
+.animal-row .tile-word{font-size:10px;line-height:10px;font-weight:700;margin-top:-2px}
+.animal-row .pill{flex:none}
+/* the one most-urgent pill sits under the description so a full tag never gets squeezed (390px) */
+.animal-row .row-pill{display:block;margin-top:6px}
+.animal-row .primary .tag-num{white-space:nowrap}
+body:has(.select-bar) .fab{display:none}
+.late-ink{color:var(--late-ink)!important} .ok-ink{color:var(--ok-ink)!important} .due-ink{color:var(--due-ink)!important}
+.scroll-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px 4px}
+.scroll-chips::-webkit-scrollbar{display:none}
+.scroll-chips .chip{flex:none;height:40px;padding:0 14px}
+.chip .count{font-weight:400;color:var(--ink-2);margin-left:2px}
+.chip[aria-pressed=true] .count{color:inherit}
+.search-field{display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:var(--r-md);padding:0 14px;min-height:52px}
+.search-field svg{color:var(--ink-3);flex:none}
+.search-field input{flex:1;border:0;background:transparent;font:inherit;font-size:17px;min-height:48px;color:var(--ink);outline:none}
+.filter-bar{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+.select-bar{position:fixed;left:12px;right:12px;border-radius:16px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:30;background:var(--surface);box-shadow:var(--e-2,0 -4px 16px rgba(0,0,0,.12));display:flex;gap:6px;padding:10px 12px;overflow-x:auto}
+.select-bar .btn{flex:none;height:48px;padding:0 16px;width:auto}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px 6px;font-weight:700}
+.card-head a{font-weight:600;font-size:15px}
+.kv-row{min-height:52px}
+.kv-v{font-weight:700;text-align:right;white-space:nowrap}
+.kv-row .main{flex:1 1 40%;min-width:110px}
+.kv-row .kv-v{flex:0 1 auto;max-width:60%;white-space:normal}
+.kv-v.late{color:var(--late-ink)} .kv-v.due{color:var(--due-ink)} .kv-v.ok{color:var(--ok-ink)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.animal-head{display:flex;gap:16px;align-items:center;margin:8px 4px 12px}
+.animal-head .tile.lg{flex:none}
+.animal-head h1{font-size:24px;line-height:30px;font-weight:700;margin:0}
+.animal-head p{margin:2px 0 0;color:var(--ink-2);font-size:15px;line-height:20px}
+.act-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}
+.act-grid .btn{height:48px}
+.timeline .row{align-items:flex-start}
+.timeline .when{flex:none;width:64px;font-size:14px;line-height:24px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.reg-card{background:var(--surface);border-radius:var(--r-lg);padding:14px 16px}
+.reg-card + .reg-card{margin-top:12px}
+.reg-card .rc-title{font-weight:700}
+.reg-card .rc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.reg-card .rc-actions .btn{width:auto;height:44px;padding:0 14px}
+.board-foot{font-size:14px;line-height:19px;color:var(--ink-2);padding:12px 4px}
+.ease-chips .chip{min-width:56px;justify-content:center}
+.calf-group{margin-top:16px}
+.calf-group .group-label{display:flex;justify-content:space-between;align-items:center}
+.dose-table{width:100%;border-collapse:collapse;font-size:15px}
+.dose-table td,.dose-table th{padding:8px 6px;border-bottom:1px solid var(--hair);text-align:left}
+.dose-table input{width:72px;font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--hair);background:var(--surface-2);color:var(--ink)}
+.wd-line{margin:12px 4px}
+/* weigh session (crush mode) */
+.weigh{display:flex;flex-direction:column;gap:12px}
+.weigh .wv{font-size:56px;line-height:64px;font-weight:800;text-align:center;letter-spacing:-.03em;background:var(--surface);border-radius:var(--r-lg);padding:12px;font-variant-numeric:tabular-nums}
+.weigh .wv small{font-size:22px;font-weight:600;color:var(--ink-2);margin-left:6px}
+.weigh .gain{text-align:center;font-size:17px;min-height:24px}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.keypad button{height:64px;border-radius:var(--r-md);background:var(--surface);font-size:26px;font-weight:700;color:var(--ink)}
+.keypad button.next{background:var(--grass);color:var(--on-grass);font-size:19px}
+.keypad button:active{transform:scale(.97)}
+/* TB test day */
+.tb-row{min-height:72px}
+.tb-row[aria-checked=true]{background:var(--ok-soft)}
+/* pit diagram */
+.pit{display:grid;gap:2px;background:var(--surface-2);padding:6px;border-radius:var(--r-md);margin-top:8px}
+.pit i{display:block;aspect-ratio:1.6;background:var(--accent);opacity:.75;border-radius:2px}
+.pit i.used{background:var(--ink-3);opacity:.25}
+.tool-answer{font-size:44px;line-height:48px;font-weight:800;letter-spacing:-.02em;margin:4px 0}
+.source{font-size:13px;line-height:17px;color:var(--ink-3);margin-top:4px}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:0 16px}
+.table-scroll .print-view{min-width:900px}
+.fqa-item .pill{margin-left:auto}
+.inspect-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.inspect-grid a{background:var(--surface);border-radius:var(--r-lg);padding:16px;min-height:96px;display:flex;flex-direction:column;gap:8px;font-weight:700;color:var(--ink)}
+.inspect-grid svg{color:var(--accent)}
+.print-float{position:fixed;left:-9999px;top:0}
+@media print{.print-float{left:0}}
+.pick-row{width:100%;text-align:left;color:var(--ink)}
+.pick-row .pick-val{flex:1;min-width:0;text-align:right;color:var(--grass-deep);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick-row.is-empty .pick-val{color:var(--ink-3);font-weight:500}
+.pick-row svg{flex:none;color:var(--ink-3)}
+.field.chips-field{flex-direction:column;align-items:stretch;gap:8px;padding:10px 16px 14px}
+.field.chips-field > .label{max-width:none;font-size:14px;color:var(--ink-2);font-weight:500}
+.field.chips-field .chip{height:44px}
+.form-label{font-size:14px;line-height:19px;font-weight:600;color:var(--ink-2);margin:18px 4px 8px;display:flex;justify-content:space-between;align-items:center}
+.form-label .text-btn{min-height:32px}
+/* ---- screens added 2026-10-19 (scoped to the Beef ledger so other sectors' CSS can't clash) ---- */
+[data-sector=beef] .title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+[data-sector=beef] .title-row .text-btn{margin-top:20px;flex:none}
+[data-sector=beef] .seg-wrap{margin-top:8px}
+[data-sector=beef] .seg-wrap .segmented{width:100%}
+[data-sector=beef] .sticky-foot{position:sticky;bottom:calc(80px + env(safe-area-inset-bottom));margin-top:16px;z-index:5}
+[data-sector=beef] .sticky-foot .btn{box-shadow:0 6px 18px rgba(0,0,0,.18)}
+[data-sector=beef] .row-actions{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px}
+[data-sector=beef] .row-actions .text-btn{min-height:36px;padding:0}
+[data-sector=beef] .board-row,[data-sector=beef] .finish-row{align-items:center;flex-wrap:wrap}
+[data-sector=beef] .board-row > a.main,[data-sector=beef] .finish-row > a.main{color:var(--ink);text-decoration:none;min-width:0}
+[data-sector=beef] .board-row .row-actions{flex-basis:100%}
+[data-sector=beef] .fqa-item{align-items:flex-start}
+[data-sector=beef] .fqa-item .pill{flex:none;margin-top:2px}
+[data-sector=beef] .auto-tag{font-size:12px;font-weight:700;color:var(--accent-ink);background:var(--accent-soft);padding:1px 6px;border-radius:6px;vertical-align:middle}
+[data-sector=beef] .inspect-hero .source{margin-top:8px}
+[data-sector=beef] .inspect-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+[data-sector=beef] .inspect-tile{display:flex;flex-direction:column;gap:10px;justify-content:center;align-items:flex-start;min-height:112px;padding:16px;background:var(--surface);border-radius:var(--r-lg);color:var(--ink);text-decoration:none;font-weight:700;font-size:17px;line-height:22px}
+[data-sector=beef] .inspect-tile svg{color:var(--accent)}
+[data-sector=beef] .tb-head{position:sticky;top:calc(var(--safe-t, 0px) + 56px);z-index:4;background:var(--bg);padding:8px 4px 10px}
+[data-sector=beef] .tb-head h1{font-size:28px;line-height:34px;margin:0;font-weight:800}
+[data-sector=beef] .tb-head p{margin:2px 0 8px;color:var(--ink-2)}
+[data-sector=beef] .tb-row .checkbox{flex:none}
+[data-sector=beef] .tb-read{flex-wrap:wrap;gap:8px}
+[data-sector=beef] .tb-read{padding-top:10px;padding-bottom:12px}
+[data-sector=beef] .tb-read .main{flex:1 1 100%}
+[data-sector=beef] .tb-read .segmented{flex:1 1 100%}
+[data-sector=beef] .ped-tree{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;font-size:13px;line-height:17px}
+[data-sector=beef] .ped-col{display:flex;flex-direction:column;justify-content:space-around;gap:6px}
+[data-sector=beef] .ped-col span{background:var(--surface);border-radius:8px;padding:6px 8px;overflow-wrap:anywhere}
+[data-sector=beef] .ped-col.g0 span{background:var(--accent-soft);font-weight:700}
+[data-sector=beef] .bars{display:flex;flex-direction:column;gap:10px}
+[data-sector=beef] .bar-row{display:grid;grid-template-columns:88px 1fr auto;gap:10px;align-items:center;font-size:15px}
+[data-sector=beef] .bar-row span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+[data-sector=beef] .bar-row .bar-track i{display:block;height:100%;background:var(--accent);border-radius:5px}
+[data-sector=beef] .bar-row .bar-track i.neg{background:var(--late)}
+[data-sector=beef] .value-line{display:block;width:100%;text-align:left;margin-top:12px;font-size:15px;line-height:21px;color:var(--ink)}
+[data-sector=beef] .pit-card .pit{margin-top:10px}
+[data-sector=beef] .reg-pills .pill{white-space:nowrap}
+[data-sector=beef] button.pill{border:0;cursor:pointer;font:inherit;font-size:14px}
+[data-sector=beef] .tool-out{margin-top:16px}
+[data-sector=beef] .disease-banner{align-items:flex-start}
+[data-sector=beef] .reg-filters{margin-bottom:8px}
+[data-sector=beef] .sale-sheet h1{font-weight:800}
+[data-sector=beef] .tile-word{display:block}
+.select-bar .sel-n{flex:none;align-self:center;font-weight:700;padding:0 6px;font-size:15px;color:var(--ink)}
+.pack .pack-cover{page-break-after:always;padding:24px 0}
+.pack .pack-cover h1{font-size:26px;margin:0 0 12px}
+.pack .pack-cover .small{font-size:11px;color:#444}
+.pack .pack-doc{page-break-after:always;margin-bottom:24px}
+.nowrap{white-space:nowrap}
+/* Finishing planner: Book in (design/10 §7) */
+.finish-row{flex-wrap:wrap}
+[data-sector=beef] .finish-row{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;align-items:start}
+[data-sector=beef] .finish-row > a.main{grid-column:1;grid-row:1}
+[data-sector=beef] .finish-row > .pill{grid-column:2;grid-row:1;margin-top:2px}
+.finish-row .book-in{grid-column:1 / -1;grid-row:2;justify-self:start;flex-basis:100%;text-align:left;padding:4px 0 0 0;min-height:40px;color:var(--grass-deep);font-weight:700}
+.load-card{margin:0 0 12px}

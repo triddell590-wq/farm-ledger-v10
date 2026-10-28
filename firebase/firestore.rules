@@ -1,0 +1,244 @@
+rules_version = '2';
+// Farm Ledger 10 security rules. DRAFT — NOT DEPLOYED. Tom must approve before these
+// replace the live v9 rules. See build/ARCHITECTURE.md section 4 and build/tests/rules-matrix.md.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function isTom() { return signedIn() && me() == 'Nul4LGSWD4Zclv0lLGYjynVq2QZ2'; }
+
+    function ledgerPath(lid) { return /databases/$(database)/documents/ledgers/$(lid); }
+    function memberPath(lid, uid) { return /databases/$(database)/documents/ledgers/$(lid)/members/$(uid); }
+    function invitePath(code) { return /databases/$(database)/documents/invites/$(code); }
+
+    function isMember(lid) { return signedIn() && exists(memberPath(lid, me())); }
+    function roleIn(lid) { return get(memberPath(lid, me())).data.role; }
+    function hasRole(lid, roles) { return isMember(lid) && roleIn(lid) in roles; }
+
+    // Who may do what with ordinary records (keep in step with js/core/policy.js).
+    function readRoles(coll) {
+      return coll == 'finance' ? ['owner', 'manager', 'accountant']
+                               : ['owner', 'manager', 'worker', 'viewer'];
+    }
+    function writeRoles(coll) {
+      return coll == 'finance' ? ['owner', 'manager', 'accountant']
+                               : ['owner', 'manager', 'worker'];
+    }
+    // Collections with their own rules below, never treated as ordinary records.
+    // ('photos' has its own block: a photo follows its parent record's visibility.)
+    function reserved(coll) { return coll in ['members', 'private', 'meta', 'inviteIndex', 'photos']; }
+
+    function stampedByMe() { return request.resource.data.updatedBy == me(); }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+    // ---------- users ----------
+    match /users/{uid} {
+      allow read, write: if signedIn() && me() == uid;
+      // Phones signed up for notifications and the notification dedupe log: that person only.
+      // The hourly sender (GitHub Actions, firebase-admin) bypasses rules.
+      match /devices/{deviceId} {
+        allow read, write: if signedIn() && me() == uid;
+      }
+      match /notifyLog/{entryId} {
+        allow read, write: if signedIn() && me() == uid;
+      }
+    }
+
+    // ---------- ledgers ----------
+    match /ledgers/{lid} {
+      allow get: if isMember(lid);
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == me()
+        && request.resource.data.type in ['farm', 'beef', 'sheep', 'dairy', 'pigs', 'layers', 'broilers']
+        // a farm space is its own farm: farmId == its id
+        && (request.resource.data.type != 'farm' || request.resource.data.farmId == lid)
+        && request.resource.data.farmId is string
+        && request.resource.data.region in ['NI', 'ENG', 'SCO', 'WAL']
+        && request.resource.data.name is string && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && getAfter(memberPath(lid, me())).data.role == 'owner';
+      allow update: if hasRole(lid, ['owner', 'manager'])
+        && !changed().hasAny(['type', 'createdAt', 'farmId'])
+        && (!changed().hasAny(['ownerUid'])
+            || (roleIn(lid) == 'owner'
+                && exists(memberPath(lid, request.resource.data.ownerUid))
+                && getAfter(memberPath(lid, request.resource.data.ownerUid)).data.role == 'owner'
+                && getAfter(memberPath(lid, me())).data.role != 'owner'));
+      allow delete: if hasRole(lid, ['owner']);
+
+      // ---------- members ----------
+      match /members/{uid} {
+        allow read: if isMember(lid);
+        allow create: if signedIn() && uid == me() && request.resource.data.uid == uid
+          && existsAfter(ledgerPath(lid)) && (
+          // 1) the creator of a brand-new ledger makes themselves owner
+          (request.resource.data.role == 'owner'
+            && !exists(ledgerPath(lid))
+            && getAfter(ledgerPath(lid)).data.ownerUid == me())
+          ||
+          // 2) an invited person joins with exactly the invite's role, using the invite up
+          (request.resource.data.role != 'owner'
+            && request.resource.data.inviteCode is string
+            && get(invitePath(request.resource.data.inviteCode)).data.ledgerId == lid
+            && get(invitePath(request.resource.data.inviteCode)).data.usedBy == null
+            && get(invitePath(request.resource.data.inviteCode)).data.expiresAt > request.time
+            && get(invitePath(request.resource.data.inviteCode)).data.role == request.resource.data.role
+            && getAfter(invitePath(request.resource.data.inviteCode)).data.usedBy == me())
+        );
+        allow update: if isMember(lid) && (
+          // owner changes someone else's role (never to owner, never their own)
+          (roleIn(lid) == 'owner' && uid != me()
+            && changed().hasOnly(['role', 'updatedAt', 'updatedBy'])
+            && request.resource.data.role in ['manager', 'worker', 'viewer', 'accountant'])
+          ||
+          // ownership transfer: old owner promotes a member to owner and steps down to manager,
+          // in the same batch as the ledger's ownerUid change
+          (roleIn(lid) == 'owner'
+            && changed().hasOnly(['role', 'updatedAt', 'updatedBy'])
+            && ((uid != me() && request.resource.data.role == 'owner'
+                 && getAfter(ledgerPath(lid)).data.ownerUid == uid)
+             || (uid == me() && request.resource.data.role == 'manager'
+                 && getAfter(ledgerPath(lid)).data.ownerUid != me())))
+          ||
+          // anyone may update their own display name / email
+          (uid == me() && changed().hasOnly(['displayName', 'email', 'updatedAt']))
+        );
+        allow delete: if isMember(lid) && (
+          (roleIn(lid) == 'owner' && uid != me())                                   // owner removes someone
+          || (uid == me() && roleIn(lid) != 'owner')                               // anyone but the owner leaves
+          || (uid == me() && !existsAfter(ledgerPath(lid)))                         // owner, in the batch that deletes the ledger
+        );
+      }
+
+      // ---------- owner-only secrets (Morning Board token) ----------
+      match /private/{doc} {
+        allow read, write: if hasRole(lid, ['owner']);
+      }
+
+      // ---------- index of this ledger's open invites (so they can be listed, revoked, and
+      // cleaned up when the ledger is deleted; the invites themselves cannot be listed) ----------
+      match /inviteIndex/{code} {
+        allow read, delete: if hasRole(lid, ['owner', 'manager']);
+        allow create, update: if hasRole(lid, ['owner', 'manager'])
+          && request.resource.data.createdBy == me();
+      }
+
+      // ---------- single settings docs (keeper, fqa, silage, places...) ----------
+      // Settings, targets, keeper details and checklist sign-offs: owner/manager only.
+      // Workers may write only the named day-to-day docs (keep in step with policy.js META_WORKER).
+      match /meta/{doc} {
+        allow read: if hasRole(lid, ['owner', 'manager', 'worker', 'viewer']);
+        allow write: if hasRole(lid, ['owner', 'manager'])
+          || (hasRole(lid, ['worker']) && doc in ['silage', 'places', 'tbDay', 'calfChecks']);
+      }
+
+      // ---------- photos (Firestore, not Storage: Spark plan) ----------
+      // A photo follows its parent record: `money == true` (parent in `finance`) -> owner,
+      // manager, accountant; otherwise owner, manager, worker, viewer see it. Whoever can write
+      // the parent may add or delete its photos. Image bytes are base64 in chunks/{n}, each
+      // <= 750,000 characters, so a document stays under the 1 MiB limit. Keep in step with
+      // js/core/policy-rules.js (photoRule) and js/services/photo-codec.js.
+      function seesPhoto(d) {
+        return hasRole(lid, ['owner', 'manager'])
+          || (hasRole(lid, ['accountant']) && d.money == true)
+          || (hasRole(lid, ['worker', 'viewer']) && d.money == false);
+      }
+      function writesPhoto(d) {
+        return hasRole(lid, ['owner', 'manager'])
+          || (hasRole(lid, ['accountant']) && d.money == true)
+          || (hasRole(lid, ['worker']) && d.money == false);
+      }
+      function photoPath(pid) { return /databases/$(database)/documents/ledgers/$(lid)/photos/$(pid); }
+      match /photos/{pid} {
+        allow read: if seesPhoto(resource.data);
+        allow create: if writesPhoto(request.resource.data)
+          && request.resource.data.parentColl is string
+          && request.resource.data.parentColl.size() > 0 && request.resource.data.parentColl.size() <= 40
+          && !reserved(request.resource.data.parentColl)
+          && request.resource.data.parentId is string
+          && request.resource.data.parentId.size() > 0 && request.resource.data.parentId.size() <= 200
+          && request.resource.data.money == (request.resource.data.parentColl == 'finance')
+          && request.resource.data.chunkCount is int
+          && request.resource.data.chunkCount >= 1 && request.resource.data.chunkCount <= 8
+          && (!('thumb' in request.resource.data) || (request.resource.data.thumb is string && request.resource.data.thumb.size() <= 100000))
+          && (!('caption' in request.resource.data) || (request.resource.data.caption is string && request.resource.data.caption.size() <= 300))
+          && stampedByMe() && request.resource.data.createdBy == me();
+        allow update: if writesPhoto(resource.data) && stampedByMe()
+          && changed().hasOnly(['caption', 'updatedAt', 'updatedBy']);
+        allow delete: if writesPhoto(resource.data);
+        match /chunks/{n} {
+          allow read: if seesPhoto(get(photoPath(pid)).data);
+          allow create, update: if writesPhoto(getAfter(photoPath(pid)).data)
+            && request.resource.data.keys().hasOnly(['n', 'data'])
+            && request.resource.data.n is int && request.resource.data.n >= 0 && request.resource.data.n < 8
+            && request.resource.data.data is string && request.resource.data.data.size() <= 750000;
+          allow delete: if writesPhoto(get(photoPath(pid)).data);
+        }
+      }
+
+      // ---------- ordinary records: one document per record ----------
+      match /{coll}/{rid} {
+        allow read: if !reserved(coll) && hasRole(lid, readRoles(coll));
+        allow create: if !reserved(coll) && hasRole(lid, writeRoles(coll))
+          && stampedByMe() && request.resource.data.createdBy == me();
+        allow update: if !reserved(coll) && hasRole(lid, writeRoles(coll))
+          && stampedByMe()
+          && !changed().hasAny(['createdBy', 'createdAt']);
+        allow delete: if !reserved(coll) && hasRole(lid, ['owner', 'manager']);
+      }
+      // Sub-records (e.g. photos/{id}/chunks) follow their parent collection's roles,
+      // including the rule that only owner/manager hard-delete.
+      match /{coll}/{rid}/{sub}/{sid} {
+        allow read: if !reserved(coll) && hasRole(lid, readRoles(coll));
+        allow create, update: if !reserved(coll) && hasRole(lid, writeRoles(coll));
+        allow delete: if !reserved(coll) && hasRole(lid, ['owner', 'manager']);
+      }
+    }
+
+    // Overview: a person may query their own membership docs across all ledgers, nothing else.
+    match /{path=**}/members/{uid} {
+      allow read: if signedIn() && resource.data.uid == me();
+    }
+
+    // ---------- invites (share links) ----------
+    match /invites/{code} {
+      // Anyone holding the (128-bit, unguessable) code may read that one invite, signed in or
+      // not, so the invite preview shows before the person creates an account. Never listable.
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn() && code.size() >= 20
+        && request.resource.data.createdBy == me()
+        && request.resource.data.usedBy == null
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt < request.time + duration.value(15, 'd')
+        && ((hasRole(request.resource.data.ledgerId, ['owner'])
+             && request.resource.data.role in ['manager', 'worker', 'viewer', 'accountant'])
+          || (hasRole(request.resource.data.ledgerId, ['manager'])
+             && request.resource.data.role in ['worker', 'viewer', 'accountant']));
+      // Accepting: mark used by me, in the same batch as creating my member doc.
+      allow update: if signedIn() && resource.data.usedBy == null
+        && resource.data.expiresAt > request.time
+        && changed().hasOnly(['usedBy', 'usedAt'])
+        && request.resource.data.usedBy == me()
+        && getAfter(memberPath(resource.data.ledgerId, me())).data.inviteCode == code;
+      // Revoking: the person who made it, or the ledger owner.
+      allow delete: if signedIn() && (resource.data.createdBy == me()
+        || hasRole(resource.data.ledgerId, ['owner']));
+    }
+
+    // ---------- Morning Board (kept exactly as v9) ----------
+    match /boardFeed/{token} {
+      allow get: if true;
+      allow list: if false;
+      allow write: if isTom() && token.size() >= 40;
+    }
+
+    // ---------- v9 legacy farm document: Tom only, kept for migration ----------
+    match /farms/{path=**} {
+      allow read, write: if isTom();
+    }
+  }
+}

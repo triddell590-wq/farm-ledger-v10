@@ -1,0 +1,82 @@
+/* Farm Ledger 10 design tokens — copied from design/00-design-system.md §10. Never write a hex
+   value in component CSS; always use a token. */
+@font-face{
+  font-family:"Atkinson Hyperlegible Next";
+  src:url(../fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2) format("woff2");
+  font-weight:200 800; font-style:normal; font-display:swap;
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:"Atkinson Hyperlegible Next";
+  src:url(../fonts/atkinson-hyperlegible-next-latin-ext-wght-normal.woff2) format("woff2");
+  font-weight:200 800; font-style:normal; font-display:swap;
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+:root{
+  color-scheme: light;
+  --bg:#ECEFE8; --surface:#FFFFFF; --surface-2:#F4F6F1; --sheet:#ECEFE8;
+  --ink:#1B221D; --ink-2:#56635A; --ink-3:#7D897F; --hair:rgba(27,34,29,.10); --scrim:rgba(18,23,20,.42);
+  --grass:#2F5D3A; --grass-deep:#22452B; --grass-soft:#DEE9DA; --on-grass:#FFFFFF; --whin:#C9920F;
+  --ok:#2F7A45; --ok-soft:#DFF0E2; --ok-ink:#1F5A31;
+  --due:#9A6A00; --due-soft:#FBF0CF; --due-ink:#6E4C00;
+  --late:#B3261E; --late-soft:#FBE3E1; --late-ink:#8C1D17;
+  --info:#2F6283; --info-soft:#DEEBF3; --info-ink:#1F4A66;
+  --beef:#8C4A2F; --beef-soft:#F3E4DC; --beef-ink:#5E2F1C;
+  --sheep:#4F6488; --sheep-soft:#E2E8F2; --sheep-ink:#33445F;
+  --dairy:#1F7470; --dairy-soft:#D9EEEC; --dairy-ink:#14504D;
+  --pigs:#9A3F5C; --pigs-soft:#F4E2E8; --pigs-ink:#6E2A40;
+  --layers:#A97A06; --layers-soft:#FBF0CF; --layers-ink:#7A5806;
+  --broilers:#B85A1A; --broilers-soft:#FAE5D6; --broilers-ink:#7F3B0E;
+  --e-1:0 1px 2px rgba(27,34,29,.06);
+  --e-float:0 8px 28px rgba(27,34,29,.16),0 1px 0 rgba(255,255,255,.6) inset;
+  --e-sheet:0 -12px 40px rgba(18,23,20,.22);
+  --float-border:transparent;
+  --accent:var(--grass); --accent-soft:var(--grass-soft); --accent-ink:var(--grass-deep);
+  --font:"Atkinson Hyperlegible Next",ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:20px;--s-6:24px;--s-8:32px;--s-10:40px;--s-12:48px;
+  --r-xs:8px;--r-sm:12px;--r-md:16px;--r-lg:22px;--r-xl:28px;--r-full:999px;
+  --ease-out:cubic-bezier(.22,1,.36,1); --ease-in-out:cubic-bezier(.65,0,.35,1);
+  --ease-in:cubic-bezier(.4,0,1,1); --ease-spring:cubic-bezier(.34,1.36,.64,1);
+  --photo-bg:#0E120F; --photo-ink:#F2F5F0; --photo-ink-2:rgba(242,245,240,.72); --photo-glass:rgba(14,18,15,.62); --photo-wait:#F2C14E; /* photo viewer: always dark */
+  --d-instant:80ms; --d-quick:160ms; --d-base:240ms; --d-move:340ms; --d-slow:520ms;
+  --tabbar-h:64px; --gutter:16px; --body-size:17px;
+  --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+[data-sector=beef]{--accent:var(--beef);--accent-soft:var(--beef-soft);--accent-ink:var(--beef-ink)}
+[data-sector=sheep]{--accent:var(--sheep);--accent-soft:var(--sheep-soft);--accent-ink:var(--sheep-ink)}
+[data-sector=dairy]{--accent:var(--dairy);--accent-soft:var(--dairy-soft);--accent-ink:var(--dairy-ink)}
+[data-sector=pigs]{--accent:var(--pigs);--accent-soft:var(--pigs-soft);--accent-ink:var(--pigs-ink)}
+[data-sector=layers]{--accent:var(--layers);--accent-soft:var(--layers-soft);--accent-ink:var(--layers-ink)}
+[data-sector=broilers]{--accent:var(--broilers);--accent-soft:var(--broilers-soft);--accent-ink:var(--broilers-ink)}
+@media (prefers-color-scheme:dark){ :root:not([data-theme=light]){
+  color-scheme:dark;
+  --bg:#121714; --surface:#1B221D; --surface-2:#232B25; --sheet:#161C18;
+  --ink:#EEF1EC; --ink-2:#A9B4AB; --ink-3:#7F8A81; --hair:rgba(238,241,236,.10); --scrim:rgba(0,0,0,.6);
+  --grass:#7FB98A; --grass-deep:#A6D3AE; --grass-soft:#24382A; --on-grass:#0F1A12; --whin:#E8B83E;
+  --ok:#7FCB92; --ok-soft:#1F3526; --ok-ink:#A9E0B7; --due:#E8B83E; --due-soft:#3A3016; --due-ink:#F3D17E;
+  --late:#FF8A80; --late-soft:#43201D; --late-ink:#FFB4AB; --info:#8EC1E0; --info-soft:#1D2E3A; --info-ink:#BBDCEF;
+  --beef:#E0A283; --beef-soft:#3A2419; --beef-ink:#E0A283; --sheep:#A9BCDD; --sheep-soft:#232C3D; --sheep-ink:#A9BCDD;
+  --dairy:#7FCFC9; --dairy-soft:#173533; --dairy-ink:#7FCFC9; --pigs:#E79AB3; --pigs-soft:#3D1F29; --pigs-ink:#E79AB3;
+  --layers:#EBC25A; --layers-soft:#3A3016; --layers-ink:#EBC25A; --broilers:#F2A66E; --broilers-soft:#3F2616; --broilers-ink:#F2A66E;
+  --e-1:0 1px 2px rgba(0,0,0,.5); --e-float:0 8px 28px rgba(0,0,0,.5); --e-sheet:0 -12px 40px rgba(0,0,0,.5);
+  --float-border:var(--hair);
+}}
+:root[data-theme=dark]{
+  color-scheme:dark;
+  --bg:#121714; --surface:#1B221D; --surface-2:#232B25; --sheet:#161C18;
+  --ink:#EEF1EC; --ink-2:#A9B4AB; --ink-3:#7F8A81; --hair:rgba(238,241,236,.10); --scrim:rgba(0,0,0,.6);
+  --grass:#7FB98A; --grass-deep:#A6D3AE; --grass-soft:#24382A; --on-grass:#0F1A12; --whin:#E8B83E;
+  --ok:#7FCB92; --ok-soft:#1F3526; --ok-ink:#A9E0B7; --due:#E8B83E; --due-soft:#3A3016; --due-ink:#F3D17E;
+  --late:#FF8A80; --late-soft:#43201D; --late-ink:#FFB4AB; --info:#8EC1E0; --info-soft:#1D2E3A; --info-ink:#BBDCEF;
+  --beef:#E0A283; --beef-soft:#3A2419; --beef-ink:#E0A283; --sheep:#A9BCDD; --sheep-soft:#232C3D; --sheep-ink:#A9BCDD;
+  --dairy:#7FCFC9; --dairy-soft:#173533; --dairy-ink:#7FCFC9; --pigs:#E79AB3; --pigs-soft:#3D1F29; --pigs-ink:#E79AB3;
+  --layers:#EBC25A; --layers-soft:#3A3016; --layers-ink:#EBC25A; --broilers:#F2A66E; --broilers-soft:#3F2616; --broilers-ink:#F2A66E;
+  --e-1:0 1px 2px rgba(0,0,0,.5); --e-float:0 8px 28px rgba(0,0,0,.5); --e-sheet:0 -12px 40px rgba(0,0,0,.5);
+  --float-border:var(--hair);
+}
+/* High-visibility option (Settings → Appearance → Bigger text and stronger colours) */
+:root.hi-vis{ --body-size:19px; --ink-2:var(--ink); --hair:var(--ink-3); }
+/* Reduce motion (OS setting or Settings → Appearance) — see motion.css */
+:root.reduce-motion{ --d-instant:1ms; --d-base:1ms; --d-move:1ms; --d-slow:1ms; }
+@media (prefers-reduced-motion:reduce){ :root{ --d-instant:1ms; --d-base:1ms; --d-move:1ms; --d-slow:1ms; } }
+@media (min-width:600px){ :root{ --gutter:24px; } }
