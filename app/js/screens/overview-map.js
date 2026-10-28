@@ -185,9 +185,17 @@ export default async function mapTab(farm) {
     body.querySelectorAll("[data-mode]").forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
     if (mode === "growth") {
       if (!growth) {
+        // Layer names are this Copernicus account's (checked 28 Oct 2026): our own colouring runs
+        // on TRUE-COLOR-S2L2A (needs Sentinel-2 L2A for the cloud mask); if that ever fails, fall
+        // back to the account's ready-made NDVI layer (as v9 did).
         const to = new Date(), from = new Date(Date.now() - 60 * 864e5); const d = (x) => x.toISOString().slice(0, 10);
-        growth = L.tileLayer.wms(CDSE_WMS, { layers: "TRUE_COLOR", format: "image/png", transparent: true, tileSize: 512, maxZoom: 20, uppercase: true, time: `${d(from)}/${d(to)}`, maxcc: 30, priority: "mostRecent", showlogo: false, evalscript: btoa(GROWTH_SCRIPT), opacity: 0.7, zIndex: 1, attribution: "Contains modified Copernicus Sentinel data" });
-        growth.on("tileerror", () => status("Couldn't load grass growth. Check your signal, or switch back to Photo."));
+        const make = (own) => L.tileLayer.wms(CDSE_WMS, { layers: own ? "TRUE-COLOR-S2L2A" : "NDVI", format: "image/png", transparent: true, tileSize: 512, maxZoom: 20, uppercase: true, time: `${d(from)}/${d(to)}`, maxcc: 30, priority: "mostRecent", showlogo: false, ...(own ? { evalscript: btoa(GROWTH_SCRIPT) } : {}), opacity: 0.7, zIndex: 1, attribution: "Contains modified Copernicus Sentinel data" });
+        let own = true; growth = make(true);
+        const onErr = () => {
+          if (own && store.get("fl-imagery") === "growth") { own = false; map.removeLayer(growth); growth = make(false); growth.on("tileerror", onErr2); growth.addTo(map); return; }
+        };
+        const onErr2 = () => status("Couldn't load grass growth. Check your signal, or switch back to Photo.");
+        growth.on("tileerror", onErr);
       }
       growth.addTo(map); status("Grass growth: newest clear satellite pass in the last 60 days. Brown = bare, green = strong, white = cloud.");
     } else { if (growth && map.hasLayer(growth)) map.removeLayer(growth); status(""); }
