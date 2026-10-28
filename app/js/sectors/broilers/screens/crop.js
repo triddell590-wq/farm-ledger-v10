@@ -4,6 +4,7 @@
 // changes for placement, brooding, thin day, clear-out and turnaround. Then the mortality alarm,
 // Coming up (next 3 milestones) and To do today. Deep link #/l/<id>/check/<house>/<date>/<slot>
 // opens the check sheet over this screen.
+import { viewPills } from "../../../ui/view-pills.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -60,7 +61,7 @@ function paint(snap) {
   const banners = bannerItems(snap.ledger.region || "NI", ["broilers"]);
   const up = comingUp(snap.c, 3);
   return html`<div>
-    ${largeTitle(title, contextLine(snap))}
+    ${largeTitle(title, contextLine(snap))}${viewPills(snap.lid, [["crop", "This crop"], ["brooding", "Brooding set-up"], ["turnaround", "Turnaround"]], "crop", "Crop views")}
     ${s.houseNote ? html`<div class="br-pin">${raw(icon("info"))}<span><b>House instructions</b>${s.houseNote}</span></div>` : ""}
     ${banners.map((b) => html`<div class="br-banner">${raw(icon("info"))}<span>${b.text}</span></div>`)}
     ${mort.length ? html`<div class="section">${mort.map((a) => mortCard(snap, a))}</div>` : ""}

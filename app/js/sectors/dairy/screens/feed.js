@@ -41,7 +41,17 @@ export default async function feed(ctx) {
   const page = ctx.match.groups.page; const body = el(html`<div class="dairy-page"></div>`);
   const { first, stop } = liveSnap(ctx.ledger, (snap) => body.replaceChildren(page === "slurry" ? slurry(snap) : feedPage(snap)));
   await first;
-  return { el: body, title: page === "slurry" ? "Slurry and nutrients" : "Feed and silage", tab: "more", destroy: stop };
+  return { el: body, title: page === "slurry" ? "Slurry and nutrients" : "Feed and silage", tab: page === "slurry" ? "more" : "milking", depth: 1, destroy: stop };
+}
+
+/** One line for the Milking screen's feed row: how long the silage lasts. */
+export function feedLine(snap) {
+  const sil = snap.meta.silage || {}; if (!sil.tonnes) return "Add your silage stock to see how long it lasts";
+  const counts = {}; for (const a of snap.data.animals.filter(onFarm)) { const g = groupOf(snap.ix, a, snap.today); counts[g] = (counts[g] || 0) + 1; }
+  const fb = fodderBudget(counts, +sil.tonnes || 0);
+  if (fb.months == null) return `${num(+sil.tonnes)} t of silage in stock`;
+  const to = addDays(sil.date || snap.today, Math.round(fb.months * 30.4));
+  return `Silage lasts to about ${to.slice(8)}/${to.slice(5, 7)} · ${num(+sil.tonnes)} t in stock`;
 }
 
 function feedPage(snap) {
@@ -51,7 +61,7 @@ function feedPage(snap) {
   const lastsTo = fb.months != null && sil.tonnes ? addDays(sil.date || today, Math.round(fb.months * 30.4)) : null;
   const money = canRead(snap.role, "finance");
   const del = money ? snap.data.finance.filter((r) => !r.deleted && r.kind === "expense" && r.category === "Feed").sort((a, b) => b.date.localeCompare(a.date)) : [];
-  const node = el(html`<div>${backLink(`#/l/${lid}/more`, "More")}${largeTitle("Feed and silage", `${num(counts.milking || 0)} milking · ${num(counts.dry || 0)} dry · ${num((counts.heifer || 0) + (counts.calf || 0))} youngstock`)}
+  const node = el(html`<div>${backLink(`#/l/${lid}/milking`, "Milking")}${largeTitle("Feed and silage", `${num(counts.milking || 0)} milking · ${num(counts.dry || 0)} dry · ${num((counts.heifer || 0) + (counts.calf || 0))} youngstock`)}
     ${sectionOf("Silage", html`<div class="card pad">${sil.tonnes ? html`<p class="t-head" style="margin:0">${lastsTo ? `Lasts to about ${lastsTo.slice(8)}/${lastsTo.slice(5, 7)}/${lastsTo.slice(0, 4)}` : "—"}</p><p class="t-callout ink-2" style="margin:2px 0 0">${num(+sil.tonnes)} t in the pit on ${sil.date || "—"} · herd eats about ${num(fb.perMonth, 1)} t a month housed</p>` : html`<p class="t-callout" style="margin:0">Enter the tonnes in the pit to see how long it lasts.</p>`}
       <p class="formula">Housed need per month: milking cow ${SILAGE_T_MONTH.milking} t · dry cow ${SILAGE_T_MONTH.dry} t · heifer ${SILAGE_T_MONTH.heifer} t · calf ${SILAGE_T_MONTH.calf} t (DAERA guide figures). If the farm also has a Beef ledger, use the pit diagram there — one pit serves both.</p></div>
       ${canWriteMeta(snap.role, "silage") ? html`<button type="button" class="btn secondary" data-silage style="margin-top:8px">Update silage stock</button>` : ""}`)}
@@ -78,7 +88,7 @@ function slurry(snap) {
   if (p.youngstock == null) p.youngstock = counts.heifer || 0;
   if (p.calves == null) p.calves = counts.calf || 0;
   const r = slurryWeeks(p); const can = canWriteMeta(snap.role, "settings");
-  const node = el(html`<div>${backLink(`#/l/${lid}/more`, "More")}${largeTitle("Slurry and nutrients", "Nitrates Action Programme (NI)")}
+  const node = el(html`<div>${backLink(`#/l/${lid}/paperwork`, "Paperwork")}${largeTitle("Slurry and nutrients", "Nitrates Action Programme (NI)")}
     <div class="num-tile hero"><span class="label">Slurry storage</span><span class="value ${r.weeks == null ? "" : r.ok ? "ok" : "late"}">${r.weeks == null ? "—" : `${r.weeks.toFixed(1)} weeks`}</span><span class="sub">${r.weeks == null ? (r.weekly ? "Add your store capacity below." : "Add your store capacity and stock numbers below.") : r.ok ? `Meets the ${r.target}-week rule for cattle.` : `Short of ${r.target} weeks by about ${num(r.shortM3)} m³.`}</span><span class="source">NAP: 22 weeks for cattle; new above-ground stores since 2020 must be covered.</span></div>
     ${sectionOf("Calculator", html`<form novalidate data-form><div class="form-group">${textField({ name: "capacityM3", label: "Store capacity (m³)", value: p.capacityM3 || "", inputmode: "numeric" })}${textField({ name: "cows", label: "Cows (milking + dry)", value: p.cows, inputmode: "numeric" })}${textField({ name: "youngstock", label: "Youngstock housed", value: p.youngstock, inputmode: "numeric" })}${textField({ name: "calves", label: "Calves housed", value: p.calves, inputmode: "numeric" })}${textField({ name: "extraWk", label: "Washings and rain (m³ a week)", value: p.extraWk || 0, inputmode: "decimal" })}</div>
       <p class="formula">Weeks = capacity ÷ (cows × ${p.perCowWk} + youngstock × ${p.perYoungWk} + calves × ${p.perCalfWk} m³ a week + washings/rain). Output per head is a guide figure — check against the NAP tables for your stock and diet.</p>

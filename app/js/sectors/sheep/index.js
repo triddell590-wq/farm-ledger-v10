@@ -51,14 +51,12 @@ const M = {
   async moreRows(ctx) {
     const lid = ctx.ledger.id; const money = canRead(ctx.role, "finance"); const ops = OPS.includes(ctx.role);
     return [
-      ops && { label: "Lambing shed", sub: "Night tally — always dark, no typing", icon: "birth", href: `#/l/${lid}/shed` },
-      ops && { label: "Worm and fluke plan", sub: "Doses by wormer group, FEC, drench checks", icon: "syringe", href: `#/l/${lid}/worms` },
-      ops && { label: "Rams", sub: "Working, resting, ram MOT", icon: "sheep", href: `#/l/${lid}/rams` },
-      ops && { label: "Tools", sub: "Lambing dates, meal planner, dose, draft value…", icon: "grid", href: `#/l/${lid}/tools` },
       money && { label: "Money per ewe", sub: "Gross margin, price per lamb, cost per kg", icon: "money", href: `#/l/${lid}/money` },
-      ops && { label: "Targets and flock settings", sub: "Rams in, raddle colours, draft weight, FEC threshold", icon: "settings", href: `#/l/${lid}/targets` },
-      ops && { label: "Report a disease suspicion", sub: "Scab, bluetongue — DAERA", icon: "alert", href: `#/l/${lid}/paperwork/disease` },
+      ops && { label: "Tools", sub: "Lambing dates, meal planner, dose, draft value…", icon: "grid", href: `#/l/${lid}/tools` },
     ].filter(Boolean);
+  },
+  async settingsRows(ctx) {
+    return OPS.includes(ctx.role) ? [{ label: "Targets and flock settings", sub: "Rams in, raddle colours, draft weight, FEC threshold", icon: "settings", href: `#/l/${ctx.ledger.id}/targets` }] : [];
   },
   async headline(ledger) {
     if (!OPS.includes(ledger.role)) return { value: "", unit: "", line: "Sheep money is in Money" };

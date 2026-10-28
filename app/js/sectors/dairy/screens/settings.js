@@ -24,6 +24,7 @@ export default async function settings(ctx) {
   const n = (name, label, value, opt = true) => textField({ name, label, value: value == null ? "" : String(value), inputmode: "decimal", optional: opt });
   const R = registerRules(s.registerMode, s.region);
   const body = el(html`<div class="dairy-page">${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Dairy settings", can ? "Defaults are guides — change them to suit your herd" : "Only the owner or a manager can change these")}
+    <div class="list" style="margin-bottom:8px"><a class="row" href="#/l/${snap.lid}/imports"><span class="tile">${raw(icon("download"))}</span><span class="main"><span class="primary">Imports</span><span class="secondary">Milk recording and robot files (CSV)</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div>
     <form novalidate data-form ${raw(can ? "" : "inert")}>
     <div class="section">${groupLabel("Herd and paperwork")}<div class="form-group">${textField({ name: "herdNo", label: "Herd number", value: s.herdNo || "", inputmode: "numeric", optional: true })}
       ${chipsField("registerMode", "My herd register is", [["onfarm", "On-farm (this app)"], ["nifais", "NIFAIS Online"]], s.registerMode)}

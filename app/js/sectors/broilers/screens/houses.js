@@ -17,7 +17,7 @@ export default async function houses(ctx) {
 
 function paint(snap) {
   const { ix, s, today, lid } = snap; const L = (h) => `#/l/${lid}/${h}`; const can = canWrite(snap.role, "houses");
-  const back = backLink(L("more"), "More");
+  const back = backLink(L("br-settings"), "Settings");
   if (!ix.houses.length) return html`<div>${back}${largeTitle("Houses")}${emptyState({ sector: "broilers", title: "Add your houses", body: "Each house needs its usable floor area — it drives the density planner.", action: can ? "Add a house" : null, actAttr: `data-flow="house"` })}</div>`;
   const area = ix.houses.reduce((t, h) => t + (+h.usableM2 || 0), 0);
   const readings = snap.data.controllerReadings || [];

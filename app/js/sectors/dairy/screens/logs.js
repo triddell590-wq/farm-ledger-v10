@@ -21,13 +21,14 @@ import { tbNext } from "../model/duties.js";
 import { onFarm, groupOf, GROUP_NAMES, sortByNo, cowLabel } from "../model/cows.js";
 
 const TITLES = { "parlour-machine": "Milking machine", training: "Training and induction", "ab-failures": "Antibiotic failures", tb: "TB tests", foot: "Foot trimming", "people-log": "Handover notes" };
-const BACK = { "ab-failures": ["paperwork", "Paperwork"], tb: ["paperwork", "Paperwork"], foot: ["scores", "Mobility and BCS"] };
+const BACK = { "ab-failures": ["paperwork", "Paperwork"], tb: ["paperwork", "Paperwork"], foot: ["scores", "Mobility and BCS"], "parlour-machine": ["milk", "Milk"], training: ["paperwork", "Paperwork"] };
+const TAB = { "parlour-machine": "milk", foot: "cows" };
 
 export default async function logs(ctx) {
   const kind = ctx.match.groups.kind; const body = el(html`<div class="dairy-page"></div>`);
   const { first, stop } = liveSnap(ctx.ledger, (snap) => { const [h, l] = BACK[kind] || ["more", "More"]; body.replaceChildren(el(html`<div>${backLink(`#/l/${snap.lid}/${h}`, l)}</div>`), PAGES[kind](snap)); });
   await first;
-  return { el: body, title: TITLES[kind] || "Records", tab: "more", destroy: stop };
+  return { el: body, title: TITLES[kind] || "Records", tab: TAB[kind] || "more", depth: 1, destroy: stop };
 }
 const fmt = (iso) => (iso ? `${dm(iso)} ${iso.slice(0, 4)}` : "—");
 const sorted = (l) => l.filter((x) => !x.deleted).sort((a, b) => String(b.date).localeCompare(String(a.date)));

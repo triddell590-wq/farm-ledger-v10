@@ -28,6 +28,7 @@ export default async function year(ctx) {
   if (!stage) return liveScreen(ctx, { title: "Sheep year", tab: "year", depth: 0, paint: (snap) => {
     const f = shownFunnel(snap.data, snap.cy, cycleFor(snap.s, addDays(snap.cy.ramsIn, -1), snap.data.events), snap.today).main;
     return html`<div>${largeTitle("Sheep year", `${snap.cy.crop} crop · ${FLOCK_TYPES[snap.s.flockType].toLowerCase()} · rams in ${short(snap.cy.ramsIn)}`)}
+      <a class="btn ${snap.stage.stage === "lambing" ? "" : "secondary"}" href="#/l/${snap.lid}/shed" style="margin:8px 0 16px">${raw(icon("birth"))}Open the lambing shed</a>
       <div class="list">${STAGES.map((st, i) => html`<a class="row" href="#/l/${snap.lid}/year/${st}"><span class="tile">${raw(icon(ICON[st]))}</span><span class="main"><span class="primary">${STAGE_NAMES[st]}</span><span class="secondary">${stageLine(snap, st)}</span></span>${i === snap.stage.index ? pill("info", "Now") : ""}<span class="chev">${raw(icon("chevron"))}</span></a>`)}</div>
       <div class="section">${groupLabel(`Lamb funnel · ${f.crop}`, html`<a class="text-btn" href="#/l/${snap.lid}/funnel">Compare years</a>`)}${f.enough ? funnelView(f, { lid: snap.lid }) : emptyState({ sector: "sheep", title: "Not enough to show yet", body: "The funnel fills as you record rams in, scanning, lambing and weaning." })}</div></div>`;
   } });

@@ -57,9 +57,6 @@ const M = {
     const hs = snap?.ix.houses || []; const ta = hs.map((h) => openTurnaround(snap.ix, h.id)).filter(Boolean);
     const area = hs.reduce((t, h) => t + (+h.usableM2 || 0), 0);
     return [
-      ops && { label: "Turnaround", sub: ta.length ? `${ta.length} house${ta.length > 1 ? "s" : ""} in turnaround` : "Starts at clear-out · at least 5 days", icon: "clock", href: L("turnaround") },
-      ops && { label: "Brooding set-up", sub: "Pre-heat, crop-fill at 8 h and 24 h, day 7", icon: "temp", href: L("brooding") },
-      ops && { label: "Houses", sub: hs.length ? `${hs.length} house${hs.length > 1 ? "s" : ""} · ${area.toLocaleString("en-GB")} m² usable` : "Add your houses and usable floor area", icon: "house", href: L("houses") },
       (money || ops) && { label: money ? "Contract and payment" : "Processor", sub: snap?.s.processor ? `${snap.s.processor}${snap.s.noticeMonths ? ` · ${snap.s.noticeMonths}-month notice` : ""}` : "Processor, FCI address, pay basis", icon: money ? "money" : "document", href: L("contract") },
       ops && { label: "Tools", sub: "Density, EPEF, legal line, energy, working days…", icon: "scale", href: L("tools") },
       ops && { label: "Broiler settings and targets", sub: snap ? `${snap.s.hybrid} · farm limit ${snap.s.farmLimitKgM2} kg/m²` : "Hybrid, density limit, alerts, vet", icon: "settings", href: L("br-settings") },

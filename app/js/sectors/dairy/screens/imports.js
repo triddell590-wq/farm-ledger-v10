@@ -39,7 +39,7 @@ function render(snap, st, rerender) {
   const { lid } = snap; const can = canWrite(snap.role, "recordings");
   const tpl = snap.data.imports.filter((t) => !t.deleted);
   const recs = snap.data.recordings.filter((r) => !r.deleted).sort((a, b) => String(b.at || b.date).localeCompare(String(a.at || a.date)));
-  const node = el(html`<div>${backLink(`#/l/${lid}/more`, "More")}${largeTitle("Imports", "Milk recording and robot files (CSV)")}
+  const node = el(html`<div>${backLink(`#/l/${lid}/dairy-settings`, "Dairy settings")}${largeTitle("Imports", "Milk recording and robot files (CSV)")}
     <div class="info-card">${raw(icon("info"))}<span>Farm Ledger is the decisions-and-compliance layer, not a parlour system. Export a CSV from your milk-recording or robot software and bring it in here — you map the columns once.</span></div>
     ${can ? html`<div class="section">${groupLabel("1. Where is the file from?")}
       <div class="chips scroll-chips" role="radiogroup" aria-label="Source">${SOURCES.map((s) => html`<button type="button" class="chip" role="radio" aria-checked="${st.source === s.id}" data-src="${s.id}">${s.label}</button>`)}</div></div>

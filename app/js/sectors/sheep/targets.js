@@ -33,7 +33,7 @@ export function settingsPatch(v) {
 export default async function targets(ctx) {
   const snap = await loadSheep(ctx.ledger); const s = snap.s; const cy = snap.cy; const can = canWriteMeta(snap.role, "settings");
   const n = (name, label, value, help) => html`${textField({ name, label, value: value ?? "", inputmode: "decimal", optional: true })}${help ? html`<p class="source" style="margin:0 16px 8px">${help}</p>` : ""}`;
-  const body = el(html`<div class="sheep-page">${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Targets and flock settings", can ? "Change anything that's different on your farm" : "Only the owner or a manager can change these")}
+  const body = el(html`<div class="sheep-page">${backLink(`#/l/${snap.lid}/more/settings`, "Ledger settings")}${largeTitle("Targets and flock settings", can ? "Change anything that's different on your farm" : "Only the owner or a manager can change these")}
   <form novalidate>
     ${groupLabel("Flock")}<div class="form-group">${textField({ name: "flockNo", label: "Flock number", value: s.flockNo || "", inputmode: "numeric", optional: true })}${selectField({ name: "flockType", label: "Flock type", value: s.flockType, options: Object.entries(FLOCK_TYPES).map(([value, label]) => ({ value, label })) })}${n("targetEwes", "Ewes you aim to keep", s.targetEwes)}</div>
     ${groupLabel("The sheep year")}<p class="hint" style="margin:0 4px 8px">One date drives everything: raddle changes, scanning, lambing, weaning. Typical rams in: lowland ${short("2026-" + RAMS_IN_BY_TYPE.lowland)}, hill ${short("2026-" + RAMS_IN_BY_TYPE.hill)}, early lambing ${short("2026-" + RAMS_IN_BY_TYPE.early)}.</p>

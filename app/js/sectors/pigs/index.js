@@ -76,18 +76,10 @@ const M = {
     let st = {};
     if (ops) { try { st = moreState(await loadPigs(ctx.ledger)); } catch (e) { st = {}; } }
     return [
-      ops && set === "breeding" && { label: "Paperwork and Red Tractor", sub: "Based on Red Tractor Pigs v5.2, February 2026", icon: "records", href: L("pigs-paperwork") },
-      ops && { label: "Visitors (gate log)", sub: st.visitors || "QR gate sign, visitors signed in", icon: "people", href: L("gate") },
-      ops && st.alarmHref && { label: "Alarm tests", sub: st.alarms, icon: "bell", href: st.alarmHref },
-      ops && set !== "small" && { label: "Vet visits (QVR)", sub: st.qvr, icon: "syringe", href: L("qvr") },
-      ops && set !== "small" && { label: `eMB-Pigs ${st.embLabel || ""} antibiotics`.replace("  ", " "), sub: st.emb, icon: "document", href: L("emb") },
-      ops && set === "breeding" && { label: "Movement book (PM1) · holding register (PM2)", sub: st.pm1, icon: "tag", href: L("reg/pm1") },
-      ops && set !== "small" && { label: "Herd performance", sub: "Pigs weaned per sow, farrowing rate, parity profile", icon: "chart", href: L("kpis") },
-      ops && { label: "Tools", sub: "Space per pen, farrowing planner, feed bins…", icon: "scale", href: L("tools") },
+      ops && set === "breeding" && { label: "Paperwork and Red Tractor", sub: "Registers, visitors, alarm tests, vet visits, eMB, disease report", icon: "records", href: L("pigs-paperwork") },
       money && { label: "Money per pig", sub: "Feed cost per kg gain, margin per pig", icon: "money", href: L("pigs-money") },
-      ops && { label: "Rooms, bins and semen", sub: "Houses, rooms, pens, crates, feed bins", icon: "house", href: L("setup") },
-      ops && { label: "Pig settings and targets", sub: st.system || "System, batch interval, lactation, weights, contract", icon: "settings", href: L("pigs-settings") },
-      ops && { label: "Report a disease suspicion", sub: "ASF and notifiable disease — DAERA", icon: "alert", href: L("disease") },
+      ops && { label: "Tools", sub: "Space per pen, farrowing planner, feed bins…", icon: "scale", href: L("tools") },
+      ops && { label: "Pig settings and targets", sub: st.system || "System, batch interval, lactation, weights, contract, rooms", icon: "settings", href: L("pigs-settings") },
     ].filter(Boolean);
   },
   async headline(ledger) {

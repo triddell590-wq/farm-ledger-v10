@@ -1,5 +1,6 @@
 // Sheep → Flock (the home, design/11 §3): year strip → alerts (max 3) → the stage board →
 // To do today → compact lamb funnel → mob strip.
+import { viewPills } from "../../ui/view-pills.js";
 import { html, raw } from "../../core/html.js";
 import { el } from "../../ui/dom.js";
 import { icon } from "../../ui/icons.js";
@@ -54,7 +55,7 @@ async function paint(body, snap) {
   const morning = overnight(snap.c);
   const scrollY = window.scrollY;
   const node = el(html`<div>
-    ${largeTitle("Flock", contextLine(snap))}
+    ${largeTitle("Flock", contextLine(snap))}${viewPills(snap.lid, [["flock", "Flock"], ["rams", "Rams"]], "flock", "Flock views")}
     ${yearStrip(snap)}
     <p class="ynote">Today: day ${stage.day} of ${STAGE_NAMES[stage.stage].toLowerCase()}${auto ? "" : ` · showing ${STAGE_NAMES[shown].toLowerCase()} (set by you)`}</p>
     <button type="button" class="stage-chip" data-stage>${raw(icon("clock"))}Stage: ${STAGE_NAMES[shown]} · change</button>

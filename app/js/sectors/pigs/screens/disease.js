@@ -16,10 +16,10 @@ const STEPS = [
 ];
 
 export default async function disease(ctx) {
-  return liveScreen(ctx, { title: "Disease suspicion", tab: "more", paint: (snap) => {
+  return liveScreen(ctx, { title: "Disease suspicion", tab: null, paint: (snap) => {
     const vet = snap.contacts.find((c) => c.kind === "Vet");
     const banner = bannerItems(snap.ledger.region || "NI", ["pigs"]);
-    return html`<div>${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Report a disease suspicion", "African swine fever and other notifiable disease")}
+    return html`<div>${backLink(`#/l/${snap.lid}/${snap.s.breeding && !snap.s.smallHerd ? "pigs-paperwork" : "paperwork"}`, "Paperwork")}${largeTitle("Report a disease suspicion", "African swine fever and other notifiable disease")}
       <div class="warn-card">${raw(icon("alert"))}<span>Signs to act on: sudden deaths, high fever, red or blue skin on ears and belly, pigs off feed, abortions, blisters on snout or feet.</span></div>
       <div class="pg-acts" style="grid-template-columns:1fr">${vet?.phone ? html`<a class="btn" href="tel:${vet.phone}">${raw(icon("message"))}Phone ${vet.name}</a>` : ""}<a class="btn ${vet?.phone ? "secondary" : ""}" href="tel:${DAERA_DISEASE_LINE.phone.replace(/\s/g, "")}">${raw(icon("message"))}${DAERA_DISEASE_LINE.name} ${DAERA_DISEASE_LINE.phone}</a></div>
       <div class="section">${groupLabel("What to do now")}<div class="list">${STEPS.map((s, i) => html`<div class="row no-lead"><span class="pg-no" style="min-width:36px;font-size:20px">${i + 1}</span><span class="main"><span class="primary" style="font-weight:500">${s}</span></span></div>`)}</div></div>

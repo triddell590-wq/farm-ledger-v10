@@ -1,6 +1,7 @@
 // Turnaround between crops (design/15 §10): days empty against the plan, each cleaning step with
 // date and who (Litter out is the manure export record), hygiene swabs when the integrator wants
 // them or after a Salmonella positive, the ≥ 5 day Red Tractor rule and the next placement.
+import { viewPills } from "../../../ui/view-pills.js";
 import { html, raw } from "../../../core/html.js";
 import { icon } from "../../../ui/icons.js";
 import { canWrite } from "../../../core/policy.js";
@@ -13,7 +14,7 @@ import { TURNAROUND_STEPS } from "../model/content.js";
 
 export default async function turnaround(ctx) {
   const houseId = ctx.match?.groups?.houseId;
-  return liveScreen(ctx, { title: "Turnaround", tab: "more", paint: (snap) => (houseId ? one(snap, houseId) : all(snap)) });
+  return liveScreen(ctx, { title: "Turnaround", tab: "crop", paint: (snap) => (houseId ? one(snap, houseId) : all(snap)) });
 }
 
 function all(snap) {
@@ -21,7 +22,7 @@ function all(snap) {
   const open = ix.houses.map((h) => ({ h, ta: openTurnaround(ix, h.id) })).filter((x) => x.ta);
   if (open.length === 1) return one(snap, open[0].h.id, true);
   const past = (snap.data.turnarounds || []).filter((t) => t.closedAt).sort((a, b) => String(b.clearedDate).localeCompare(String(a.clearedDate))).slice(0, 8);
-  return html`<div>${backLink(L("more"), "More")}${largeTitle("Turnaround", "Clear-out to the next chicks")}
+  return html`<div>${largeTitle("Turnaround", "Clear-out to the next chicks")}${viewPills(snap.lid, [["crop", "This crop"], ["brooding", "Brooding set-up"], ["turnaround", "Turnaround"]], "turnaround", "Crop views")}
     ${open.length ? html`<div class="list">${open.map(({ h, ta }) => { const d = turnaroundDays(ta, today); const done = (ta.steps || []).filter((x) => x.at && x.key !== "placed").length; return html`<a class="row" href="${L(`turnaround/${h.id}`)}"><span class="tile">${raw(icon("house"))}</span><span class="main"><span class="primary">${h.name} · day ${d.days} empty</span><span class="secondary">cleared ${dm(ta.clearedDate)} · ${done} steps done${ta.nextPlacement ? ` · chicks ${dm(ta.nextPlacement)}` : ""}</span></span>${d.short ? pill("due", `${d.planned} days`) : ""}<span class="chev">${raw(icon("chevron"))}</span></a>`; })}</div>`
       : html`<p class="br-quiet">No turnaround running. It starts when you clear a house.</p>`}
     ${past.length ? html`<div class="section">${groupLabel("Recent turnarounds")}<div class="list">${past.map((t) => { const d = turnaroundDays(t, today); return html`<div class="row no-lead br-kv"><span class="main"><span class="primary">${ix.houseById.get(t.houseId)?.name || ""} · cleared ${dm(t.clearedDate)}</span><span class="secondary">chicks ${dm(t.placedDate)}${t.litterOut?.t ? ` · ${t.litterOut.t} t litter to ${t.litterOut.dest || "—"}` : ""}</span></span><span class="v ${d.days < MIN_TURNAROUND ? "due" : ""}">${d.days} days</span></div>`; })}</div></div>` : ""}
@@ -30,7 +31,7 @@ function all(snap) {
 
 function one(snap, houseId, fromAll = false) {
   const { ix, today, lid } = snap; const L = (h) => `#/l/${lid}/${h}`;
-  const house = ix.houseById.get(houseId); const back = backLink(L(fromAll ? "more" : "crop"), fromAll ? "More" : "Crop");
+  const house = ix.houseById.get(houseId); const back = backLink(L(fromAll ? "turnaround" : "crop"), fromAll ? "Turnaround" : "Crop");
   if (!house) return html`<div>${back}${largeTitle("House not found")}</div>`;
   const ta = openTurnaround(ix, houseId);
   const crop = currentCrop(ix, houseId);

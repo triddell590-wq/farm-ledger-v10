@@ -1,5 +1,6 @@
 // Dairy → Milking, the home (design/12 §3): the withhold board first (always, when not empty),
 // then today's fertility tiles, tank, milk quality, fresh cows, handover note and To do today.
+import { feedLine } from "./feed.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -96,6 +97,7 @@ async function paint(body, snap) {
         <span class="primary">${tank ? `${(+tank.tempC).toFixed(1)} °C after ${partWord(tank.milking || "")} milking` : "No tank reading yet"}</span>
         <span class="secondary">${tank ? [tank.date !== today ? dayLabel(tank.date) : "Today", tank.time, tank.collected ? `collected${tank.litres ? " · " + num(tank.litres) + " litres" : ""}` : null].filter(Boolean).join(" · ") : "Log it after each milking (Red Tractor MP.6)"}${td ? ` · ${s.robot ? "today's check" : partWord(td.part) + " milking"} not logged` : ""}</span></span>
         ${tank ? html`<span class="pill ${overLimit(s, tank) ? "late" : "ok"}">${raw(icon(overLimit(s, tank) ? "alert" : "check"))}${overLimit(s, tank) ? `Over ${s.tankLimit} °C` : `Under ${s.tankLimit} °C`}</span>` : ""}</a></div></div>
+    <div class="section"><div class="list"><a class="row" href="${L("feed")}" data-feed-card><span class="tile">${raw(icon("feed"))}</span><span class="main"><span class="primary">Feed and silage</span><span class="secondary">${feedLine(snap)}</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div></div>
     ${sectionOf("Milk quality · rolling averages", html`<div class="qual">
       ${numTile({ label: "SCC · 3 months", value: scc ? raw(`${scc.value}<small>k</small>`) : "—", delta: scc ? `Legal limit 400k · your band ${s.bands.sccWarn}k` : "Add results in Milk", tone: sccSt.level === "late" ? "late" : sccSt.level === "due" ? "due" : "", href: L("milk/quality") })}
       ${numTile({ label: "TBC · 2 months", value: tbc ? raw(`${tbc.value}<small>k</small>`) : "—", delta: tbc ? `${tbcSt.level === "ok" ? "✓ " : ""}Legal limit 100k` : "Add results in Milk", tone: tbcSt.level === "late" ? "late" : tbcSt.level === "due" ? "due" : "", href: L("milk/quality") })}</div>`)}

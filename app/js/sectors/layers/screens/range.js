@@ -17,7 +17,7 @@ import { endHousing } from "../actions.js";
 
 export default async function range(ctx) {
   const bio = ctx.match?.groups?.sub === "biosecurity";
-  return liveScreen(ctx, { title: bio ? "Biosecurity" : "Range and housing", tab: "more", paint: (snap) => (bio ? biosecurity(snap) : paint(snap)), after: (node, snap) => {
+  return liveScreen(ctx, { title: bio ? "Biosecurity" : "Range and housing", tab: "houses", paint: (snap) => (bio ? biosecurity(snap) : paint(snap)), after: (node, snap) => {
     node.querySelectorAll("[data-end]").forEach((b) => (b.onclick = () => { const r = snap.data.housing.find((x) => x.id === b.dataset.end); if (r) endHousing(snap, r, snap.today); }));
   } });
 }
@@ -35,7 +35,7 @@ function paint(snap) {
   const periods = [...snap.data.housing].sort((a, b) => b.from.localeCompare(a.from));
   const canLog = canWrite(snap.role, "housing");
   const ai = aiState(c);
-  return html`<div>${backLink(L("more"), "More")}${largeTitle("Range and housing", fr.length ? `${fr.length} free-range house${fr.length > 1 ? "s" : ""} · dusk today ${dusk}` : "No free-range houses")}
+  return html`<div>${backLink(L("houses"), "Houses")}${largeTitle("Range and housing", fr.length ? `${fr.length} free-range house${fr.length > 1 ? "s" : ""} · dusk today ${dusk}` : "No free-range houses")}
     <div class="section">${aiCard(snap)}${ai.aipz ? html`<div class="list" style="margin-top:8px">${linkRow(L("range/biosecurity"), "Daily biosecurity check", (snap.data.biosecurity || []).some((b) => b.date === T) ? "Done today" : "Not done today", (snap.data.biosecurity || []).some((b) => b.date === T) ? pill("ok", "Done") : pill("due", "Due"), "shield")}</div>` : ""}</div>
     ${fr.length ? fr.map((h) => houseRange(snap, h, dusk)) : html`<div class="section">${okCard("Pop-hole times and range checks appear for free-range and organic houses (system 1 or 0).")}</div>`}
     <div class="section">${groupLabel("Housing periods", periods.length || "")}

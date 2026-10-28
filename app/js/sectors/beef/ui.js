@@ -118,9 +118,5 @@ export function toHtmlTable(doc) {
 }
 export { CLASS_NAMES, normTag };
 
-/** The Herd tab's views (All cattle · Groups · Finishing) as one row of big pills. Each view is
- *  its own page, so Back and links still work; the Herd tab stays lit on all three. */
-export function herdViews(lid, current) {
-  const V = [["herd", "All cattle"], ["groups", "Groups"], ["finishing", "Finishing"]];
-  return html`<nav class="view-pills" aria-label="Herd views">${V.map(([k, l]) => html`<a href="#/l/${lid}/${k}" class="${k === current ? "on" : ""}" ${k === current ? raw('aria-current="page"') : ""}>${l}</a>`)}</nav>`;
-}
+import { viewPills } from "../../ui/view-pills.js";
+export const herdViews = (lid, current) => viewPills(lid, [["herd", "All cattle"], ["groups", "Groups"], ["finishing", "Finishing"]], current, "Herd views");

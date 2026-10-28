@@ -13,13 +13,13 @@ import { standardFor } from "../model/standards.js";
 import { systemName } from "../model/house.js";
 
 export default async function setup(ctx) {
-  return liveScreen(ctx, { title: "Houses and flocks", tab: "more", paint });
+  return liveScreen(ctx, { title: "Houses and flocks", tab: "houses", paint });
 }
 
 function paint(snap) {
   const L = (h) => `#/l/${snap.lid}/${h}`; const c = snap.c; const T = snap.today;
   const hs = sortedHouses(c); const canH = canWrite(snap.role, "houses"); const canF = canWrite(snap.role, "flocks");
-  const back = backLink(L("more"), "More");
+  const back = backLink(L("houses"), "Houses");
   if (!hs.length) return html`<div>${back}${largeTitle("Houses and flocks")}${emptyState({ sector: "layers", title: "Add your first house", body: "Tell us the house name, system and how many hens it holds. Your daily sheet starts from here.", action: canH ? "Add a house" : null, actAttr: 'data-flow="house"' })}</div>`;
   const flocks = [...snap.data.flocks].sort((a, b) => b.placedDate.localeCompare(a.placedDate));
   const hn = (id) => hs.find((h) => h.id === id)?.name || "";

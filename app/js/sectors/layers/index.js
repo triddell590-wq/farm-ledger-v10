@@ -64,17 +64,9 @@ const M = {
     let st = {};
     if (ops) { try { const { moreState } = await import("./screens/more-state.js"); st = moreState(await loadLayers(ctx.ledger)); } catch (e) { console.error(e); st = {}; } }
     return [
-      ops && { label: "Paperwork and Lion", sub: "Based on British Lion Code of Practice v8", icon: "records", href: L("layers-paperwork") },
-      ops && { label: "Egg production register", sub: "Producer records · Egg Marketing Inspectorate", icon: "document", href: L("reg/production") },
-      ops && { label: "Range and housing log", sub: st.range || "Pop-holes, days housed, birds per hectare", icon: "map", href: L("range") },
-      ops && { label: "Lighting programme", sub: st.light || "Hours of light by week of age", icon: "bulb", href: L("lighting") },
-      ops && { label: "Feed deliveries", sub: "UFAS · samples kept", icon: "feed", href: L("logs/feed") },
-      ops && { label: "Alarm tests", sub: st.alarm || "Ventilation alarm, every 7 days", icon: "bell", href: L("logs/alarm") },
-      ops && { label: "Visitors", sub: "Poultry unit log", icon: "people", href: L("logs/visitors") },
-      ops && { label: "Manure and litter", sub: "Tonnes out, where to", icon: "truck", href: L("logs/manure") },
-      ops && { label: "Tools", sub: "Uniformity, depop decision, space check…", icon: "scale", href: L("tools") },
+      ops && { label: "Paperwork and Lion", sub: "Registers, visitors, Lion and RSPCA checks — British Lion Code v8", icon: "records", href: L("layers-paperwork") },
       money && { label: "Money per dozen", sub: st.money || "Feed cost per dozen · margin over feed", icon: "money", href: L("layers-money") },
-      ops && { label: "Houses and flocks", sub: st.houses || "House sizes, trap points, place a flock", icon: "house", href: L("houses-setup") },
+      ops && { label: "Tools", sub: "Uniformity, depop decision, space check…", icon: "scale", href: L("tools") },
       ops && { label: "Layers settings", sub: "Packer, breed standards, alert rules, phone numbers", icon: "settings", href: L("layers-settings") },
     ].filter(Boolean);
   },

@@ -38,6 +38,7 @@ function paint(body, snap, money) {
   const y = window.scrollY;
   const node = el(html`<div>${largeTitle("Milk", [s.processor || null, s.robot ? "robot milking" : `milking ${s.milkingTimes.join(" and ")}`, s.collection === "alternate" ? "alternate-day collection" : "daily collection"].filter(Boolean).join(" · "))}
     <div class="seg-wrap">${segmented("seg", segs.map(([value, label]) => ({ value, label })), seg)}</div><div data-body></div>
+    <div class="section"><div class="list"><a class="row" href="#/l/${lid}/parlour-machine"><span class="tile">${raw(icon("settings"))}</span><span class="main"><span class="primary">Milking machine</span><span class="secondary">${s.robot ? "Robot service and tests" : "ISO 6690 test, service, liner changes"}</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div></div>
     <div class="section"><a class="btn" href="#/l/${lid}/inspect">${raw(icon("shield"))}Inspector is here</a></div></div>`);
   const target = node.querySelector("[data-body]");
   target.append({ tank, quality, mastitis, cheques: (sn) => moneyBody(sn, money) }[seg](snap));

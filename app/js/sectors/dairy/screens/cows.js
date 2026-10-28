@@ -1,4 +1,5 @@
 // Dairy → Cows (design/12 §4.1): herd list by group, cow number leads, one urgent pill per cow.
+import { viewPills } from "../../../ui/view-pills.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -26,7 +27,7 @@ function paint(body, snap, st) {
   const inG = (a, g) => (g === "all" ? true : g === "cull" ? !!(a.cull?.on || a.doNotBreed) : groupOf(snap.ix, a, snap.today) === g);
   const counts = Object.fromEntries(GROUPS.map(([g]) => [g, herd.filter((a) => inG(a, g)).length]));
   const sub = ["milking", "dry", "heifer", "calf"].map((g) => `${num(counts[g])} ${g === "milking" ? "in milk" : g === "dry" ? "dry" : g === "heifer" ? "heifers" : "calves"}`).join(" · ");
-  const node = el(html`<div>${largeTitle("Cows", sub)}
+  const node = el(html`<div>${largeTitle("Cows", sub)}${viewPills(snap.lid, [["cows", "All cows"], ["calves", "Calves"], ["scores", "Mobility & BCS"]], "cows", "Cow views")}
     <div class="filter-bar"><div class="field search-field">${raw(icon("search"))}<input type="search" placeholder="Cow number, name or tag" aria-label="Search cows" data-q value="${st.q}" autocomplete="off"></div>
       <div class="chips scroll-chips" role="radiogroup" aria-label="Group">${GROUPS.map(([g, label]) => html`<button type="button" class="chip" role="radio" aria-checked="${st.g === g}" data-g="${g}"><span class="chk">${raw(icon("check", { size: 18 }))}</span>${label}<span class="count">${counts[g]}</span></button>`)}</div></div>
     <div data-list></div></div>`);
