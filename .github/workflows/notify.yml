@@ -1,0 +1,50 @@
+# Farm Ledger phone notifications: every hour, work out what's late or due on every ledger and
+# send the morning summaries and "now late" notes through Firebase Cloud Messaging.
+# Needs the repository secret FIREBASE_SERVICE_ACCOUNT (see notify/README.md). Until it is added,
+# the job does a dry run on test data instead, so nothing fails and nothing is sent.
+name: Notifications
+
+on:
+  schedule:
+    - cron: "7 * * * *"   # hourly at :07 (GitHub can start scheduled jobs late; the sender allows for that)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run only (test data, nothing sent)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notify
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: notify
+    env:
+      HAS_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+      TZ: Europe/London
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: notify/package-lock.json
+      - run: npm ci --ignore-scripts
+      # The app's modules (../app/js/*.js) are ES modules without a package.json "type" field.
+      - name: Dry run (no key yet, or asked for)
+        if: env.HAS_KEY != 'true' || inputs.dry_run == true
+        run: node --experimental-detect-module send.mjs --dry-run
+      - name: Send
+        if: env.HAS_KEY == 'true' && inputs.dry_run != true
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node --experimental-detect-module send.mjs

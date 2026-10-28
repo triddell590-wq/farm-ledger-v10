@@ -21,4 +21,4 @@ export const WARM_START_MS = 30 * 60 * 1000;       // skip the splash if resumed
 // Phone push: the Web Push certificate's PUBLIC key from Firebase console → Project settings →
 // Cloud Messaging → Web configuration (see build/notify/README.md). Empty = push not set up yet:
 // the Notifications screen says so, and in-app alerts, the bell and the badge still work.
-export const FCM_VAPID_KEY = "";
+export const FCM_VAPID_KEY = "BCUYQdt5fupX066RH_m8Aqq5ohYOgd1Y23IZv17D1aa-JSWOstORdeNGbNiMRcHwIc1M375NcU9LjGGch8jlyJk";

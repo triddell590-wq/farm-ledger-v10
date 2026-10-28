@@ -1,0 +1,39 @@
+# Publishes firebase/firestore.rules (+ indexes) to the live Firebase project.
+# Only ever run by hand, and only after "Security rules test" has passed on the same commit.
+name: Deploy security rules
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to publish the rules to farm-ledger-5ba2e'
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  deploy:
+    if: ${{ github.event.inputs.confirm == 'DEPLOY' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require a passing rules test on this commit
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          ok=$(gh api "repos/${{ github.repository }}/actions/workflows/rules-test.yml/runs?head_sha=${{ github.sha }}&status=success" --jq '.total_count')
+          if [ "$ok" = "0" ]; then echo "No passing 'Security rules test' run for this commit. Run it first."; exit 1; fi
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm, cache-dependency-path: tools/package-lock.json }
+      - run: npm ci
+        working-directory: tools
+      - name: Write service account (never printed)
+        env: { SA: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" }
+        run: |
+          if [ -z "$SA" ]; then echo "Add the FIREBASE_SERVICE_ACCOUNT secret first (see notify/README.md)."; exit 1; fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      - name: Deploy rules and indexes
+        working-directory: tools
+        env: { GOOGLE_APPLICATION_CREDENTIALS: "${{ runner.temp }}/sa.json" }
+        run: npx firebase deploy --project farm-ledger-5ba2e --config ../firebase/firebase.json --only firestore:rules,firestore:indexes --non-interactive
+      - if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
