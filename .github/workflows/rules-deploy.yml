@@ -34,6 +34,16 @@ jobs:
       - name: Deploy rules and indexes
         working-directory: tools
         env: { GOOGLE_APPLICATION_CREDENTIALS: "${{ runner.temp }}/sa.json" }
-        run: npx firebase deploy --project farm-ledger-5ba2e --config ../firebase/firebase.json --only firestore:rules,firestore:indexes --non-interactive
+        run: |
+          set +e
+          npx firebase deploy --project farm-ledger-5ba2e --config ../firebase/firebase.json --only firestore:rules,firestore:indexes --non-interactive > "$RUNNER_TEMP/deploy.log" 2>&1
+          code=$?
+          cat "$RUNNER_TEMP/deploy.log"
+          if [ $code -ne 0 ]; then
+            # Surface the failure as annotations (readable through the API); never includes key material.
+            grep -v -i -E 'private_key|BEGIN PRIVATE' "$RUNNER_TEMP/deploy.log" | tail -n 25 | while IFS= read -r line; do echo "::error::$line"; done
+            [ -f firebase-debug.log ] && grep -i -E 'error|denied|permission|disabled|403|404' firebase-debug.log | grep -v -i -E 'private_key|authorization|bearer' | tail -n 15 | while IFS= read -r line; do echo "::error::debug: ${line:0:400}"; done
+          fi
+          exit $code
       - if: always()
         run: rm -f "$RUNNER_TEMP/sa.json"
