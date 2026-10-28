@@ -1,7 +1,7 @@
 // Quick add (design/14 §2.2): Daily sheet (asks which house if more than one) · Deaths · Egg
 // collection (packer) · Feed delivery · Mite traps · Note. Money roles also get Money.
 import { loadLayers } from "./data.js";
-import { quickAddSheet } from "../generic.js";
+import { quickAddSheet, focusFor } from "../generic.js";
 import { canWrite } from "../../core/policy.js";
 import { openMoneySheet } from "../../ui/money-sheet.js";
 
@@ -36,7 +36,9 @@ export default async function quickAdd(ctx) {
   const snap = await loadLayers(ctx.ledger);
   const money = canWrite(snap.role, "finance") ? [{ id: "money", label: "Money", icon: "money", run: () => openMoneySheet(snap.ledger) }] : [];
   if (!canWrite(snap.role, "days")) return quickAddSheet(ctx.ledger, money);
-  return quickAddSheet(ctx.ledger, [...ORDER.map((id) => ({ id, label: FLOWS[id].label, icon: FLOWS[id].icon, run: () => FLOWS[id].run(snap) })), ...money]);
+  const FOCUS = { houses: ["sheet", "deaths", "collection", "feed", "mite"], flock: ["sheet", "deaths", "note"], eggs: ["collection", "statement", "farmGate"], health: ["deaths", "treat", "vacc", "mite"], money: ["money"] };
+  const ids = [...ORDER, "statement", "farmGate", "treat", "vacc"];
+  return quickAddSheet(ctx.ledger, [...ids.map((id) => ({ id, label: FLOWS[id].label, icon: FLOWS[id].icon, run: () => FLOWS[id].run(snap) })), ...money], { focus: focusFor(FOCUS, ctx.where) });
 }
 /** Run a flow by id with a fresh snapshot (buttons on screens, tests). */
 export async function runFlow(id, ledger, extra) { const snap = await loadLayers(ledger); return FLOWS[id].run(snap, extra); }

@@ -62,6 +62,8 @@ service cloud.firestore {
         && getAfter(memberPath(lid, me())).data.role == 'owner';
       allow update: if hasRole(lid, ['owner', 'manager'])
         && !changed().hasAny(['type', 'createdAt', 'farmId'])
+        // only the owner can bin a ledger (Recently deleted, 30 days) or bring it back
+        && (!changed().hasAny(['deletedAt', 'deletedBy']) || roleIn(lid) == 'owner')
         && (!changed().hasAny(['ownerUid'])
             || (roleIn(lid) == 'owner'
                 && exists(memberPath(lid, request.resource.data.ownerUid))

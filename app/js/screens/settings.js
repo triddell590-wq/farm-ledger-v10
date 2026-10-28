@@ -26,6 +26,7 @@ export default async function settings() {
     <div class="section">${groupLabel("Farm")}<div class="list">
       ${row("#/settings/farm", "Farm details", farm?.farmName || "")}
       ${row("#/settings/ledgers", "Ledgers", String(session.sectorLedgers().length))}
+      ${row("#/settings/bin", "Recently deleted ledgers", "Restore within 30 days")}
       ${row("#/settings/units", "Units", `${units.area === "ha" ? "Hectares" : "Acres"}, kg, °C`)}
       ${row("#/settings/tax", "Tax year and VAT", `${tax.yearStart === "jan" ? "Jan–Dec" : "Apr–Apr"} · ${tax.vat === "none" ? "Not VAT registered" : tax.vat === "monthly" ? "Monthly" : "Quarterly"}`)}
     </div></div>

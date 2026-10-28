@@ -2,7 +2,7 @@
 // the full set is always there.
 import { loadBeef } from "./data.js";
 import { modeFor } from "./today.js";
-import { quickAddSheet, taskSheet } from "../generic.js";
+import { quickAddSheet, taskSheet, focusFor } from "../generic.js";
 import { canWrite } from "../../core/policy.js";
 import { openMoneySheet } from "../../ui/money-sheet.js";
 
@@ -24,6 +24,30 @@ const ITEMS = {
   add: { label: "Add an animal", icon: "plus", run: F("animal-edit", "addAnimalSheet") },
   btv: { label: "BTV-3 vaccine", icon: "syringe", run: (snap) => import("./flows/treatment.js").then((m) => m.default(snap, { reason: "BTV-3 vaccine" })) },
   money: { label: "Money", icon: "money", run: (snap) => openMoneySheet(snap.ledger) },
+  medPurchase: { label: "Medicine bought", icon: "syringe", run: F("medicine-records", "medPurchaseSheet") },
+  disposal: { label: "Medicine disposed", icon: "trash", run: F("medicine-records", "disposalSheet") },
+  vetop: { label: "Castration / disbudding", icon: "syringe", run: F("vetop") },
+};
+// What the + offers on each screen (route prefix → entries). Today follows the season.
+const FOCUS = {
+  herd: ["add", "purchase", "weigh", "move", "sale", "death"],
+  animal: ["treatment", "weigh", "move", "sale", "death"],
+  groups: ["move", "housing"],
+  finishing: ["weigh", "sale"],
+  breeding: ["calving", "bull", "scan", "register"],
+  "breeding/calving": ["calving"],
+  "breeding/register": ["calving", "add"],
+  paperwork: ["treatment", "medPurchase", "purchase", "move", "death", "calving"],
+  "paperwork/medicine": ["treatment", "btv"],
+  "paperwork/medpurchases": ["medPurchase"],
+  "paperwork/disposal": ["disposal"],
+  "paperwork/movements": ["purchase", "sale", "move"],
+  "paperwork/deaths": ["death"],
+  "paperwork/calvings": ["calving"],
+  "paperwork/register": ["add", "register", "purchase"],
+  "paperwork/vetops": ["vetop"],
+  "paperwork/feedrecords": ["silage"],
+  money: ["money"],
 };
 const ORDER = {
   calving: ["calving", "treatment", "register", "death", "weigh", "note"],
@@ -39,5 +63,7 @@ export default async function quickAdd(ctx) {
   if (!canWrite(snap.role, "animals")) return quickAddSheet(ctx.ledger, canWrite(snap.role, "finance") ? [{ id: "money", label: "Money", icon: "money", run: () => openMoneySheet(snap.ledger) }] : []);
   const first = ORDER[modeFor(snap)] || ORDER.calving;
   const ids = [...first, ...REST.filter((k) => !first.includes(k))].filter((k) => k !== "money" || canWrite(snap.role, "finance"));
-  return quickAddSheet(ctx.ledger, ids.map((id) => ({ id, label: ITEMS[id].label, icon: ITEMS[id].icon, run: () => ITEMS[id].run(snap) })));
+  const all = [...ids, "medPurchase", "disposal", "vetop"];
+  const focus = focusFor(FOCUS, ctx.where) || first;
+  return quickAddSheet(ctx.ledger, all.map((id) => ({ id, label: ITEMS[id].label, icon: ITEMS[id].icon, run: () => ITEMS[id].run(snap) })), { focus });
 }

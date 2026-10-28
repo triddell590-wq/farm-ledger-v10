@@ -315,6 +315,48 @@ button.num-tile{box-shadow:var(--e-1)}
 .warn-card{display:flex;gap:12px;align-items:flex-start;background:var(--late-soft);color:var(--late-ink);border-radius:var(--r-lg);padding:14px 16px;font-size:15px;line-height:20px}
 .version{font-size:13px;font-weight:600;color:var(--ink-3);text-align:center;margin-top:24px}
 .map-box{height:360px;border-radius:var(--r-lg);overflow:hidden;background:var(--surface-2)}
+/* Overview map (screens/overview-map.js) — v9 controls: full screen, photo/growth, jump chips, draw bar, field card */
+.map-wrap{position:relative}
+.map-wrap .map-box{height:min(62vh,520px)}
+.map-wrap.map-full{position:fixed;inset:0;z-index:55;background:#000}
+.map-wrap.map-full .map-box{height:100%;border-radius:0}
+.map-is-full .tabbar,.map-is-full .fab,.map-is-full .topbar{visibility:hidden}
+.map-top{position:absolute;z-index:450;top:10px;left:56px;right:10px;display:flex;gap:8px;justify-content:space-between;align-items:flex-start;pointer-events:none}
+.map-top>*{pointer-events:auto}
+.map-full .map-top,.map-full .leaflet-top{margin-top:var(--safe-t)}
+.map-chip{display:inline-flex;align-items:center;gap:6px;flex:none;min-height:40px;padding:0 14px;border-radius:999px;background:rgba(255,255,255,.95);color:#1B221D;font-size:14px;font-weight:600;box-shadow:0 3px 12px rgba(0,0,0,.25);white-space:nowrap}
+.map-chip svg{width:16px;height:16px}
+.map-chip.go{background:var(--grass);color:var(--on-grass)}
+.map-chip:disabled{opacity:.5}
+.map-chip.fchip{box-shadow:inset 4px 0 0 var(--fc),0 3px 12px rgba(0,0,0,.25)}
+.me-dot{width:10px;height:10px;border-radius:50%;background:#2E7DF6;box-shadow:0 0 0 2px #fff,0 0 0 3px #2E7DF6}
+.map-seg{display:inline-flex;background:rgba(255,255,255,.95);border-radius:999px;padding:3px;box-shadow:0 3px 12px rgba(0,0,0,.25)}
+.map-seg button{min-height:34px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:600;color:#1B221D}
+.map-seg button.on{background:var(--grass);color:var(--on-grass)}
+.map-jump{position:absolute;z-index:440;left:0;right:0;bottom:10px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.map-jump::-webkit-scrollbar{display:none}
+.map-jump-in{display:flex;gap:8px;padding:4px 10px;width:max-content}
+.map-full .map-jump{bottom:calc(10px + var(--safe-b))}
+.map-status{position:absolute;z-index:445;left:10px;right:10px;bottom:64px;background:rgba(27,34,29,.86);color:#fff;font-size:13px;line-height:18px;padding:8px 12px;border-radius:12px;text-align:center}
+.map-full .map-status{bottom:calc(64px + var(--safe-b))}
+.map-card{position:absolute;z-index:450;left:56px;right:10px;top:60px}
+.map-full .map-card{top:calc(60px + var(--safe-t))}
+.map-card-in{display:flex;align-items:center;gap:8px;background:var(--surface);color:var(--ink);border-radius:16px;padding:10px 10px 10px 14px;box-shadow:0 6px 20px rgba(0,0,0,.28)}
+.fc-swatch{width:14px;height:14px;border-radius:4px;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.2)}
+.fc-text{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.fc-text b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc-text span{font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.map-card .map-chip{box-shadow:none;background:var(--surface-2);min-height:36px;padding:0 12px}
+.map-card .map-chip.go{background:var(--grass)}
+.map-x{flex:none;font-size:24px;line-height:1;color:var(--ink-2);padding:4px 6px;min-height:36px}
+.map-draw{position:absolute;z-index:460;left:56px;right:10px;top:60px;display:flex;flex-direction:column;gap:8px}
+.map-full .map-draw{top:calc(60px + var(--safe-t))}
+.map-hint{margin:0;background:rgba(27,34,29,.86);color:#fff;font-size:14px;line-height:19px;padding:10px 14px;border-radius:14px;text-align:center}
+.map-draw-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.map-count{align-self:center;font-size:13px;color:#fff;background:rgba(27,34,29,.75);padding:8px 12px;border-radius:999px}
+.edge-lbl span{display:inline-block;transform:translate(-50%,-50%);background:rgba(0,0,0,.72);color:#fff;font-size:12px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap}
+.fl-field-label{background:rgba(0,0,0,.55);border:0;color:#fff;font-weight:700;font-size:13px;box-shadow:none;border-radius:8px}
+.fl-field-label::before{display:none}
 .leaflet-container{font-family:var(--font)}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:15px}
 .kv dt{color:var(--ink-2)} .kv dd{margin:0;text-align:right;font-weight:600}
@@ -351,3 +393,14 @@ button.num-tile{box-shadow:var(--e-1)}
 .nc-info{margin-top:10px}
 .nc-info summary{min-height:44px;display:flex;align-items:center;color:var(--ink-2);font-size:15px;cursor:pointer}
 .info-card.warn{background:var(--late-soft);color:var(--late-ink)}
+
+/* ---------- on-screen keyboard (ui/keyboard.js) ---------- */
+/* The sheet layer follows the part of the screen the keyboard leaves visible, so a sheet and the
+   field being typed in stay in view; tab bar and + step aside while typing. */
+.kb-open .sheet-layer{top:var(--vv-top,0);bottom:auto;height:var(--vv-h,100%)}
+.kb-open .sheet{max-height:calc(100% - 8px)}
+.kb-open .sheet.large{height:calc(100% - 8px)}
+.kb-open .sheet.small{max-height:calc(100% - 8px)}
+.kb-open .sheet-foot{padding-bottom:8px}
+.kb-open .tabbar,.kb-open .fab{visibility:hidden}
+html{scroll-padding-bottom:calc(var(--kb,0px) + 24px)}

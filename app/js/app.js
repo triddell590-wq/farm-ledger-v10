@@ -16,6 +16,7 @@ import { useSyncBackend } from "./screens/sync-sheet.js";
 import { defineRoutes, guard } from "./routes.js";
 import { playSplash, endSplash } from "./ui/splash.js";
 import { toast } from "./ui/toast.js";
+import { startKeyboardWatch } from "./ui/keyboard.js";
 
 const qs = new URLSearchParams(location.search);
 applyAppearance();
@@ -50,7 +51,7 @@ async function boot() {
   const splashDone = warm ? Promise.resolve() : playSplash();
   await pickBackends();
   const appEl = document.getElementById("app");
-  mountShell(appEl);
+  mountShell(appEl); startKeyboardWatch();
   defineRoutes();
   router.setGuard(guard);
   router.onScreenChange((s) => { updateShell(s); if (s.area !== "auth" && s.remember !== false) session.rememberPlace(router.currentPath()); });

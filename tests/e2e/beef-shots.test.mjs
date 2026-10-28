@@ -107,7 +107,10 @@ for (const mode of ["light", "dark"]) {
     for (const [name, label] of SHEETS) {
       await H.go(p, `/l/${lid}/today`);
       await p.locator(".fab").click(); await H.settle(p, 500);
-      if (label) { await p.locator(".share-tile", { hasText: label }).first().click(); await H.settle(p, 700); }
+      if (label) {
+        if (!(await p.locator(".share-tile", { hasText: label }).count()) && (await p.getByRole("button", { name: "Something else…" }).count())) { await p.getByRole("button", { name: "Something else…" }).click(); await H.settle(p, 200); }
+        await p.locator(".share-tile", { hasText: label }).first().click(); await H.settle(p, 700);
+      }
       await shot(name);
       for (let i = 0; i < 3; i++) { if (!(await p.locator(".sheet").count())) break; await p.keyboard.press("Escape"); await H.settle(p, 350); const c = p.locator(".sheet .btn", { hasText: /Discard/ }); if (await c.count()) { await c.first().click(); await H.settle(p, 300); } }
     }

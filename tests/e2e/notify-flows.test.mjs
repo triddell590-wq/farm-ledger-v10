@@ -41,6 +41,8 @@ before(async () => {
 after(async () => { await env.close(); });
 
 test("Settings → Notifications: nothing asked until the tap; push not set up is said plainly", async () => {
+  // the real build now has a push key; this test checks the "no key" wording, so take it away here
+  await p.evaluate(async () => { (await import("./js/services/notify.js")).useTestPush({ vapidKey: "" }); });
   await H.go(p, "/settings");
   const row = p.locator("a.row", { hasText: "Notifications" });
   assert.match(await row.textContent(), /Off/);

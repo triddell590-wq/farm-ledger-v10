@@ -29,9 +29,10 @@ export default async function ledgerScreen({ params }) {
   const mod = await sectorModule(ledger.type);
   const tabs = ledgerTabs(ledger, mod);
   const rest = params.rest || "";
-  const ctx = { ledger, role: ledger.role, params, mod };
   let s;
   const tab = tabs.find((t) => t.id === rest) || (!rest ? tabs[0] : null);
+  // `where` tells the + button which screen it was tapped on (tab id or deeper route).
+  const ctx = { ledger, role: ledger.role, params, mod, where: rest || (tab ? tab.id : "") };
   if (tab && tab.id === "more") s = await moreTab(ledger, mod, ctx);
   else if (tab) s = await mod.screen(tab.id, ctx);
   else {
@@ -58,6 +59,7 @@ async function moreTab(ledger, mod, ctx) {
     <div class="list">
       <a class="row" href="#/l/${ledger.id}/more/people"><span class="tile neutral">${raw(icon("people"))}</span><span class="main"><span class="primary">People on this ledger</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
       <a class="row" href="#/l/${ledger.id}/more/photos"><span class="tile neutral">${raw(icon("camera"))}</span><span class="main"><span class="primary">Photos</span><span class="secondary">${ledger.role === "accountant" ? "Photos on money records" : "Every photo on this ledger's records"}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
+      ${ledger.role !== "viewer" ? html`<a class="row" href="#/l/${ledger.id}/more/records"><span class="tile neutral">${raw(icon("trash"))}</span><span class="main"><span class="primary">Edit or delete records</span><span class="secondary">Find anything added here, delete it, or bring it back</span></span><span class="chev">${raw(icon("chevron"))}</span></a>` : ""}
       <a class="row" href="#/l/${ledger.id}/more/settings"><span class="tile neutral">${raw(icon("settings"))}</span><span class="main"><span class="primary">Ledger settings</span><span class="secondary">${canEditLedger(ledger.role) ? "Name, official numbers, targets, reminders" : "See the ledger's details"}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
       ${owner ? "" : html`<button type="button" class="row destructive" data-leave><span class="tile late">${raw(icon("logout"))}</span><span class="main"><span class="primary">Leave this ledger</span></span></button>`}
     </div></div>

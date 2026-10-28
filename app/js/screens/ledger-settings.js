@@ -3,7 +3,7 @@ import { html, raw } from "../core/html.js";
 import { el } from "../ui/dom.js";
 import { icon } from "../ui/icons.js";
 import { session } from "../services/session.js";
-import { updateLedger, deleteLedger } from "../services/ledgers.js";
+import { updateLedger, binLedger, BIN_DAYS } from "../services/ledgers.js";
 import { canEditLedger, canDeleteLedger } from "../core/policy.js";
 import { textField, wireForm, guardButton, fieldError } from "../ui/form.js";
 import { openSheet } from "../ui/sheet.js";
@@ -46,19 +46,19 @@ export default async function ledgerSettings({ params }) {
 
 function deleteSheet(ledger) {
   const b = el(html`<form novalidate>
-    <div class="warn-card">${raw(icon("alert"))}<span>Every record in ${ledger.name} is deleted for everyone on it. Medicine and movement records must be kept for at least 5 years by law — <a href="#/settings/data">download them first</a>.</span></div>
+    <div class="warn-card">${raw(icon("alert"))}<span>${ledger.name} disappears for everyone on it. It stays in Account → Recently deleted ledgers for ${BIN_DAYS} days so you can bring it back, then it's gone for good. Medicine and movement records must be kept for at least 5 years by law — <a href="#/settings/data">download them first</a>.</span></div>
     <div class="form-group" style="margin-top:16px">${textField({ name: "confirm", label: "Type the ledger name", placeholder: ledger.name })}</div>
     <p class="hint">Type “${ledger.name}” to confirm.</p><div data-p></div></form>`);
-  const btn = el(html`<button type="button" class="btn danger">Delete ledger for good</button>`);
+  const btn = el(html`<button type="button" class="btn danger">Delete ledger</button>`);
   const f = wireForm(b); const miss = () => (f.values().confirm.trim().toLowerCase() === ledger.name.trim().toLowerCase() ? null : "Type the ledger name to confirm");
-  f.onChange(() => guardButton(btn, "Delete ledger for good", miss)); guardButton(btn, "Delete ledger for good", miss);
+  f.onChange(() => guardButton(btn, "Delete ledger", miss)); guardButton(btn, "Delete ledger", miss);
   const sh = openSheet({ title: `Delete ${ledger.name}?`, body: b, footer: btn });
   btn.onclick = async () => {
-    if (!navigator.onLine) { b.querySelector("[data-p]").replaceChildren(el(fieldError("Deleting a ledger needs a signal."))); return; }
+    if (miss()) return;
     btn.disabled = true;
     try {
-      await deleteLedger(ledger.id, (t) => (btn.textContent = t));
-      await session.load(true); sh.close(true, { force: true }); toast(`${ledger.name} deleted`); go("/farm/today", { replace: true });
-    } catch (e) { console.error(e); b.querySelector("[data-p]").replaceChildren(el(fieldError("Couldn't finish deleting. Try again — nothing already deleted comes back."))); guardButton(btn, "Delete ledger for good", miss); }
+      binLedger(ledger.id);
+      await session.load(true); sh.close(true, { force: true }); toast(`${ledger.name} deleted — restore it from Recently deleted for ${BIN_DAYS} days`); go("/farm/today", { replace: true });
+    } catch (e) { console.error(e); b.querySelector("[data-p]").replaceChildren(el(fieldError("Couldn't delete it. Try again."))); guardButton(btn, "Delete ledger", miss); }
   };
 }

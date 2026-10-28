@@ -108,10 +108,33 @@ function quickAdd(ctx) {
   ].filter(Boolean);
   return quickAddSheet(ledger, items);
 }
-export function quickAddSheet(ledger, items) {
-  const body = el(html`<div data-sector="${ledger.type}"><p class="sheet-title-sm">Add to ${ledger.name}</p><div class="share-grid">${items.map((i) => html`<button type="button" class="share-tile" data-q="${i.id}">${raw(icon(i.icon))}${i.label}</button>`)}</div></div>`);
+/** Which quick-add entries matter where the + was tapped. `map` is { routePrefix: [ids] };
+ *  the longest matching prefix of `where` (e.g. "paperwork/medicine" → "paperwork") wins. */
+export function focusFor(map, where) {
+  const parts = String(where || "").split("/").filter(Boolean);
+  for (let n = parts.length; n > 0; n--) { const k = parts.slice(0, n).join("/"); if (map[k]) return map[k]; }
+  return map[""] || null;
+}
+
+/** The + sheet. With `focus` (ids, in order) only the entries for this screen are shown; when a
+ *  screen has exactly one thing to add, the + opens it straight away. "Something else" opens the
+ *  rest, so nothing is ever out of reach. */
+export function quickAddSheet(ledger, items, { focus = null } = {}) {
+  let shown = items;
+  if (focus && focus.length) {
+    const pick = focus.map((id) => items.find((i) => i.id === id)).filter(Boolean);
+    if (pick.length) shown = pick;
+  }
+  if (focus && shown.length === 1 && shown !== items) { shown[0].run(); return Promise.resolve(); }
+  const rest = items.filter((i) => !shown.includes(i));
+  const tiles = (list) => list.map((i) => html`<button type="button" class="share-tile" data-q="${i.id}">${raw(icon(i.icon))}${i.label}</button>`);
+  const body = el(html`<div data-sector="${ledger.type}"><p class="sheet-title-sm">Add to ${ledger.name}</p><div class="share-grid" data-grid>${tiles(shown)}</div>
+    ${rest.length ? html`<button type="button" class="btn secondary" style="margin-top:12px" data-more>Something else…</button>` : ""}</div>`);
   const sh = openSheet({ size: "small", body, label: "Quick add", auto: true });
-  body.addEventListener("click", (e) => { const b = e.target.closest("[data-q]"); if (!b) return; const it = items.find((i) => i.id === b.dataset.q); sh.close(undefined, { force: true }); setTimeout(() => it.run(), 120); });
+  body.addEventListener("click", (e) => {
+    if (e.target.closest("[data-more]")) { const g = body.querySelector("[data-grid]"); for (const t of tiles(rest)) g.append(el(t)); e.target.closest("[data-more]").remove(); return; }
+    const b = e.target.closest("[data-q]"); if (!b) return; const it = items.find((i) => i.id === b.dataset.q); sh.close(undefined, { force: true }); setTimeout(() => it.run(), 120);
+  });
   return sh.done;
 }
 

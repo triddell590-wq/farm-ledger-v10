@@ -1,7 +1,7 @@
 // Quick add (design/11 §2.2): ordered by the current stage of the sheep year; everything is
 // always there underneath.
 import { loadSheep } from "./data.js";
-import { quickAddSheet, taskSheet } from "../generic.js";
+import { quickAddSheet, taskSheet, focusFor } from "../generic.js";
 import { canWrite } from "../../core/policy.js";
 import { openMoneySheet } from "../../ui/money-sheet.js";
 
@@ -46,7 +46,13 @@ export function quickAddIds(stage, role) {
 export default async function quickAdd(ctx) {
   const snap = await loadSheep(ctx.ledger);
   if (!canWrite(snap.role, "events")) return quickAddSheet(ctx.ledger, canWrite(snap.role, "finance") ? [{ id: "money", label: "Money", icon: "money", run: () => openMoneySheet(snap.ledger) }] : []);
-  return quickAddSheet(ctx.ledger, quickAddIds(snap.stage.stage, snap.role).map((id) => ({ id, label: FLOWS[id].label, icon: FLOWS[id].icon, run: () => FLOWS[id].run(snap) })));
+  const FOCUS = {
+    mobs: ["newMob", "move", "treat", "weigh", "draft", "death"], mob: ["treat", "move", "weigh", "lame", "death"],
+    paperwork: ["treat", "death", "offMove", "buy", "tag", "btv"], "paperwork/medicine": ["treat", "btv"], "paperwork/deaths": ["death", "deadLamb"],
+    "paperwork/movements": ["offMove", "buy", "draft"], "paperwork/tagging": ["tag"], rams: ["ramsIn"], worms: ["fec", "treat"], money: ["money"],
+  };
+  const focus = focusFor(FOCUS, ctx.where) || ORDER[snap.stage.stage] || ORDER.tupping;
+  return quickAddSheet(ctx.ledger, quickAddIds(snap.stage.stage, snap.role).map((id) => ({ id, label: FLOWS[id].label, icon: FLOWS[id].icon, run: () => FLOWS[id].run(snap) })), { focus });
 }
 /** Run a flow by id with a fresh snapshot (used by buttons on boards). */
 export async function runFlow(id, ledger, extra) { const snap = await loadSheep(ledger); return FLOWS[id].run(snap, extra); }

@@ -1,6 +1,6 @@
 // Quick add (design/12 §2.2): the same grid all year — dairy has no season mode.
 import { loadDairy } from "./data.js";
-import { quickAddSheet } from "../generic.js";
+import { quickAddSheet, focusFor } from "../generic.js";
 import { canWrite } from "../../core/policy.js";
 import { openMoneySheet } from "../../ui/money-sheet.js";
 
@@ -25,7 +25,11 @@ export default async function quickAdd(ctx) {
   const snap = await loadDairy(ctx.ledger);
   const money = canWrite(snap.role, "finance") ? [{ id: "money", label: "Money", icon: "money", run: () => openMoneySheet(snap.ledger) }] : [];
   if (!canWrite(snap.role, "animals")) return quickAddSheet(ctx.ledger, money);
-  return quickAddSheet(ctx.ledger, [...ORDER.map((id) => ({ id, label: ITEMS[id].label, icon: ITEMS[id].icon, run: () => ITEMS[id].run(snap) })), ...money]);
+  const FOCUS = {
+    milking: ["treat", "tank", "fresh", "note"], cows: ["add", "treat", "calving", "dry", "off"], cow: ["treat", "bulling", "served", "pd", "dry", "off"],
+    fertility: ["bulling", "served", "pd", "calving", "dry"], milk: ["tank", "treat"], money: ["money"],
+  };
+  return quickAddSheet(ctx.ledger, [...ORDER.map((id) => ({ id, label: ITEMS[id].label, icon: ITEMS[id].icon, run: () => ITEMS[id].run(snap) })), ...money], { focus: focusFor(FOCUS, ctx.where) });
 }
 /** Open one quick-add entry by id (used by the screenshot and flow tests). */
 export async function runFlow(id, ledger) { const snap = await loadDairy(ledger); return ITEMS[id].run(snap); }

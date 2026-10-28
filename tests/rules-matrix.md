@@ -15,6 +15,7 @@ ready to run, blocked in the build sandbox because the emulator download is not 
 | Open the ledger `readLedger` | ✅ allow | ✅ allow | ✅ allow | ✅ allow | ✅ allow | ⛔ deny | ⛔ deny |
 | List all ledgers `listLedgers` | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny |
 | Rename the ledger `renameLedger` | ✅ allow | ✅ allow | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny |
+| Move the ledger to Recently deleted `binLedger` | ✅ allow | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny |
 | Change ledger type `changeType` | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny |
 | Delete the ledger document `deleteLedgerDoc` | ✅ allow | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny | ⛔ deny |
 | See who is on the ledger `readMembers` | ✅ allow | ✅ allow | ✅ allow | ✅ allow | ✅ allow | ⛔ deny | ⛔ deny |

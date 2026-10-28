@@ -41,7 +41,31 @@ export async function listMine() {
     try { const l = await store.get(`ledgers/${lid}`); if (l) out.push({ ...l, role: m.role }); }
     catch (e) { /* removed between the two reads */ }
   }));
-  return out.sort((a, b) => LEDGER_TYPES.indexOf(a.type) - LEDGER_TYPES.indexOf(b.type) || String(a.name).localeCompare(b.name));
+  return out.filter((l) => !l.deletedAt).sort((a, b) => LEDGER_TYPES.indexOf(a.type) - LEDGER_TYPES.indexOf(b.type) || String(a.name).localeCompare(b.name));
+}
+
+// ---- Recently deleted (owner only; firestore.rules lets only the owner set deletedAt) ----
+export const BIN_DAYS = 30;
+const asDate = (d) => (d instanceof Date ? d : d && d.toDate ? d.toDate() : d ? new Date(d) : null);
+/** Hide a ledger from everyone on it; it can be restored for BIN_DAYS days. */
+export const binLedger = (lid) => updateLedger(lid, { deletedAt: new Date(), deletedBy: me().uid });
+export const restoreLedger = (lid) => updateLedger(lid, { deletedAt: null, deletedBy: null });
+/** My binned ledgers: [{ ...ledger, role, deletedAt: Date, purgeOn: Date }]. Ones past BIN_DAYS are deleted for good here. */
+export async function listBinned() {
+  const mems = await store.queryGroup("members", { where: [["uid", "==", me().uid]] });
+  const out = [];
+  await Promise.all(mems.filter((m) => m.role === "owner").map(async (m) => {
+    const lid = m._path.split("/")[1];
+    try { const l = await store.get(`ledgers/${lid}`); if (l && l.deletedAt) out.push({ ...l, role: m.role, deletedAt: asDate(l.deletedAt) }); }
+    catch (e) { /* gone */ }
+  }));
+  const now = Date.now(); const keep = [];
+  for (const l of out) {
+    l.purgeOn = new Date(l.deletedAt.getTime() + BIN_DAYS * 864e5);
+    if (l.purgeOn.getTime() <= now && navigator.onLine !== false) { try { await deleteLedger(l.id); continue; } catch (e) { /* try next time */ } }
+    keep.push(l);
+  }
+  return keep.sort((a, b) => b.deletedAt - a.deletedAt);
 }
 
 /** Group my ledgers into farms: [{ farmId, farmName, space (farm-space ledger or null), ledgers: [...] }]. */

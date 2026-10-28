@@ -15,7 +15,11 @@ after(async () => { await env.close(); });
 const recs = (coll) => p.evaluate(async ([lid, coll]) => (await import("./js/services/records.js")).listRecords(lid, coll), [lid, coll]);
 const sheet = () => p.locator(".sheet").last();
 const save = () => sheet().locator(".sheet-foot .btn").click();
-async function quick(label) { await p.locator(".fab").click(); await H.settle(p, 400); await p.locator(".share-tile", { hasText: label }).first().click(); await H.settle(p, 600); }
+async function quick(label) {
+  await p.locator(".fab").click(); await H.settle(p, 400);
+  if (!(await p.locator(".share-tile", { hasText: label }).count())) { await p.getByRole("button", { name: "Something else…" }).click(); await H.settle(p, 200); }
+  await p.locator(".share-tile", { hasText: label }).first().click(); await H.settle(p, 600);
+}
 async function pick(rowLabel, names) {
   await sheet().locator("[data-pick]", { hasText: rowLabel }).click(); await H.settle(p, 400);
   for (const n of names) { await sheet().locator("[data-q]").fill(n); await H.settle(p, 150); await sheet().locator("[data-aid]").first().click(); await H.settle(p, 200); }
