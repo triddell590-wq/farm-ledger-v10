@@ -20,10 +20,13 @@ export default async function ledgerSettings({ params }) {
   if (!ledger) { setTimeout(() => go("/farm/today", { replace: true })); return makeScreen({ body: el(html`<div></div>`) }); }
   const can = canEditLedger(ledger.role); const s = ledger.settings || {};
   const textFields = SETUP_FIELDS[ledger.type].filter((f) => f.kind === "text");
+  const mod0 = await sectorModule(ledger.type);
+  const extra = mod0.settingsRows ? await mod0.settingsRows({ ledger, role: ledger.role }) : [];
   const body = el(html`<div>${backLink(`#/l/${ledger.id}/more`, "More")}${largeTitle("Ledger settings", `${sectorName(ledger.type)} ledger`)}
     <form novalidate><div class="form-group">${textField({ name: "name", label: "Ledger name", value: ledger.name })}${textFields.map((f) => textField({ name: f.key, label: f.label, value: s[f.key] || "", inputmode: f.inputmode, optional: true }))}</div></form>
     ${can ? "" : html`<p class="hint">Only the owner or a manager can change these.</p>`}
     <div data-save></div>
+    ${extra.length ? html`<div class="section"><div class="list">${extra.map((r) => html`<a class="row" href="${r.href}"><span class="tile">${raw(icon(r.icon))}</span><span class="main"><span class="primary">${r.label}</span>${r.sub ? html`<span class="secondary">${r.sub}</span>` : ""}</span><span class="chev">${raw(icon("chevron"))}</span></a>`)}</div></div>` : ""}
     ${canDeleteLedger(ledger.role) ? html`<div class="section">${groupLabel("Danger zone")}<div class="list"><button type="button" class="row destructive" data-del><span class="tile late">${raw(icon("trash"))}</span><span class="main"><span class="primary">Delete this ledger</span><span class="secondary">Removes every record in it for everyone</span></span></button></div></div>` : ""}
   </div>`);
   if (!can) body.querySelectorAll("input").forEach((i) => (i.disabled = true));

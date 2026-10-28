@@ -13,7 +13,7 @@ import { liveSnap } from "./data.js";
 import { entrySheet } from "./flows/common.js";
 import { setMeta, setMarketPrices, updateAnimal } from "./actions.js";
 import { tagParts } from "./model/tags.js";
-import { pill, tagHtml } from "./ui.js";
+import { pill, tagHtml, herdViews } from "./ui.js";
 import { deadlineAnimals, finishingFacts } from "./model/finishing.js";
 import { ageText, classOf } from "./model/animals.js";
 import { BCRS_PAYMENT } from "./model/rules.js";
@@ -22,7 +22,7 @@ export default async function finishing(ctx) {
   const body = el(html`<div class="beef-page"></div>`);
   const { first, stop } = liveSnap(ctx.ledger, (snap) => { const y = window.scrollY; body.replaceChildren(render(snap)); if (y) window.scrollTo(0, y); });
   await first;
-  return { el: body, title: "Finishing", depth: 1, tab: "herd", destroy: stop };
+  return { el: body, title: "Finishing", depth: 0, tab: "herd", destroy: stop };
 }
 
 function render(snap) {
@@ -33,7 +33,7 @@ function render(snap) {
   const priceAge = s.price.enteredOn ? daysBetween(s.price.enteredOn, today) : null;
   const can = canWrite(snap.role, "animals"); const load = list.filter(({ a }) => a.loadBooked);
   const factory = snap.contacts.find((c) => /factory|processor|abattoir/i.test(`${c.kind || ""} ${c.role || ""}`));
-  const node = el(html`<div>${backLink(`#/l/${lid}/herd`, "Herd")}${largeTitle("Finishing", `${list.length} head · sorted by days left to the nearest deadline`)}
+  const node = el(html`<div>${largeTitle("Finishing", `${list.length} head · sorted by days left to the nearest deadline`)}${herdViews(lid, "finishing")}
     ${load.length ? html`<div class="card pad load-card"><b>Load: ${load.length} booked in</b>${factory?.phone ? html` · <a href="tel:${factory.phone}">Phone ${factory.name}</a>` : ""}<div class="act-grid" style="margin-top:10px"><button type="button" class="btn" data-load-sell>Make the kill sheet</button><button type="button" class="btn secondary" data-load-clear>Clear the load</button></div></div>` : ""}
     ${list.length ? html`<div class="list">${list.map(({ a, f }) => { const n = f.nearest; const lvl = n && n.left >= 0 ? (n.left <= 14 ? "late" : n.left <= 30 ? "due" : "neutral") : "neutral";
       return html`<div class="row finish-row"><a class="main" href="#/l/${lid}/animal/${a.id}"><span class="primary">${tagHtml(a.tag)}</span>

@@ -66,6 +66,7 @@ async function paint(body, snap) {
     ${beefBanner(snap.s).map((n) => html`<div class="info-card disease-banner ${n.level}" style="margin-top:12px">${raw(icon(n.level === "info" ? "info" : "alert"))}<span>${n.text}</span></div>`)}
     ${snap.meta.settings?.suspicion ? html`<div class="alert late" style="margin-top:12px"><span class="a-icon">${raw(icon("alert"))}</span><div><div class="a-title">Holding restricted: ${snap.meta.settings.suspicion.what} suspicion</div><div class="a-body">Cattle can only go direct to slaughter until the results are back.</div><div class="a-actions"><a class="text-btn" href="#/l/${lid}/disease">Record the result</a></div></div></div>` : ""}
     ${blocks.map((b) => html`<div class="section">${groupLabel(MODE_NAMES[b])}<div class="season">${seasonBlock(b, snap, money)}</div></div>`)}
+    ${blocks.includes("winter") ? "" : feedCard(snap)}
     <div class="section" data-tasks>${groupLabel("To do today", tasks.filter((t) => !t.done).length || "")}</div>
     ${week.length ? html`<div class="section"><div class="list"><button type="button" class="disclosure" data-week aria-expanded="false">Coming up this week (${week.length}) ${raw(icon("down", { size: 18 }))}</button>
       <div data-week-list hidden>${week.map((t) => html`<div class="row no-lead"><span class="main"><span class="primary">${t.title}</span><span class="secondary">${listDate(t.show)}</span></span></div>`)}</div></div></div>` : ""}
@@ -160,4 +161,14 @@ function seasonBlock(mode, snap, money) {
     ${numTile({ label: "Meal today", value: `${num(meal.kg)} kg`, delta: money && price ? moneyText((meal.kg / 1000) * price) : `${meal.rows.length} feed group${meal.rows.length === 1 ? "" : "s"}`, href: L("feed") })}
     ${numTile({ label: "TB test", value: tb ? (daysBetween(today, tb) >= 0 ? `in ${daysBetween(today, tb)} d` : "Overdue") : "—", delta: tb ? listDate(tb) : "Add your last test", href: L("paperwork/tb"), tone: tb && daysBetween(today, tb) < 0 ? "late" : "" })}
     ${numTile({ hero: true, label: "Treatments this fortnight", value: num(fort.length), delta: topR ? `${topR[1]} ${topR[0].toLowerCase()}` : "None recorded", href: L("paperwork/medicine") })}`;
+}
+
+/** Feed & silage as one tap-through card on Today (the full page is #/l/<lid>/feed). Winter mode
+ *  shows the bigger silage and meal tiles instead, so this only appears the rest of the year. */
+function feedCard(snap) {
+  const sil = snap.silage; const meal = mealToday(snap.data.feedGroups, snap.data.feedAdjust, snap.data, snap.today);
+  const parts = [];
+  if (sil && sil.runOut) parts.push(`silage lasts until ${listDate(sil.runOut).slice(4)}`);
+  if (meal.kg) parts.push(`${num(meal.kg)} kg meal a day`);
+  return html`<div class="section"><div class="list"><a class="row" href="#/l/${snap.lid}/feed" data-feed-card><span class="tile">${raw(icon("feed"))}</span><span class="main"><span class="primary">Feed & silage</span><span class="secondary">${parts.length ? parts.join(" · ") : "Silage pits, bales, meal and rations"}</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div></div>`;
 }

@@ -15,7 +15,7 @@ import { beefBanner } from "./model/region.js";
 export default async function disease(ctx) {
   const snap = await loadBeef(ctx.ledger); const ms = snap.meta.settings || {}; const can = canWriteMeta(snap.role, "settings");
   const vet = snap.contacts.find((c) => c.kind === "Vet");
-  const body = el(html`<div class="beef-page">${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Report a disease suspicion")}
+  const body = el(html`<div class="beef-page">${backLink(`#/l/${snap.lid}/paperwork`, "Paperwork")}${largeTitle("Report a disease suspicion")}
     <div class="warn-card">${raw(icon("alert"))}<span>${DAERA_DISEASE_LINE.note}</span></div>
     <div class="act-grid">${vet?.phone ? html`<a class="btn" href="tel:${vet.phone}">${raw(icon("message"))}Phone ${vet.name}</a>` : ""}<a class="btn secondary" style="grid-column:1/-1" href="tel:${DAERA_DISEASE_LINE.phone.replace(/\s/g, "")}">${raw(icon("message"))}${DAERA_DISEASE_LINE.name} ${DAERA_DISEASE_LINE.phone}</a></div>
     ${beefBanner({ region: ctx.ledger.region }).map((n) => html`<div class="info-card">${raw(icon("info"))}<span>${n.text} <span class="ink-3">(${n.source}, checked ${n.checkedOn})</span></span></div>`)}
@@ -26,5 +26,5 @@ export default async function disease(ctx) {
   body.querySelector("[data-btv]")?.addEventListener("click", () => rec("Bluetongue"));
   body.querySelector("[data-other]")?.addEventListener("click", () => rec("Notifiable disease"));
   body.querySelector("[data-clear]")?.addEventListener("click", () => { setMeta(snap.lid, "settings", { suspicion: null }); toast("Restriction lifted"); location.hash = `#/l/${snap.lid}/today`; });
-  return { el: body, title: "Disease suspicion", depth: 1, tab: "more" };
+  return { el: body, title: "Disease suspicion", depth: 1, tab: "paperwork" };
 }

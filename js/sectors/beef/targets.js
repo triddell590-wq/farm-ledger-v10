@@ -33,7 +33,7 @@ function bvdRuleRow(s, today) {
 export default async function targets(ctx) {
   const snap = await loadBeef(ctx.ledger); const s = snap.s; const can = canWriteMeta(snap.role, "settings"); const ms = snap.meta.settings || {};
   const n = (name, label, value, opt = true) => textField({ name, label, value: value ?? "", inputmode: "decimal", optional: opt });
-  const body = el(html`<div class="beef-page">${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Targets and scheme rules", can ? "Change anything that's different on your farm" : "Only the owner or a manager can change these")}
+  const body = el(html`<div class="beef-page">${backLink(`#/l/${snap.lid}/more/settings`, "Ledger settings")}${largeTitle("Targets and scheme rules", can ? "Change anything that's different on your farm" : "Only the owner or a manager can change these")}
   <form novalidate>
     ${groupLabel("Paperwork")}<p class="form-label">My herd register is</p>${radioGroup("registerMode", registerModes(s), usesNifaisRegister(s) ? "nifais" : "farm")}
     <p class="hint">It changes your reminder deadlines and the line printed on the herd register. Keep records 10 years either way.</p>
