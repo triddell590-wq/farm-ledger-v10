@@ -1,4 +1,4 @@
 node_modules/
 tests/output/
 .DS_Store
-screens/
+/screens/
