@@ -1,3 +1,4 @@
+// build fl10-16ded7c262bc
 // Farm Ledger 10 service worker: keeps a full copy of the app on the phone so it opens with no
 // signal. Same network strategy as v9.14 (which works): the page itself tries the network for
 // at most 3s then uses the saved copy; every other app file is phone-copy-first per version;

@@ -74,7 +74,20 @@ async function boot() {
   // Bell count, app badge, "became late" notice, push token refresh (services/notify.js).
   import("./services/notify.js").then((n) => n.startNotify()).catch((e) => console.warn("notify", e));
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost") && qs.get("sw") !== "0") {
-    navigator.serviceWorker.register("service-worker.js").catch((e) => console.warn("SW", e));
+    // updateViaCache "none" + a check each time the app comes back to the front, so phones pick up
+    // a new version the same day instead of whenever iOS feels like it.
+    const had = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register("service-worker.js", { updateViaCache: "none" }).then((reg) => {
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reg.update().catch(() => {}); });
+    }).catch((e) => console.warn("SW", e));
+    // A new version took over while the app was open: reload into it (or offer to, mid-form).
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", async () => {
+      if (!had || reloaded) return; reloaded = true;
+      const { sheetDepth } = await import("./ui/sheet.js");
+      if (!sheetDepth()) location.reload();
+      else toast("Farm Ledger has updated", { action: "Reload", duration: 12000, onAction: () => location.reload() });
+    });
   }
 }
 boot().catch((e) => { console.error(e); const s = document.getElementById("boot-error"); if (s) { s.hidden = false; s.querySelector("code").textContent = String(e && e.message || e); } endSplash(); });
