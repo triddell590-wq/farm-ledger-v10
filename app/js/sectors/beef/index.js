@@ -39,6 +39,7 @@ const routes = [
   { pattern: /^groups$/, load: S("groups") },
   { pattern: /^sires$/, load: S("sires") },
   { pattern: /^disease$/, load: S("disease") },
+  { pattern: /^morning-board$/, load: S("morning-board") },
 ];
 
 const M = {
@@ -67,7 +68,9 @@ const M = {
   },
   /** Rows shown in Ledger settings (set-once-a-year things live there, not in More). */
   async settingsRows(ctx) {
-    return OPS.includes(ctx.role) ? [{ label: "Targets and scheme rules", sub: "Herd register (NIFAIS), SC Scheme, BCRS, processor spec, housing", icon: "settings", href: `#/l/${ctx.ledger.id}/targets` }] : [];
+    const rows = OPS.includes(ctx.role) ? [{ label: "Targets and scheme rules", sub: "Herd register (NIFAIS), SC Scheme, BCRS, processor spec, housing", icon: "settings", href: `#/l/${ctx.ledger.id}/targets` }] : [];
+    if (ctx.role === "owner") { const { v9Token } = await import("./morning-board.js"); if (await v9Token()) rows.push({ label: "Morning Board", sub: "Feed your Morning Board from this ledger", icon: "today", href: `#/l/${ctx.ledger.id}/morning-board` }); }
+    return rows;
   },
   async headline(ledger) {
     if (!OPS.includes(ledger.role)) return { value: "", unit: "", line: "Beef money is in Money" };
