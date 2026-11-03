@@ -15,6 +15,18 @@ import { ensureCss, short, lineChart, kvRows } from "./ui.js";
 import { loadSheep } from "./data.js";
 import { ewesToRam } from "./model/mobs.js";
 import { grossMargin, costPerKg, FBS_BENCHMARKS } from "./model/selling.js";
+import { funnel } from "./model/lambing.js";
+import { cycleFor } from "./model/year.js";
+import { addDays } from "../../core/dates.js";
+
+/**
+ * How far through selling the year is (review B #13): lambs sold vs the lambs this crop should
+ * give (weaned, else turned out, born or scanned). partial = under 75% sold this year.
+ */
+export function yearProgress(sold, expected, isThisYear) {
+  const partial = !!(isThisYear && expected && sold < expected * 0.75);
+  return { partial, label: partial ? `so far this year (${num(sold)} of ~${num(expected)} lambs sold)` : "" };
+}
 
 const OUTLET = { abattoir: "Processor", market: "Mart", farm: "Another farm", export: "Export" };
 
@@ -45,13 +57,18 @@ export default async function moneyScreen(ctx) {
     const ewes = (snap ? ewesToRam(snap.data, snap.cy) || snap.totals.ewes : 0) || +ledger.settings?.ewes || 0;
     const m = sheepMoney(fin, st.year, ewes);
     const best = Math.max(1, ...FBS_BENCHMARKS.map(([, v]) => v), Math.abs(m.perEwe || 0));
+    // the crop whose lambs sell in this calendar year (lambed in the spring of st.year)
+    let cy = snap?.cy; for (let i = 0; cy && cy.crop > st.year && i < 3; i++) cy = cycleFor(snap.s, addDays(cy.ramsIn, -1), snap.data.events);
+    const fs = snap && cy && cy.crop === st.year ? funnel(snap.data, cy, snap.today).steps : []; const stepN = (k) => fs.find((x) => x.key === k)?.n;
+    const expected = stepN("weaned") ?? stepN("out") ?? stepN("born") ?? stepN("scanned") ?? null;
+    const prog = yearProgress(m.lambs, expected, st.year === thisYear);
     const node = el(html`<div>${isTab ? "" : backLink(`#/l/${ledger.id}/more`, "More")}${largeTitle("Money per ewe", `${ledger.name} · ${st.year}`)}
       <div class="seg-wrap">${segmented("year", [thisYear, thisYear - 1].map((y) => ({ value: String(y), label: y === thisYear ? "This year" : "Last year" })), String(st.year))}</div>
-      <div class="num-tile hero" style="margin-top:12px"><span class="label">Gross margin per ewe</span><span class="value">${m.perEwe == null ? "–" : moneyText(m.perEwe)}</span><span class="delta">${ewes ? `${num(ewes)} ewes to the ram · income ${moneyText(m.income)} − costs ${moneyText(m.costs)}` : "Add your ewes on the Mobs tab to work this out"}</span></div>
-      <div class="section">${groupLabel("Against FBS 2024/25 (per ewe)")}<div class="card pad bench">
+      <div class="num-tile hero" style="margin-top:12px"><span class="label">Gross margin per ewe${prog.partial ? ` — ${prog.label}` : ""}</span><span class="value">${m.perEwe == null ? "–" : moneyText(m.perEwe)}</span><span class="delta">${ewes ? `${num(ewes)} ewes to the ram · income ${moneyText(m.income)} − costs ${moneyText(m.costs)}` : "Add your ewes on the Mobs tab to work this out"}</span></div>
+      ${prog.partial ? html`<div class="section">${groupLabel("Against FBS 2024/25 (per ewe)")}<div class="card pad t-callout ink-2" data-bench-later>The FBS full-year comparison shows once about three-quarters of this year's lambs are sold — until then it would make an early year look bad.</div></div>` : html`<div class="section">${groupLabel("Against FBS 2024/25 (per ewe)")}<div class="card pad bench">
         ${m.perEwe != null ? html`<div class="me"><span><b style="text-align:left">You</b></span><i style="width:${(Math.max(0, m.perEwe) / best) * 100}%"></i><b>${moneyText(m.perEwe)}</b></div>` : ""}
         ${FBS_BENCHMARKS.map(([k, v]) => html`<div><span>${k}</span><i style="width:${(v / best) * 100}%;background:var(--ink-3)"></i><b>£${v}</b></div>`)}
-        <p class="source">Farm Business Survey NI 2024/25 gross margins (Research A). Shown as text, not a target.</p></div></div>
+        <p class="source">Farm Business Survey NI 2024/25 gross margins. Shown as text, not a target.</p></div></div>`}
       <div class="section">${groupLabel("Where the money came from")}${kvRows([["Lamb sales", moneyText(m.lines.lambs)], ["Cull ewe sales", moneyText(m.lines.culls)], ["Wool", moneyText(m.lines.wool)], ["Schemes", moneyText(m.lines.schemes)], m.lines.other ? ["Other income", moneyText(m.lines.other)] : null, ["Costs (this ledger)", moneyText(m.costs), "late"]])}</div>
       <div class="s-tiles">
         <div class="num-tile"><span class="label">Price per lamb</span><span class="value">${m.perLamb == null ? "–" : moneyText(m.perLamb)}</span><span class="delta">${m.lambs ? `${num(m.lambs)} lambs sold` : "No lamb sales yet"}</span></div>

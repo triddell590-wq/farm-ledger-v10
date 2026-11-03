@@ -24,18 +24,18 @@ export function todayTasks(c) {
       const wd = (s.weighDays || []).find((d) => st.day >= d && st.day <= d + 2);
       if (wd != null && !listOf(ix.weighs, crop.id).some((w) => cropDay(crop, w.date) >= wd)) push({ key: `weigh:${crop.id}:${wd}`, title: `Sample weigh ${H} (day ${wd})`, due: today, sub: "100 birds", href: L(`weigh/${crop.id}`), kind: "open" });
       // dark period from day 7
-      if (st.day >= 6 && !crop.darkSetAt) push({ key: `dark:${crop.id}`, title: `Dark period starts from day 7 — ${H}`, due: dateOfDay(crop, 7) < today ? dateOfDay(crop, 7) : today, sub: "at least 6 h, 4 h unbroken", legal: true, action: { type: "cropField", id: crop.id, field: "darkSetAt" } });
+      if (st.day >= 6 && !crop.darkSetAt) push({ key: `dark:${crop.id}`, title: `Dark period starts from day 7 — ${H}`, due: dateOfDay(crop, 7), sub: "at least 6 h, 4 h unbroken", legal: true, action: { type: "cropField", id: crop.id, field: "darkSetAt" } });
       // Salmonella, litter, FCI, feed off
       for (const x of salmStatus(ix, crop, s, today)) {
         if (["due", "late", "open"].includes(x.state) && today >= addDays(x.window.doBy, -3)) {
           const what = x.ev.kind === "clear" ? "clear-out" : "thin";
-          push({ key: `salm:${crop.id}:${x.ev.day}`, title: `Boot swabs for ${H} before ${dayLabel(x.ev.date).slice(0, 3)}'s ${what} — do by ${dayLabel(x.window.doBy)} so the result is back for the FCI`, due: x.window.doBy < today ? x.window.doBy : today, legal: true, href: L(`salm/${crop.id}`), kind: "open" });
+          push({ key: `salm:${crop.id}:${x.ev.day}`, title: `Boot swabs for ${H} before ${dayLabel(x.ev.date).slice(0, 3)}'s ${what} — do by ${dayLabel(x.window.doBy)} so the result is back for the FCI`, due: x.window.doBy, legal: true, href: L(`salm/${crop.id}`), kind: "open" });
           if (today >= x.window.noLitterFrom && today <= x.window.doBy) push({ key: `litter:${crop.id}:${x.ev.day}:${today}`, title: `No fresh litter in ${H} in the 2 days before boot swabs`, due: today });
         }
       }
       for (const ev of cropEvents(ix, crop, s).filter((e) => !e.done && e.rec)) {
         const t = ev.rec; const sendBy = fciSendBy(t.catchAt, s, t.arrivalAt); const sent = listOf(ix.fci, crop.id).some((f) => f.thinId === t.id && f.sentAt);
-        if (!sent && today >= addDays(datePart(sendBy), -1) && today <= datePart(t.catchAt)) push({ key: `fci:${t.id}`, title: `Send FCI for the ${ev.kind === "clear" ? "clear-out" : "thin"} by ${whenLabel(sendBy)}`, due: datePart(sendBy) < today ? datePart(sendBy) : today, legal: true, href: L(`fci/${crop.id}/${t.id}`), kind: "open" });
+        if (!sent && today >= addDays(datePart(sendBy), -1) && today <= datePart(t.catchAt)) push({ key: `fci:${t.id}`, title: `Send FCI for the ${ev.kind === "clear" ? "clear-out" : "thin"} by ${whenLabel(sendBy)}`, due: datePart(sendBy), legal: true, href: L(`fci/${crop.id}/${t.id}`), kind: "open" });
         const fo = t.feedOffAt || feedOffDefault(t.catchAt, s);
         if (datePart(fo) === today) push({ key: `feedoff:${t.id}`, title: `Feed off ${H} at ${timePart(fo)} (catch ${timePart(t.catchAt)})`, due: today, legal: true });
       }
@@ -48,7 +48,7 @@ export function todayTasks(c) {
       if (next) push({ key: `ta:${ta.id}:${next[0]}`, title: `${next[1]} — ${H}`, due: today, sub: ta.plan?.[next[0]] ? `planned ${dayLabel(ta.plan[next[0]])}` : `turnaround day ${daysBetween(ta.clearedDate, today)}`, href: L(`turnaround/${house.id}`), kind: "open" });
       // tell DAERA 15 working days before a placement above 33 kg/m²
       const R = regionRule("broilerDensity");
-      if (ta.nextPlacement && +(ta.targetDensity || s.targetDensity || 0) > R.notifyAbove && !ta.notifiedDaera) { const by = workingDaysBefore(ta.nextPlacement, R.notifyWorkingDays); if (today >= addDays(by, -7)) push({ key: `notify:${ta.id}`, title: `Tell DAERA 15 working days before stocking above 33 kg/m² (by ${dayLabel(by)})`, due: by < today ? by : today, legal: true, action: { type: "taField", id: ta.id, field: "notifiedDaera" } }); }
+      if (ta.nextPlacement && +(ta.targetDensity || s.targetDensity || 0) > R.notifyAbove && !ta.notifiedDaera) { const by = workingDaysBefore(ta.nextPlacement, R.notifyWorkingDays); if (today >= addDays(by, -7)) push({ key: `notify:${ta.id}`, title: `Tell DAERA 15 working days before stocking above 33 kg/m² (by ${dayLabel(by)})`, due: by, legal: true, action: { type: "taField", id: ta.id, field: "notifiedDaera" } }); }
     }
   }
   // AM / PM checks (grouped when every house is due)

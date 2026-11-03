@@ -17,8 +17,8 @@ import { liveScreen } from "./screen.js";
 import { fqaStatus, FQA_SECTIONS, FQA_STANDARD } from "./model/fqa.js";
 import * as A from "./actions.js";
 import { evidenceStrip } from "../../ui/photo-strip.js";
+import { readyScore, readyHero, readyLists, wireReady } from "../../ui/ready-check.js";
 
-const MARK = { ok: ["ok", "check", "Evidenced"], warn: ["due", "alert", "Check"], fail: ["late", "alert", "Gap"] };
 
 /** Ticks from the Beef ledger on the same farm (read-only here). */
 async function beefTicks(ledger) {
@@ -34,21 +34,28 @@ export function mergeTicks(own = {}, beef = {}) {
   return out;
 }
 
+const STATE = { ok: "ok", warn: "due", fail: "gap" };
+/** FQAS sheep items as ready-check rows (review A #14). */
+export function sheepFqaRows(snap, ticks) {
+  const st = fqaStatus(snap.c, ticks); const sec = Object.fromEntries(FQA_SECTIONS);
+  return st.items.map((it) => it.type === "auto"
+    ? { id: it.id, text: `${it.ref} ${it.t}`, sec: sec[it.s], auto: true, state: STATE[it.res.status] || "open", note: it.res.text, link: it.res.href ? `#/l/${snap.lid}/${it.res.href}` : null }
+    : { id: it.id, text: `${it.ref} ${it.t}`, sec: sec[it.s], auto: false, state: "open", done: it.res.status === "ok", note: (ticks[it.id]?.done || ticks[it.id]?.date) ? `${it.res.text}${ticks[it.id]?.fromBeef ? " (ticked in Beef)" : ""}` : "" });
+}
+export const sheepHasData = (snap) => (snap.data.mobs || []).some((m) => !m.deleted);
+
 export default async function fqa(ctx) {
   const beef = await beefTicks(ctx.ledger);
   return liveScreen(ctx, { title: "Inspection ready?", tab: "paperwork", paint: (snap) => {
-    const ticks = mergeTicks(snap.meta.fqa?.items || {}, beef); const st = fqaStatus(snap.c, ticks); const can = canWriteMeta(snap.role, "fqa");
-    const okN = st.items.filter((i) => i.res.status === "ok").length;
-    return html`<div>${backLink(`#/l/${snap.lid}/paperwork`, "Paperwork")}${largeTitle("Inspection ready?", `${okN} of ${st.items.length} in place`)}
-      <div class="num-tile hero"><span class="label">Score</span><span class="value">${st.pct}%</span><span class="delta">${FQA_STANDARD.footer}</span><span class="source">${FQA_STANDARD.header}</span></div>
+    const ticks = mergeTicks(snap.meta.fqa?.items || {}, beef); const can = canWriteMeta(snap.role, "fqa");
+    const rows = sheepFqaRows(snap, ticks); const sc = readyScore(rows, sheepHasData(snap));
+    return html`<div>${backLink(`#/l/${snap.lid}/paperwork`, "Paperwork")}${largeTitle("Inspection ready?", sc.hasData ? `${sc.ok} of ${sc.n} checked from your records · ${sc.selfDone} of ${sc.selfN} ticked` : "Add your sheep and the app starts checking")}
+      ${readyHero(sc, { footer: FQA_STANDARD.footer, source: FQA_STANDARD.header })}
       ${Object.keys(beef).length ? html`<p class="hint">Sheep and Beef on this farm share one FQAS membership — ticks from your Beef ledger count here.</p>` : ""}
-      ${FQA_SECTIONS.map(([n, name]) => { const items = st.items.filter((i) => i.s === n); if (!items.length) return ""; const done = items.filter((i) => i.res.status === "ok").length;
-        return html`<div class="section">${groupLabel(`${n}. ${name}`, `${done}/${items.length}`)}<div class="list">${items.map((it) => { const [lvl, ic, word] = MARK[it.res.status];
-          return html`<div class="row no-lead fqa-item" data-id="${it.id}"><span class="main"><span class="primary">${it.ref} ${it.t}${it.type === "auto" ? html` <span class="auto-tag">auto</span>` : ""}</span><span class="secondary">${it.res.text}${ticks[it.id]?.fromBeef ? " (ticked in Beef)" : ""}</span>
-            <span class="row-actions">${it.res.href ? html`<a class="text-btn" href="#/l/${snap.lid}/${it.res.href}">Show me</a>` : ""}${can && it.type !== "auto" ? html`<button type="button" class="text-btn" data-tick>${ticks[it.id]?.done || ticks[it.id]?.date ? "Update" : "Tick"}</button>` : ""}</span></span>
-            <span class="pill ${lvl}">${raw(icon(ic))}${word}</span></div>`; })}</div></div>`; })}</div>`;
+      ${readyLists(rows, { can, actions: (r) => (can && !r.auto ? html`<button type="button" class="text-btn" data-tick>Note or photo</button>` : "") })}</div>`;
   }, after: (node, snap) => {
     const ticks = snap.meta.fqa?.items || {};
+    wireReady(node, (id, on) => { const t = ticks[id] || {}; const by = auth.user?.displayName || auth.user?.email || ""; A.saveFqa(snap.lid, { ...ticks, [id]: on ? { ...t, done: true, date: snap.today, by } : { ...t, done: false, date: null } }); toast(on ? "Ticked" : "Unticked"); });
     node.querySelectorAll("[data-tick]").forEach((b) => (b.onclick = () => tickSheet(snap, b.closest("[data-id]").dataset.id, ticks)));
   } });
 }

@@ -21,6 +21,8 @@ export function parents(ix, a) {
   const sire = a.sireId ? ix.byId.get(a.sireId) : null;
   return { dam, damName: dam ? null : a.damTag || "", sire, sireName: sire ? null : a.sireText || "" };
 }
+// Box labels for the tree (review A #39)
+const PED_LABELS = [["This animal"], ["Sire", "Dam"], ["Sire's sire", "Sire's dam", "Dam's sire", "Dam's dam"]];
 /** 3 generations: [[self],[sire,dam],[ss,sd,ds,dd]] as labels. */
 export function tree(ix, a) {
   const g1 = parents(ix, a);
@@ -39,7 +41,7 @@ export function stageWeights(ix, a) {
 export function pedigreeSheet(snap, a) {
   const p = a.pedigree || {}; const t = tree(snap.ix, a); const sw = stageWeights(snap.ix, a);
   const body = el(html`<div data-sector="beef">
-    <div class="ped-tree" aria-label="Three generation pedigree">${t.map((col, i) => html`<div class="ped-col g${i}">${col.map((n) => html`<span>${n}</span>`)}</div>`)}</div>
+    <div class="ped-tree" aria-label="Three generation pedigree">${t.map((col, i) => html`<div class="ped-col g${i}">${col.map((n, j) => html`<span><small class="ped-l" style="display:block;font-size:11px;line-height:14px;color:var(--ink-2);font-weight:600">${PED_LABELS[i][j]}</small>${n !== "—" ? n : i === 1 && canWrite(snap.role, "animals") ? html`<button type="button" class="text-btn" data-addparent style="min-height:28px;padding:0">Add</button>` : html`<em class="ink-3" style="font-style:normal">Not recorded</em>`}</span>`)}</div>`)}</div>
     ${kvRows([["Herd book no.", p.herdBookNo || "—"], ["Registered name", p.regName || "—"], ["Society", p.society || snap.s.society || "—"], ["Registered", p.regStatus ? `${p.regStatus}${p.regDate ? ` · ${shortDate(p.regDate)}` : ""}` : "Not yet"],
       ["Docility", p.docility ? `${p.docility} of 5` : "—"], ["Weights", `birth ${sw.birth || "—"} · 200-day ${sw.d200 || "—"} · 400-day ${sw.d400 || "—"} kg`],
       ...(p.dna ? Object.entries(p.dna).filter(([, v]) => v).map(([k, v]) => [`DNA: ${k}`, v]) : []),
@@ -47,6 +49,7 @@ export function pedigreeSheet(snap, a) {
       p.fertilityTest?.date && ["Fertility test", `${shortDate(p.fertilityTest.date)} · ${p.fertilityTest.result || ""}${p.fertilityTest.vet ? ` · ${p.fertilityTest.vet}` : ""}`]])}
     <div class="act-grid">${canWrite(snap.role, "animals") ? html`<button type="button" class="btn secondary" data-edit>Edit pedigree</button>` : ""}<a class="btn secondary" href="#/l/${snap.lid}/animal/${a.id}/sale-sheet">Sale sheet</a></div></div>`);
   const sh = openSheet({ title: "Pedigree", body, cancelText: "Done" });
+  body.querySelectorAll("[data-addparent]").forEach((b) => b.addEventListener("click", () => { sh.close(true, { force: true }); setTimeout(() => import("./animal-edit.js").then((m) => m.editIdentitySheet(snap, a)), 150); }));
   body.querySelector("[data-edit]")?.addEventListener("click", () => { sh.close(true, { force: true }); setTimeout(() => editPedigree(snap, a), 150); });
   body.querySelector("a.btn").addEventListener("click", () => sh.close(true, { force: true }));
 }

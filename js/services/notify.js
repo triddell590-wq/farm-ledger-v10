@@ -12,6 +12,7 @@ import { backendName } from "../core/store.js";
 import { emit, on } from "../core/bus.js";
 import { session } from "./session.js";
 import { allItems } from "./duties.js";
+import { todayStr } from "../core/dates.js";
 import { saveDevice, removeDevice, getDevice, getLog, writeLog } from "./devices.js";
 import { FCM_VAPID_KEY } from "../config.js";
 import { normPrefs, filterForPrefs, lateLegal, badgeCount, lateKey, logId, DEFAULT_TZ, validTz } from "./notify-core.js";
@@ -148,7 +149,7 @@ export function refreshItems({ force = false } = {}) {
     try {
       const items = await allItems(myLedgers());
       cur = { items, at: Date.now(), loading: null };
-      setBadge(badgeCount(items));
+      setBadge(badgeCount(items, todayStr()));
       emit("notify:items", items);
       checkNewlyLate(items).catch(() => {});
       return items;

@@ -9,6 +9,7 @@ import { session } from "../../services/session.js";
 import { todayStr } from "../../core/dates.js";
 import { collectionsFor, metaFor } from "../registry.js";
 import { layerSettings } from "./model/settings.js";
+import { loadFarmProducts, watchFarmProducts, mergeStores } from "../../services/med-store.js";
 
 export const LAYER_COLLECTIONS = [...new Set([...collectionsFor("layers"), "tasks", "notes"])].filter((k) => !["photos", "documents", "events"].includes(k));
 export const LAYER_META = metaFor("layers");
@@ -37,7 +38,7 @@ export async function loadLayers(ledger, { now } = {}) {
   await Promise.all(LAYER_COLLECTIONS.map(async (k) => { data[k] = canRead(ledger.role, k) ? await listRecords(ledger.id, k).catch(() => []) : []; }));
   if (canRead(ledger.role, "meta")) await Promise.all(LAYER_META.map(async (k) => { meta[k] = await getMeta(ledger.id, k).catch(() => null); }));
   const space = farmSpace(ledger); let farmStore = [], contacts = [];
-  if (space && canRead(space.role, "medProducts")) { farmStore = await listRecords(space.id, "medProducts").catch(() => []); contacts = await listRecords(space.id, "contacts").catch(() => []); }
+  if (space && canRead(space.role, "medProducts")) { farmStore = await loadFarmProducts(space, ledger); contacts = await listRecords(space.id, "contacts").catch(() => []); }
   return buildSnap(ledger, data, meta, { farmStore, contacts, now });
 }
 
@@ -51,7 +52,7 @@ export function watchLayers(ledger, cb) {
   if (canRead(ledger.role, "meta")) for (const k of LAYER_META) subs.push(watchMeta(ledger.id, k, (d) => { meta[k] = d; fire(); }, () => {}));
   const space = farmSpace(ledger);
   if (space && canRead(space.role, "medProducts")) {
-    subs.push(watchRecords(space.id, "medProducts", {}, (l) => { farmStore = l; fire(); }, () => {}));
+    subs.push(watchFarmProducts(space, ledger, (l) => { farmStore = l; fire(); }));
     subs.push(watchRecords(space.id, "contacts", {}, (l) => { contacts = l; fire(); }, () => {}));
   }
   if (!want.length) { ready = true; fire(); }

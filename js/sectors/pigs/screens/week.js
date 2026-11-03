@@ -1,17 +1,19 @@
 // Pigs → Week, the home (design/13 §3). Title = the production week, never a date. Then the week
 // strip (serve, scan, move, farrow, wean, ship), late alerts, "This week" tiles, the room board,
 // To do today and one line of deaths. Finishing-only farms get §3.2 tiles; small herds §3.3.
+import { plural as pl } from "../../../ui/format.js";
 import { html, raw } from "../../../core/html.js";
 import { el, reduceMotion } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
 import { openSheet } from "../../../ui/sheet.js";
 import { taskList } from "../../../ui/tasks.js";
+import { nowCount, homeDedupe } from "../../../services/today-rules.js";
 import { todaysTasks } from "../../../services/tasks.js";
-import { canRead, canWrite } from "../../../core/policy.js";
+import { canRead, canWrite, canWriteMeta } from "../../../core/policy.js";
 import { addDays, daysBetween } from "../model/dates.js";
 import { largeTitle, groupLabel, emptyState } from "../../../screens/common.js";
 import { alertCard } from "../../../screens/overview-today.js";
-import { bannerItems } from "../../../content/region-rules.js";
+import { homeBanners } from "../../../content/region-rules.js";
 import { liveSnap } from "../data.js";
 import { numTile, roomTile, dm, d2, n0, pctText, pounds, headRow, okCard, plural } from "../ui.js";
 import { weekLabel, weekDates, isoWeek } from "../model/weeks.js";
@@ -21,9 +23,10 @@ import { preWeanMortality, aliveNow } from "../model/litters.js";
 import { pigAlerts } from "../model/alerts.js";
 import { todayTasks } from "../model/duties.js";
 import { SYSTEMS } from "../model/settings.js";
-import { tickGenerated } from "../actions.js";
+import { tickGenerated, saveSettings } from "../actions.js";
+import { toast } from "../../../ui/toast.js";
 import { dayName } from "../model/sows.js";
-import { moneyFigures } from "../model/money.js";
+import { moneyFigures, costPerPigSold } from "../model/money.js";
 
 const flow = (file, fn = "default") => async (snap, extra) => (await import(`../flows/${file}.js`))[fn](snap, extra);
 const offsets = new Map(); // per ledger: week offset of the strip
@@ -36,6 +39,22 @@ export function contextLine(snap) {
   return ["Pigs", s.herdMark ? `Herd mark ${s.herdMark}` : null, s.breeding ? `${s.interval === 1 ? "weekly" : s.interval + "-week"} batches` : SYSTEMS[s.system], s.breeding ? `${n0(sows)} sows` : null, `${n0(growing)} growing`].filter(Boolean).join(" · ");
 }
 
+// First run (review B #12): before any rooms or pigs, ask how the pigs are kept — including
+// "Just a few pigs", which turns on small herd mode with only the legal minimum.
+const SYSTEM_CHOICES = [["ftf", "Farrow to finish", "Sows, and their pigs grown to slaughter"], ["breeding", "Breeding (sell weaners)", "Sows; weaners leave the farm"], ["finishing", "Finishing only", "Pigs bought in and grown on"], ["small", "Just a few pigs (small herd)", "A handful of sows or pigs — only the records the law asks for"]];
+export function systemChoice(snap) {
+  const fresh = !snap.meta.settings?.system && !snap.data.sows.length && !snap.data.batches.length && canWriteMeta(snap.role, "settings");
+  if (!fresh) return "";
+  return html`<div class="section" data-system-choice>${groupLabel("How do you keep pigs?")}<div class="list">${SYSTEM_CHOICES.map(([k, t, sub]) => html`<button type="button" class="row" data-system="${k}"><span class="main"><span class="primary">${t}</span><span class="secondary">${sub}</span></span><span class="chev">${raw(icon("chevron"))}</span></button>`)}</div><p class="hint" style="margin:8px 4px 0">You can change this later in Pig settings.</p></div>`;
+}
+export function wireSystemChoice(root, snap) {
+  root.querySelectorAll("[data-system]").forEach((b) => (b.onclick = () => {
+    const k = b.dataset.system; const small = k === "small";
+    saveSettings(snap, { system: small ? "ftf" : k, smallHerd: small, assured: !small });
+    toast(small ? "Small herd: just the records the law asks for" : "Saved — add your rooms next");
+  }));
+}
+
 export default async function week(ctx) {
   const body = el(html`<div class="pg-page"></div>`);
   const { first, stop } = liveSnap(ctx.ledger, (snap) => (snap.s.smallHerd ? paintSmall(body, snap) : paint(body, snap)));
@@ -43,6 +62,8 @@ export default async function week(ctx) {
   return { el: body, title: "Week", destroy: stop };
 }
 
+// Calendar chips say the word, big enough to read in a shed (review B #20): "Scan B43", "Farrow B39"
+const CHIP = { Ser: "Serve", Scn: "Scan", Mov: "Move", Far: "Farrow", Wean: "Wean", Ship: "Ship", Wash: "Wash", In: "Pigs in", Feed: "Feed", Vet: "Vet" };
 function stripHtml(snap, off) {
   const iso = addDays(snap.today, off * 7); const { days, ev } = weekEvents(snap.c, iso);
   const w = isoWeek(days[0]).week;
@@ -52,7 +73,7 @@ function stripHtml(snap, off) {
       <button type="button" class="icon-btn" data-wk="1" aria-label="Next week">${raw(icon("right"))}</button></span></div>
     <div class="pg-wk-grid" data-grid>${days.map((d, i) => { const list = ev.get(d) || []; return html`<button type="button" class="pg-wd ${d === snap.today ? "today" : ""}" data-day="${d}" aria-label="${dm(d)}: ${list.length ? list.map((e) => `${VERB[e.v]} ${e.b}`).join(", ") : "nothing planned"}">
       <span class="dn">${DN[(i + snap.s.weekStart - 1) % 7]}</span><span class="dd">${+d.slice(8)}</span>
-      ${list.slice(0, 3).map((e) => html`<span class="pg-ev ${e.v}">${e.v}<small>${e.b}</small></span>`)}${list.length > 3 ? html`<span class="pg-ev more">+${list.length - 3}</span>` : ""}</button>`; })}</div></div>`;
+      ${list.slice(0, 2).map((e) => html`<span class="pg-ev ${e.v}">${CHIP[e.v] || e.v}<small>${e.b}</small></span>`)}${list.length > 2 ? html`<span class="pg-ev more">+${list.length - 2} more</span>` : ""}</button>`; })}</div></div>`;
 }
 
 function dayList(snap, d) {
@@ -107,10 +128,10 @@ function deathsLine(snap) {
 async function taskSection(snap, node) {
   const gen = todayTasks(snap.c).map((t) => ({ id: t.key, title: t.title, due: t.due, sub: t.sub, href: t.href, legal: t.legal, generated: true, done: false, ledger: snap.ledger, tick: (d) => tickGenerated(snap.lid, snap, t, d) }));
   const stored = (await todaysTasks([snap.ledger])).filter((t) => !t.sourceRef || t.done);
-  const tasks = [...gen, ...stored].sort((a, b) => (a.done - b.done) || (b.legal ? 1 : 0) - (a.legal ? 1 : 0) || String(a.due).localeCompare(String(b.due)));
+  const tasks = homeDedupe(pigAlerts(snap.c).filter((a) => a.level === "late").slice(0, 3), [...gen, ...stored]).tasks; // late alerts stay at the top
   const tb = node.querySelector("[data-tasks]");
-  tb.append(el(groupLabel("To do today", tasks.filter((t) => !t.done).length || "")));
-  tb.append(tasks.length ? taskList(tasks, { max: 12, onChange: () => {} }) : el(okCard("Nothing else to do today.")));
+  tb.append(el(groupLabel("To do today", nowCount(tasks, snap.today) || "")));
+  tb.append(tasks.length ? taskList(tasks, { max: 12, onChange: () => {}, today: snap.today }) : el(okCard("Nothing else to do today.")));
 }
 
 async function paint(body, snap) {
@@ -118,14 +139,15 @@ async function paint(body, snap) {
   const scrollY = window.scrollY;
   const off = offsets.get(lid) || 0;
   if (!snap.data.rooms.length) {
-    body.replaceChildren(el(html`<div>${largeTitle(weekLabel(snap.today), contextLine(snap))}${emptyState({ sector: "pigs", title: "Set up your rooms", body: "Add your houses and rooms once. Then the week, the room board and every batch build from them.", action: canWrite(snap.role, "rooms") ? "Add rooms" : null, href: L("setup/rooms") })}</div>`));
+    body.replaceChildren(el(html`<div>${largeTitle(weekLabel(snap.today), contextLine(snap))}${systemChoice(snap)}${emptyState({ sector: "pigs", title: "Set up your rooms", body: "Add your houses and rooms once. Then the week, the room board and every batch build from them.", action: canWrite(snap.role, "rooms") ? "Add rooms" : null, href: L("setup/rooms") })}</div>`));
+    wireSystemChoice(body, snap);
     return;
   }
   const rf = roomFacts(snap.c);
   const alerts = pigAlerts(snap.c).filter((a) => a.level === "late").slice(0, 3);
   const board = [...rf].sort((a, b) => ({ late: 0, due: 1 }[a.tile.level] ?? 2) - ({ late: 0, due: 1 }[b.tile.level] ?? 2)).slice(0, 6);
   const allEmpty = rf.every((x) => !x.batch && !x.sowsIn.length && !x.litters.length);
-  const banners = bannerItems(snap.ledger.region || "NI", ["pigs"]);
+  const banners = homeBanners(snap.ledger.region || "NI", ["pigs"], snap.today);
   const node = el(html`<div>
     <div data-title>${largeTitle(weekLabel(snap.today), contextLine(snap))}</div>
     ${snap.s.contract.on ? html`<p class="pg-line">Contract finishing${snap.s.contract.integrator ? ` for ${snap.s.contract.integrator}` : ""} · paid ${snap.s.contract.basis}</p>` : ""}
@@ -186,17 +208,21 @@ async function paintSmall(body, snap) {
     if (c.dates && ["served", "inpig", "farrowing"].includes(c.status) && c.dates.due >= addDays(snap.today, -3)) next.push({ d: c.dates.due, t: `${sow.name || sow.sowNo} due to farrow` });
     if (c.status === "suckling") next.push({ d: addDays(c.last.farrowedAt.slice(0, 10), snap.s.lactation), t: `Litter of ${sow.name || sow.sowNo} wean` });
   }
-  for (const t of snap.data.tasks.filter((x) => x.pig?.kind === "ship" && !x.done)) next.push({ d: t.due, t: `${t.pig.n} pigs to the abattoir` });
+  for (const t of snap.data.tasks.filter((x) => x.pig?.kind === "ship" && !x.done)) next.push({ d: t.due, t: `${pl(t.pig.n, "pig", "pigs")} to the abattoir` });
   next.sort((a, b) => a.d.localeCompare(b.d));
   const money = canRead(snap.role, "finance");
   const yr = snap.today.slice(0, 4); const fin = (snap.data.finance || []).filter((f) => f.date?.startsWith(yr));
-  const mf = moneyFigures(fin); const pigsNow = growing || 1;
-  const costs = (snap.data.finance || []).filter((f) => f.kind === "expense" && f.date >= addDays(snap.today, -183)).reduce((t, f) => t + (+f.amount || 0), 0);
+  const mf = moneyFigures(fin);
+  const since = addDays(snap.today, -183);
+  const costs = (snap.data.finance || []).filter((f) => f.kind === "expense" && f.date >= since).reduce((t, f) => t + (+f.amount || 0), 0);
+  // ÷ pigs sold or finished in the same 6 months, not every pig on the farm (B #24)
+  const pigsOut = (snap.data.moves || []).filter((m) => !m.deleted && m.direction === "off" && m.date >= since).reduce((t, m) => t + (+m.n || 0), 0);
+  const perPig = costPerPigSold(costs, pigsOut);
   const node = el(html`<div>
     ${largeTitle("Pigs", `${plural(sows.length, "sow")} · ${plural(boars.length, "boar")} · ${n0(growing)} growing`)}
     <div class="section pg-next">${groupLabel("Next")}${next.length ? html`<div class="list">${next.slice(0, 3).map((x) => html`<div class="row no-lead"><span class="main"><span class="primary">${x.t}</span></span><span class="when">${dm(x.d)}</span></div>`)}</div>` : okCard("Nothing coming up. Record a service or a litter to see dates here.")}</div>
     ${money ? html`<div class="section"><div class="list">
-      <div class="row no-lead pg-kv"><span class="main"><span class="primary">Cost per pig so far</span><span class="secondary">feed bags and other costs, last 6 months ÷ pigs</span></span><span class="v">${pounds(costs / pigsNow)}</span></div>
+      <div class="row no-lead pg-kv"><span class="main"><span class="primary">Cost per pig sold</span><span class="secondary">${perPig != null ? `feed and other costs, last 6 months ÷ ${pl(pigsOut, "pig", "pigs")} sold` : `${pounds(costs)} spent in 6 months · no pigs sold yet`}</span></span><span class="v">${perPig != null ? pounds(perPig) : "—"}</span></div>
       <a class="row no-lead pg-kv" href="${L("sales")}"><span class="main"><span class="primary">Sold this year</span></span><span class="v">${pounds(mf.totalIn)}</span><span class="chev">${raw(icon("chevron"))}</span></a></div></div>` : ""}
     <div class="section" data-tasks></div>
   </div>`);

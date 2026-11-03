@@ -3,6 +3,7 @@
 // dusk time, birds per hectare against 2,500 and the range-distance check; housing periods with
 // their reason; and (#/l/<id>/range/biosecurity) the daily biosecurity checklist while an order
 // or AIPZ is in force.
+import { sourceText } from "../../../ui/format.js";
 import { html, raw } from "../../../core/html.js";
 import { icon } from "../../../ui/icons.js";
 import { canWrite } from "../../../core/policy.js";
@@ -25,7 +26,7 @@ export default async function range(ctx) {
 function aiCard(snap) {
   const ai = aiState(snap.c);
   if (ai.on) return html`<div class="alert ${ai.near ? "late" : "info"}" role="status"><span class="a-icon">${raw(icon(ai.near ? "alert" : "info"))}</span><div style="flex:1;min-width:0"><div class="a-title">Housing order in force since ${d2(ai.from)}</div><div class="a-body">Day <b>${ai.daysHoused}</b> housed · ${freeRangeText(snap.c.region)}. Days housed is shown for information.</div></div></div>`;
-  return html`<div class="alert info" role="status"><span class="a-icon">${raw(icon("info"))}</span><div style="flex:1;min-width:0"><div class="a-title">No housing order in Northern Ireland</div><div class="a-body">${ai.content.liftedLine} If an order comes, ${freeRangeText(snap.c.region)}.</div><div class="a-body ly-src">Checked ${d2(ai.content.checkedOn)} · ${ai.content.source}</div></div></div>`;
+  return html`<div class="alert info" role="status"><span class="a-icon">${raw(icon("info"))}</span><div style="flex:1;min-width:0"><div class="a-title">No housing order in Northern Ireland</div><div class="a-body">${ai.content.liftedLine} If an order comes, ${freeRangeText(snap.c.region)}.</div><div class="a-body ly-src">${sourceText(ai.content.source, ai.content.checkedOn)}</div></div></div>`;
 }
 
 function paint(snap) {

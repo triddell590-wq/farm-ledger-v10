@@ -2,7 +2,8 @@
 // the linked records a farrowing, weaning, load or kill sheet creates stay consistent.
 // Money rule (01-platform §15): £ values live ONLY in `finance` (owner, manager, accountant);
 // feed deliveries, kill sheets and moves carry counts, weights and grades plus the finance id.
-import { addRecord, updateRecord, softDelete, setMeta } from "../../services/records.js";
+import { plural as pl } from "../../ui/format.js";
+import { addRecord, updateRecord, softDelete, setMeta, asAction } from "../../services/records.js";
 import { auth } from "../../core/auth.js";
 import { addDays, daysBetween, todayStr } from "./model/dates.js";
 import { canWrite } from "../../core/policy.js";
@@ -39,7 +40,7 @@ export function batchForService(snap, date) {
  * Served (design/13 §7.2). v: { sowId, date, time, inseminations:[{ time, boar, semenId, semenBatch, kind }] }.
  * A sow re-served after a return closes her earlier services (marked returned).
  */
-export function recordService(snap, v) {
+function recordService_(snap, v) {
   const sow = snap.ix.byId.get(v.sowId); const cy = cycleOf(snap.s, snap.ix, sow, v.date);
   if (cy.first && daysBetween(cy.first.date, v.date) > 10) for (const sv of cy.services) updateRecord(snap.lid, "services", sv, { returned: true, returnedOn: v.date }, { history: false });
   const fresh = !cy.first || daysBetween(cy.first.date, v.date) > 10;
@@ -103,7 +104,7 @@ export const addPigletDeath = (snap, litter, d) => updateRecord(snap.lid, "litte
  * Weaning (design/13 §7.3). v: { litters:[{ id, n, kg }], toRoomId, date, reason?, cleanedHousing? }.
  * Litters close, sows leave the crate, the farrowing batch becomes the growing batch in the weaner room.
  */
-export function weanLitters(snap, v) {
+function weanLitters_(snap, v) {
   const ls = v.litters.map((x) => ({ ...x, l: snap.data.litters.find((l) => l.id === x.id) })).filter((x) => x.l);
   for (const x of ls) {
     updateRecord(snap.lid, "litters", x.l, { weaned: clean({ date: v.date, n: +x.n, kg: num(x.kg), ageDays: daysBetween(x.l.farrowedAt.slice(0, 10), v.date), reason: v.reason, cleanedHousing: v.cleanedHousing || undefined }) });
@@ -132,7 +133,7 @@ export function weanLitters(snap, v) {
  * Pigs in (design/13 §7.5). v: { date, n, category, fromCode, fromName, fromMarket, avgKg, mark, haulier, batchId?, contractRef, roomId, fillAnyway }
  * Writes the "on" movement and opens (or tops up) the batch.
  */
-export function pigsIn(snap, v) {
+function pigsIn_(snap, v) {
   let batchId = v.batchId;
   if (!batchId) batchId = addRecord(snap.lid, "batches", clean({ no: snap.c.nextNo, numberIn: +v.n, avgKgIn: num(v.avgKg), inDate: v.date, roomId: v.roomId, stage: v.category === "weaners" ? "weaner" : v.category === "growers" ? "grower" : "finisher", source: "bought in", contractRef: v.contractRef, contract: snap.s.contract.on ? { integrator: snap.s.contract.integrator, basis: snap.s.contract.basis } : undefined }));
   else { const b = snap.ix.batches.get(batchId); const nIn = (+b.numberIn || 0) + +v.n; updateRecord(snap.lid, "batches", b, { numberIn: nIn, avgKgIn: v.avgKg && b.avgKgIn ? +(((b.avgKgIn * b.numberIn) + v.avgKg * v.n) / nIn).toFixed(2) : b.avgKgIn || num(v.avgKg) }); }
@@ -145,9 +146,9 @@ export function pigsIn(snap, v) {
  * Pigs out / ship (design/13 §7.6). v: { batchId, roomId, n, category, date, time, toSlaughter, toCode, toName,
  * markType, mark, haulier, haulierAuth, vehicle, fci{withdrawals, disease}, feedWithdrawnAt, liveKg?, pens[] }.
  */
-export function pigsOut(snap, v) {
+function pigsOut_(snap, v) {
   const moveId = addRecord(snap.lid, "moves", clean({ direction: "off", date: v.date, time: v.time, n: +v.n, category: v.category, toSlaughter: !!v.toSlaughter, toCode: v.toCode, toName: v.toName, markType: v.markType, mark: v.mark, haulier: v.haulier, haulierAuth: v.haulierAuth, vehicle: v.vehicle, fci: v.toSlaughter ? v.fci : undefined, feedWithdrawnAt: v.feedWithdrawnAt, liveKg: num(v.liveKg), pens: v.pens, batchId: v.batchId, roomId: v.roomId, byName: me() }));
-  if (v.toSlaughter) addRecord(snap.lid, "tasks", { title: `Add the kill sheet for ${batchName(snap.ix.batches.get(v.batchId))} (${v.n} pigs, ${v.date})`, due: addDays(v.date, 3), note: "", money: false, done: false, pig: { kind: "killsheet", batchId: v.batchId, moveId } });
+  if (v.toSlaughter) addRecord(snap.lid, "tasks", { title: `Add the kill sheet for ${batchName(snap.ix.batches.get(v.batchId))} (${pl(v.n, "pig", "pigs")}, ${v.date})`, due: addDays(v.date, 3), note: "", money: false, done: false, pig: { kind: "killsheet", batchId: v.batchId, moveId } });
   const t = snap.data.tasks.find((x) => x.pig?.kind === "ship" && !x.done && x.pig.batchId === v.batchId && x.due <= addDays(v.date, 1));
   if (t) updateRecord(snap.lid, "tasks", t, { done: true, doneAt: new Date(), doneBy: auth.user?.uid || null, doneByName: me() }, { history: false });
   return moveId;
@@ -166,7 +167,7 @@ export function planLoad(snap, v) {
  * Move a batch to another room (e.g. weaner → finisher). The finished phase is kept in `phases`
  * with its figures; the new phase starts with the pigs on farm at the weighed (or estimated) weight.
  */
-export function moveBatch(snap, batch, v) {
+function moveBatch_(snap, batch, v) {
   const f = snap.c.bf.get(batch.id); const from = snap.ix.rooms.get(batch.roomId); const to = snap.ix.rooms.get(v.toRoomId);
   const stage = to?.kind === "farrowing" || to?.kind === "service" || to?.kind === "dry" ? batch.stage : to?.kind || batch.stage;
   const phase = clean({ stage: batch.stage, roomId: batch.roomId, inDate: batch.inDate, numberIn: batch.numberIn, avgKgIn: batch.avgKgIn, outDate: v.date, numberOut: f?.onFarm, avgKgOut: num(v.avgKg) ?? (f ? +f.est.toFixed(1) : undefined), fcr: f?.fcr ? +f.fcr.toFixed(2) : undefined, dlwg: f ? Math.round(f.dlwg) : undefined, died: f?.died, sampleWeighs: batch.sampleWeighs });
@@ -175,13 +176,13 @@ export function moveBatch(snap, batch, v) {
   if (to) updateRecord(snap.lid, "rooms", to, clean({ batchId: batch.id, wash: { stage: "ready", at: {} }, washException: v.fillAnyway ? { date: v.date, by: me(), stage: to.wash?.stage } : undefined }));
 }
 export function weighSample(snap, batch, v) { return updateRecord(snap.lid, "batches", batch, { sampleWeighs: [...(batch.sampleWeighs || []), { date: v.date, n: +v.n, avgKg: +v.avgKg, pen: v.pen || null, by: me() }] }); }
-export function closeBatch(snap, batch, summary) {
+function closeBatch_(snap, batch, summary) {
   updateRecord(snap.lid, "batches", batch, { closed: { date: snap.today, ...summary }, stage: "closed" });
   const room = snap.ix.rooms.get(batch.roomId);
   if (room && room.batchId === batch.id) updateRecord(snap.lid, "rooms", room, { batchId: null, wash: { stage: "emptied", at: { emptied: `${snap.today}T${new Date().toTimeString().slice(0, 5)}` }, by: { emptied: me() } } });
 }
 /** Kill sheet (design/13 §6.4): non-money facts in killSheets; £ in one finance record. */
-export function saveKillSheet(snap, v, results) {
+function saveKillSheet_(snap, v, results) {
   const b = snap.ix.batches.get(v.batchId);
   const id = addRecord(snap.lid, "killSheets", clean({ date: v.date, abattoir: v.abattoir, batchId: v.batchId, pigs: (v.pigs || []).map((p) => clean({ slap: p.slap, dwKg: num(p.dwKg), p2: num(p.p2), lean: num(p.lean), grade: p.grade })), doa: +v.doa || 0, condemned: +v.condemned || 0, tailDamage: +v.tailDamage || 0, totals: { pigs: results.pigs, dwKg: +results.dwKg.toFixed(1), inSpec: results.inSpec, avgDw: results.avgDw }, moveId: v.moveId, byName: me() }));
   let financeId = null;
@@ -199,7 +200,7 @@ export function saveKillSheet(snap, v, results) {
  * Death (design/13 §7.4). v: { roomId, pen, crate, litterId, sowId, n, stage, cause, estKg, euthanasia{method,checked}, collection, photo, date }.
  * Suckling deaths in a crate are kept on the litter (so pre-weaning mortality counts them once).
  */
-export function recordDeath(snap, v) {
+function recordDeath_(snap, v) {
   if (v.stage === "Suckling" && v.litterId) { const l = snap.data.litters.find((x) => x.id === v.litterId); if (l) return addPigletDeath(snap, l, { date: v.date, n: v.n, cause: v.cause }); }
   const room = snap.ix.rooms.get(v.roomId);
   const id = addRecord(snap.lid, "deaths", clean({ date: v.date || snap.today, time: v.time, roomId: v.roomId, where: clean({ roomId: v.roomId, pen: num(v.pen), crate: num(v.crate) }), batchId: v.batchId || room?.batchId || undefined, sowId: v.sowId, n: +v.n || 1, stage: v.stage, cause: v.cause, estKg: num(v.estKg), euthanasia: v.cause === "Put down" ? v.euthanasia : undefined, collection: v.collection, photoNote: v.photo, byName: me() }));
@@ -207,7 +208,7 @@ export function recordDeath(snap, v) {
   return id;
 }
 /** Room check (design/13 §5.3). Tail-bite pens also write the injurious behaviour record. */
-export function saveRoomCheck(snap, roomId, v) {
+function saveRoomCheck_(snap, roomId, v) {
   const room = snap.ix.rooms.get(roomId);
   const id = addRecord(snap.lid, "roomChecks", clean({ roomId, date: v.date || snap.today, time: v.time, by: me(), pens: v.pens, enrichmentOk: !!v.enrichmentOk, waterOk: !!v.waterOk, feedersOk: !!v.feedersOk, batchId: room?.batchId || undefined, note: v.note }));
   for (const p of v.pens.filter((x) => (x.status || []).includes("Tail bite"))) addRecord(snap.lid, "tailBites", clean({ roomId, pen: p.no, date: v.date || snap.today, pigs: +p.pigs || 1, severity: p.severity || "Ear/tail marks", actions: p.action || [], batchId: room?.batchId || undefined, checkId: id, byName: me() }));
@@ -226,7 +227,7 @@ export function saveTreatment(snap, v) {
 
 // ---- feed ----
 /** Feed delivery (design/13 §7.8): bin stock + batch feed; £ in one finance record. */
-export function saveFeedDelivery(snap, v) {
+function saveFeedDelivery_(snap, v) {
   const kg = Math.round((+v.tonnes || 0) * 1000);
   const id = addRecord(snap.lid, "feedDeliveries", clean({ date: v.date, supplier: v.supplier, ration: v.ration, kg, binId: v.binId, batchIds: v.batchIds || [], docketNo: v.docketNo, sampleKept: !!v.sampleKept, sampleKeptUntil: v.sampleKept ? addDays(v.date, 183) : undefined, byName: me() }));
   if (+v.pricePerT && canWrite(snap.role, "finance")) {
@@ -268,12 +269,12 @@ export const saveSettings = (snap, patch) => setMeta(snap.lid, "settings", { ...
 export const signChecklist = (snap, id, done, note = "") => setMeta(snap.lid, "rtChecklist", { ...(snap.meta.rtChecklist || {}), [id]: done ? { done: true, date: snap.today, by: me(), note } : null });
 
 // ---- small herd + money ----
-export function smallSale(snap, v) {
+function smallSale_(snap, v) {
   const moveId = addRecord(snap.lid, "moves", clean({ direction: "off", date: v.date, n: +v.n, category: v.category || "finishers", toSlaughter: v.toSlaughter !== false, toName: v.toName, toCode: v.toCode, fci: v.toSlaughter !== false ? { withdrawals: true } : undefined, liveKg: num(v.liveKg), batchId: v.batchId, byName: me() }));
-  if (+v.amount && canWrite(snap.role, "finance")) addRecord(snap.lid, "finance", clean({ kind: "revenue", category: "Livestock Sales", amount: +v.amount, date: v.date, note: `${v.n} pigs sold · ${v.toName || ""}`.trim(), source: v.category === "weaners" ? "weanerSale" : "pigSale", pigs: +v.n, weightBand: v.weightBand, moveId }));
+  if (+v.amount && canWrite(snap.role, "finance")) addRecord(snap.lid, "finance", clean({ kind: "revenue", category: "Livestock Sales", amount: +v.amount, date: v.date, note: `${pl(v.n, "pig", "pigs")} sold · ${v.toName || ""}`.trim(), source: v.category === "weaners" ? "weanerSale" : "pigSale", pigs: +v.n, weightBand: v.weightBand, moveId }));
   return moveId;
 }
-export function feedBought(snap, v) {
+function feedBought_(snap, v) {
   const id = addRecord(snap.lid, "feedDeliveries", clean({ date: v.date, supplier: v.supplier, ration: v.ration, kg: Math.round((+v.bags || 0) * (+v.bagKg || 25)), bags: num(v.bags), byName: me() }));
   if (+v.amount && canWrite(snap.role, "finance")) addRecord(snap.lid, "finance", clean({ kind: "expense", category: "Feed", amount: +v.amount, date: v.date, note: `${v.bags} bags ${v.ration || "feed"}`, feedDeliveryId: id, source: "feedDelivery" }));
   return id;
@@ -291,3 +292,16 @@ export function tickGenerated(lid, snap, t, done) {
 }
 export const undoAdd = (lid, coll, id) => softDelete(lid, coll, id);
 export { sowLabel, aliveNow };
+// Each of these is one action: the records it adds share an actionId (services/linked.js).
+export const recordService = asAction(recordService_);
+export const weanLitters = asAction(weanLitters_);
+export const pigsIn = asAction(pigsIn_);
+export const pigsOut = asAction(pigsOut_);
+export const saveKillSheet = asAction(saveKillSheet_);
+export const recordDeath = asAction(recordDeath_);
+export const saveRoomCheck = asAction(saveRoomCheck_);
+export const saveFeedDelivery = asAction(saveFeedDelivery_);
+export const smallSale = asAction(smallSale_);
+export const feedBought = asAction(feedBought_);
+export const moveBatch = asAction(moveBatch_);
+export const closeBatch = asAction(closeBatch_);

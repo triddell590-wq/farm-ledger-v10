@@ -65,7 +65,7 @@ export default async function settings(ctx) {
     </form>
     ${can ? html`<button type="button" class="btn" style="margin-top:16px" data-save>Save settings</button>` : ""}
     ${live.length ? html`<p class="form-label" style="margin-top:24px">Breed standard per flock</p><div class="form-group" data-breeds>${live.map(({ h, f }) => chips(`breed:${f.id}`, h.name, BREED_STANDARDS.map((b) => [b.id, b.breed]), f.breedStdId))}</div>` : ""}
-    ${money ? html`<p class="form-label" id="prices" style="margin-top:24px">Egg prices (money roles only)</p>
+    ${money ? html`<p class="form-label" id="prices" style="margin-top:24px">Egg prices (hidden from workers)</p>
       <form novalidate data-prices ${raw(canMoney ? "" : "inert")}><div class="form-group">${STATEMENT_GRADES.map((g) => F(`p_${g}`, `${g} — pence a dozen`, s.prices?.[g] ?? ""))}
         ${F("deductions", "Weekly deductions (£, levy and transport)", s.deductions ?? "")}${F("refPrice", "Reference price (p a dozen)", s.refPrice ?? "", { help: `${REFERENCE_PRICE.label}: ${REFERENCE_PRICE.pPerDozen}p — entered by you, never fetched` })}${F("feedPerTonne", "Feed price (£ a tonne)", s.feedPerTonne ?? "")}</div></form>
       ${canMoney ? html`<button type="button" class="btn secondary" style="margin-top:12px" data-saveprices>Save egg prices</button>` : ""}` : ""}

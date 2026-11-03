@@ -12,6 +12,7 @@ import { beefSettings } from "./model/rules.js";
 import { indexHerd } from "./model/animals.js";
 import { priceBook } from "./model/prices.js";
 import { silageStock, headByClass, fodderBudget } from "./model/feed.js";
+import { loadFarmProducts, watchFarmProducts, mergeStores } from "../../services/med-store.js";
 
 export const BEEF_COLLECTIONS = ["animals", "calvings", "services", "scans", "heats", "weighings", "medicines", "movements", "sales", "purchases", "deaths", "tbTests", "vetOps", "groups", "feedGroups", "feedAdjust", "tasks", "finance", "medProducts", "notes"];
 export const BEEF_META = ["keeper", "fqa", "silage", "settings", "places", "tbDay", "calfChecks"];
@@ -27,7 +28,7 @@ export function buildSnap(ledger, data, meta, extra = {}) {
   const prices = priceBook(data.finance); const mk = prices.market || {};
   s.price = { perKgDead: mk.perKgDead ?? null, enteredOn: mk.enteredOn ?? null }; s.meal = { pricePerTonne: mk.pricePerTonne ?? null };
   const ix = indexHerd(data);
-  const store = [...(extra.farmStore || []), ...data.medProducts.map((p) => ({ ...p, name: p.name, wdMeat: p.wdMeat, local: true }))];
+  const store = mergeStores(extra.farmStore || [], data.medProducts); // one store (review A #9): the farm's product wins on the same name
   const doneKeys = new Set(data.tasks.filter((t) => t.sourceRef && t.done).map((t) => t.sourceRef));
   const stock = silageStock(meta.silage, { feedGroups: data.feedGroups, adjust: data.feedAdjust, data, today });
   const budget = stock.fullT ? fodderBudget({ leftT: stock.leftT, heads: headByClass(data, ix, today), rates: s.fodderRates, today, turnout: meta.silage?.turnout || null }) : null;
@@ -44,7 +45,7 @@ export async function loadBeef(ledger) {
   await Promise.all(BEEF_COLLECTIONS.map(async (k) => { data[k] = readable(ledger, k) ? await listRecords(ledger.id, k).catch(() => []) : []; }));
   if (readable(ledger, "meta")) await Promise.all(BEEF_META.map(async (k) => { meta[k] = await getMeta(ledger.id, k).catch(() => null); }));
   const space = farmSpace(ledger); let farmStore = [], contacts = [];
-  if (space && readable(space, "medProducts")) { farmStore = await listRecords(space.id, "medProducts").catch(() => []); contacts = await listRecords(space.id, "contacts").catch(() => []); }
+  if (space && readable(space, "medProducts")) { farmStore = await loadFarmProducts(space, ledger); contacts = await listRecords(space.id, "contacts").catch(() => []); }
   return buildSnap(ledger, data, meta, { farmStore, contacts });
 }
 
@@ -58,7 +59,7 @@ export function watchBeef(ledger, cb) {
   if (readable(ledger, "meta")) for (const k of BEEF_META) subs.push(watchMeta(ledger.id, k, (d) => { meta[k] = d; fire(); }, () => {}));
   const space = farmSpace(ledger);
   if (space && readable(space, "medProducts")) {
-    subs.push(watchRecords(space.id, "medProducts", {}, (l) => { farmStore = l; fire(); }, () => {}));
+    subs.push(watchFarmProducts(space, ledger, (l) => { farmStore = l; fire(); }));
     subs.push(watchRecords(space.id, "contacts", {}, (l) => { contacts = l; fire(); }, () => {}));
   }
   if (!want.length) { ready = true; fire(); }

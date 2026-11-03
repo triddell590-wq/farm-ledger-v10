@@ -1,6 +1,6 @@
 // One animal's life, newest first (design/10 §4.2 Timeline). Pure: built from the snapshot.
 import { normTag, tagParts } from "./tags.js";
-import { daysBetween } from "../../../core/dates.js";
+import { daysBetween, shortDate } from "../../../core/dates.js";
 
 const EASE = { 1: "easy", 2: "some help", 3: "hard pull", 4: "vet", 5: "caesarean" };
 
@@ -17,7 +17,7 @@ export function timelineFor(data, ix, a) {
     if (m.notUsed) continue;
     if (!(m.animalIds || []).includes(a.id) && !(m.animalTags || []).some((t) => normTag(t) === tagK)) continue;
     const dose = (m.doses || [])[0]?.dose;
-    add({ date: m.date, title: `Treated: ${m.productName || "medicine"}${dose ? ` ${dose} ${m.quantityUnit || "ml"}` : ""}${m.reason ? ` (${m.reason})` : ""}`, sub: m.withdrawalEndDateMeat ? `Withdrawal to ${m.withdrawalEndDateMeat}` : "", coll: "medicines", id: m.id, by: m });
+    add({ date: m.date, title: `Treated: ${m.productName || "medicine"}${dose ? ` ${dose} ${m.quantityUnit || "ml"}` : ""}${m.reason ? ` (${m.reason})` : ""}`, sub: m.withdrawalEndDateMeat ? `Withdrawal to ${shortDate(m.withdrawalEndDateMeat)}` : "", coll: "medicines", id: m.id, by: m });
   }
   for (const mv of data.movements) {
     if (!(mv.animalIds || []).includes(a.id) || mv.death) continue;
@@ -30,7 +30,7 @@ export function timelineFor(data, ix, a) {
   }
   for (const s of data.services) {
     if (!(s.femaleIds || []).includes(a.id)) continue;
-    add({ date: s.date || s.bullIn, title: s.kind === "AI" ? `Served by AI${s.sireText ? `: ${s.sireText}` : ""}` : `Bull in${s.sireText ? `: ${s.sireText}` : ""}${s.bullOut ? ` (out ${s.bullOut})` : ""}`, coll: "services", id: s.id, by: s });
+    add({ date: s.date || s.bullIn, title: s.kind === "AI" ? `Served by AI${s.sireText ? `: ${s.sireText}` : ""}` : `Bull in${s.sireText ? `: ${s.sireText}` : ""}${s.bullOut ? ` (out ${shortDate(s.bullOut)})` : ""}`, coll: "services", id: s.id, by: s });
   }
   for (const s of data.scans) if (s.femaleId === a.id) add({ date: s.date, title: `Scanned: ${s.result === "empty" ? "empty" : s.result === "twins" ? "twins" : "in calf"}${+s.foetalAgeDays ? ` (${s.foetalAgeDays} days)` : ""}`, coll: "scans", id: s.id, by: s });
   for (const h of data.heats || []) if (h.femaleId === a.id) add({ date: h.date, title: "Seen bulling", coll: "heats", id: h.id, by: h });

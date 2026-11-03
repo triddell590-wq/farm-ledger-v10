@@ -1,14 +1,14 @@
 // Role display names and help text (design/01 §9.1). Keys match core/policy.js.
 export const ROLE_DISPLAY = { owner: "Owner", manager: "Manager", worker: "Worker", viewer: "Vet / Adviser", accountant: "Accountant" };
 export const ROLE_SHORT_HELP = {
-  manager: "Everything except delete the ledger.",
+  manager: "Everything except delete it.",
   worker: "Add records. Can't see money.",
   viewer: "Look, don't change. No money.",
   accountant: "Money only.",
 };
 export const ROLE_LONG = {
-  owner: "Everything, including delete the ledger and hand it over.",
-  manager: "Everything except delete the ledger or change its type; can invite Workers, Vet / Advisers and Accountants.",
+  owner: "Everything, including delete it and hand it over.",
+  manager: "Everything except delete it; can invite Workers, Vet / Advisers and Accountants.",
   worker: "Add and edit animal, medicine, feed and task records. Can't see money. Can't delete (only remove, which keeps history).",
   viewer: "Read only. Sees animals, medicines, health records, inspection checklists and reports. Can't see money.",
   accountant: "Money only: in/out, invoices, VAT and tax-year reports. Can't see animals or medicines.",

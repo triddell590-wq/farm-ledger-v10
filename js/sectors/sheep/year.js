@@ -1,5 +1,6 @@
 // Sheep → Sheep year (design/11 §5): the five stage boards in full, the lambing book with the
 // pens board, and the funnel.
+import { plural as pl } from "../../ui/format.js";
 import { html, raw } from "../../core/html.js";
 import { el } from "../../ui/dom.js";
 import { icon } from "../../ui/icons.js";
@@ -53,7 +54,7 @@ function lambingBook(snap) {
       <div class="field search-field card" style="display:flex;align-items:center;gap:8px;padding:0 14px;margin-bottom:8px">${raw(icon("search"))}<input type="search" placeholder="Search by ewe tag" aria-label="Search lambings by ewe tag" data-bq style="flex:1;border:0;background:transparent;font:inherit;min-height:48px;color:var(--ink);outline:none"></div>
       ${list.length ? html`<div class="list" data-book>${list.slice(0, 200).map((l) => html`<div class="row no-lead" data-tag="${String(l.eweTag || "").replace(/\s+/g, "")}"><span class="main"><span class="primary">${lambDate(l) === today ? "Today" : short(lambDate(l))} ${l.datetime ? timeHM(l.datetime) : ""} · ${l.eweTag || l.mobName || "Ewe"}</span><span class="secondary">${l.aborted ? "Aborted" : line(l)}</span></span>${write && (daysBetween(lambDate(l), today) <= 7 || canHardDelete(snap.role, "lambings")) ? html`<button type="button" class="icon-btn" aria-label="Edit" data-edit="${l.id}">${raw(icon("edit"))}</button>` : ""}</div>`)}</div>`
         : emptyState({ sector: "sheep", title: "No lambings yet", body: "Open the lambing shed when the first ewe lambs. It works with no signal.", action: write ? "Open lambing shed" : null, actAttr: 'data-flow="shed"' })}
-      ${todays.length ? html`<p class="foot-note">Today: ${todays.length} ewes.</p>` : ""}</div>`;
+      ${todays.length ? html`<p class="foot-note">Today: ${pl(todays.length, "ewe", "ewes")}.</p>` : ""}</div>`;
 }
 function wireBook(node, snap) {
   const q = node.querySelector("[data-bq]"); if (q) q.oninput = () => { const s = q.value.replace(/\s+/g, "").toUpperCase(); node.querySelectorAll("[data-book] [data-tag]").forEach((r) => (r.hidden = !!s && !r.dataset.tag.toUpperCase().includes(s))); };

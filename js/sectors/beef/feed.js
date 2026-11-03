@@ -8,7 +8,7 @@ import { textField, stepperField, wireForm } from "../../ui/form.js";
 import { toast } from "../../ui/toast.js";
 import { canRead, canWrite, canWriteMeta } from "../../core/policy.js";
 import { addDays, shortDate } from "../../core/dates.js";
-import { listDate, num, moneyText } from "../../ui/format.js";
+import { listDate, num, moneyText, listDateY } from "../../ui/format.js";
 import { addRecord, updateRecord } from "../../services/records.js";
 import { backLink, largeTitle, groupLabel, emptyState } from "../../screens/common.js";
 import { liveSnap } from "./data.js";
@@ -36,7 +36,7 @@ function render(snap) {
   const canSil = canWriteMeta(snap.role, "silage"); const canFeed = canWrite(snap.role, "feedGroups");
   const node = el(html`<div>${backLink(`#/l/${lid}/today`, "Today")}${largeTitle("Feed & silage", `Winter ${winterStart(today).slice(0, 4)}/${String(Number(winterStart(today).slice(0, 4)) + 1).slice(2)}`)}
     ${bud ? html`<div class="card"><div class="card-head">Fodder budget</div><div class="list">
-        <div class="row no-lead kv-row"><span class="main"><span class="primary">Silage lasts until</span></span><span class="kv-v" style="font-size:22px">${bud.runOut ? listDate(bud.runOut).slice(4) + " " + bud.runOut.slice(0, 4) : "—"}</span></div>
+        <div class="row no-lead kv-row"><span class="main"><span class="primary">Silage lasts until</span></span><span class="kv-v" style="font-size:22px">${bud.runOut ? listDateY(bud.runOut).slice(4) : "—"}</span></div>
         <div class="row no-lead kv-row"><span class="main"><span class="primary">Turnout planned</span></span><button type="button" class="text-btn" data-turnout>${sil.turnout ? listDate(sil.turnout).slice(4) : "Add a date"}</button></div>
         ${bud.short != null ? html`<div class="row no-lead kv-row"><span class="main"><span class="primary">${bud.short > 0 ? "Short by" : "Spare"}</span></span><span class="kv-v ${bud.short > 0 ? "late" : "ok"}">${bud.short > 0 ? `${bud.short} days · ${num(bud.shortT)} t` : `${-bud.short} days`}</span></div>` : ""}
         <div class="row no-lead kv-row"><span class="main"><span class="primary">In stock</span><span class="secondary">${num(bud.leftT)} t fresh${pits[0]?.dm ? ` · ${num((bud.leftT * pits[0].dm) / 100)} t dry matter` : ""} · eating ${num(bud.perDay, 1)} t a day</span></span></div></div>

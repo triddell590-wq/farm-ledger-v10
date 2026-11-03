@@ -13,9 +13,9 @@ import { liveSnap } from "./data.js";
 import { setMeta } from "./actions.js";
 import { fqaScore, FQA_SECTIONS, FQA_STANDARD } from "./model/fqa.js";
 import { photoStrip } from "../../ui/photo-strip.js";
+import { readyScore, readyHero, readyLists, wireReady } from "../../ui/ready-check.js";
 
 const LINK = { vetops: "paperwork/vetops", medpurchases: "paperwork/medpurchases", medicine: "paperwork/medicine", disposal: "paperwork/disposal", tb: "paperwork/tb", money: "money", register: "paperwork/register" };
-const MARK = { ok: ["ok", "check", "Evidenced"], warn: ["due", "alert", "Check"], fail: ["late", "alert", "Gap"], todo: ["neutral", "clock", "Tick yourself"], na: ["neutral", "close", "Not applicable"] };
 
 export default async function fqaScreen(ctx) {
   const body = el(html`<div class="beef-page"></div>`);
@@ -24,18 +24,27 @@ export default async function fqaScreen(ctx) {
   return { el: body, title: "Inspection ready?", depth: 1, tab: "paperwork", destroy: stop };
 }
 
+const STATE = { ok: "ok", warn: "due", fail: "gap", todo: "open", na: "na" };
+/** The FQAS items as ready-check rows (review A #14): auto items score; the rest are a plain checklist. */
+export function fqaRows(snap, ticks) {
+  const sc = fqaScore(snap.c, ticks); const sec = Object.fromEntries(FQA_SECTIONS);
+  return sc.res.filter(({ it, r }) => !(it.optional && r.status === "todo" && it.type === "auto")).map(({ it, r }) => {
+    const t = ticks[it.id] || {};
+    if (it.type === "auto") return { id: it.id, text: it.t, sec: sec[it.s], auto: true, state: STATE[r.status], note: r.detail, link: r.link && LINK[r.link] ? `#/l/${snap.lid}/${LINK[r.link]}` : null, extra: r.manualToo || it.dated };
+    return { id: it.id, text: it.t + (it.optional ? " (if it applies)" : ""), sec: sec[it.s], auto: false, state: r.status === "na" ? "na" : r.status === "ok" ? "ok" : "open", done: r.status === "ok", note: t.done || t.date ? [r.detail || (t.date ? `Ticked ${t.date}` : ""), t.note].filter(Boolean).join(" · ") : r.status === "warn" ? r.detail : "", extra: true };
+  });
+}
+export const fqaHasData = (snap) => snap.data.animals.length > 0;
+
 function render(snap) {
   const ticks = snap.meta.fqa?.items || {};
-  const sc = fqaScore(snap.c, ticks); const can = canWriteMeta(snap.role, "fqa");
-  const node = el(html`<div>${backLink(`#/l/${snap.lid}/paperwork`, "Paperwork")}${largeTitle("Inspection ready?", `${sc.ok} of ${sc.total} in place`)}
-    <div class="num-tile hero"><span class="label">Score</span><span class="value">${sc.pct}%</span><span class="sub">${FQA_STANDARD.footer}</span><span class="source">${FQA_STANDARD.header}</span></div>
-    ${FQA_SECTIONS.map(([n, name]) => { const items = sc.res.filter(({ it }) => it.s === n); const done = items.filter(({ r }) => r.status === "ok" || r.status === "na").length;
-      return html`<div class="section">${groupLabel(`${n}. ${name}`, `${done}/${items.length}`)}<div class="list">${items.map(({ it, r }) => { const [lvl, ic, word] = MARK[r.status];
-        return html`<div class="row fqa-item" data-id="${it.id}"><span class="main"><span class="primary">${it.t}${it.type === "auto" ? html` <span class="auto-tag">auto</span>` : ""}${it.optional ? html` <span class="ink-3" style="font-weight:400">(if it applies)</span>` : ""}</span>${r.detail ? html`<span class="secondary">${r.detail}</span>` : ""}
-          <span class="row-actions">${r.link && LINK[r.link] ? html`<a class="text-btn" href="#/l/${snap.lid}/${LINK[r.link]}">Show me</a>` : ""}${can && (it.type !== "auto" || r.manualToo || it.dated || r.status === "todo") ? html`<button type="button" class="text-btn" data-tick>${ticks[it.id]?.done ? "Update" : "Tick"}</button>` : ""}</span></span>
-          <span class="pill ${lvl}">${raw(icon(ic))}${word}</span></div>`; })}</div></div>`; })}
+  const rows = fqaRows(snap, ticks); const sc = readyScore(rows, fqaHasData(snap)); const can = canWriteMeta(snap.role, "fqa");
+  const node = el(html`<div>${backLink(`#/l/${snap.lid}/paperwork`, "Paperwork")}${largeTitle("Inspection ready?", sc.hasData ? `${sc.ok} of ${sc.n} checked from your records · ${sc.selfDone} of ${sc.selfN} ticked` : "Add your cattle and the app starts checking")}
+    ${readyHero(sc, { footer: FQA_STANDARD.footer, source: FQA_STANDARD.header })}
+    ${readyLists(rows, { can, actions: (r) => (can && r.extra ? html`<button type="button" class="text-btn" data-tick>${r.auto ? "Tick" : "Note or photo"}</button>` : "") })}
   </div>`);
-  node.querySelectorAll("[data-tick]").forEach((b) => (b.onclick = () => tickSheet(snap, b.closest("[data-id]").dataset.id, ticks, b.closest("[data-id]").querySelector(".primary").textContent.replace(/\s+auto$/, "").trim())));
+  wireReady(node, (id, on) => { const t = ticks[id] || {}; const by = auth.user?.displayName || auth.user?.email || ""; setMeta(snap.lid, "fqa", { version: FQA_STANDARD.version, items: { ...ticks, [id]: on ? { ...t, done: true, na: false, date: snap.today, by } : { ...t, done: false, date: null } } }); toast(on ? "Ticked" : "Unticked"); });
+  node.querySelectorAll("[data-tick]").forEach((b) => (b.onclick = () => tickSheet(snap, b.closest("[data-id]").dataset.id, ticks, b.closest("[data-id]").querySelector(".primary").textContent.trim())));
   return node;
 }
 

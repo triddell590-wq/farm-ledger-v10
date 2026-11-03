@@ -9,6 +9,7 @@ import { liveScreen } from "./screen.js";
 import { short, toHtmlTable, printDoc, csvOf, num } from "./ui.js";
 import { registerLines, EVENT_NAMES, DESTS } from "./model/paperwork.js";
 import { regionRule } from "./model/region.js";
+import { registerView, PRINT_LABEL } from "../../ui/register-cards.js";
 
 const TITLES = { register: "Flock register", movements: "Movement documents", medicine: "Medicine use (mob doses)", deaths: "Deaths and fallen stock", vetops: "Vet operations", feed: "Feed records" };
 export function registerDoc(snap, doc) {
@@ -30,10 +31,10 @@ export default async function registers(ctx) {
   return liveScreen(ctx, { title: TITLES[doc], tab: "paperwork", paint: (snap) => {
     const d = registerDoc(snap, doc); const add = ADD[doc] && canWrite(snap.role, "events");
     return html`<div>${backLink(`#/l/${snap.lid}/paperwork`, "Paperwork")}${largeTitle(TITLES[doc], `${d.rows.length} line${d.rows.length === 1 ? "" : "s"}`)}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 16px"><button type="button" class="btn secondary" data-print>${raw(icon("print", { size: 20 }))} Print</button><button type="button" class="btn secondary" data-csv>${raw(icon("download", { size: 20 }))} Download CSV</button></div>
+      <div style="display:grid;grid-template-columns:1fr;gap:8px;margin:8px 0 16px"><button type="button" class="btn secondary" data-print>${raw(icon("print", { size: 20 }))} ${PRINT_LABEL}</button><button type="button" class="btn secondary" data-csv>${raw(icon("download", { size: 20 }))} Download CSV</button></div>
       ${add ? html`<button type="button" class="btn" data-add style="margin-bottom:16px">${ADD[doc][1]}</button>` : ""}
       ${doc === "movements" && snap.data.movements.length ? html`<div class="list" style="margin-bottom:16px">${snap.data.movements.filter((m) => ["on", "off"].includes(m.kind)).sort((a, b) => b.date.localeCompare(a.date)).map((m) => html`<a class="row no-lead" href="#/l/${snap.lid}/movement/${m.id}"><span class="main"><span class="primary">${m.kind === "off" ? "Off" : "On"}: ${num(m.count)} · ${m.otherName || m.otherFlock || ""}</span><span class="secondary">${short(m.date)}${m.docSerial ? " · " + m.docSerial : ""} · ${m.notifiedOn ? "notified" : "not notified yet"}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>`)}</div>` : ""}
-      ${d.rows.length ? html`<div class="table-scroll"><div class="print-view">${raw(toHtmlTable(d))}</div></div>` : emptyState({ sector: "sheep", title: "Nothing recorded yet", body: "Lines appear here as you record the work — no extra typing." })}</div>`;
+      ${d.rows.length ? html`${registerView(d, toHtmlTable(d))}` : emptyState({ sector: "sheep", title: "Nothing recorded yet", body: "Lines appear here as you record the work — no extra typing." })}</div>`;
   }, after: (node, snap) => {
     const d = registerDoc(snap, doc);
     node.querySelector("[data-print]").onclick = () => printDoc(d);

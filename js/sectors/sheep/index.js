@@ -53,6 +53,8 @@ const M = {
     return [
       money && { label: "Money per ewe", sub: "Gross margin, price per lamb, cost per kg", icon: "money", href: `#/l/${lid}/money` },
       ops && { label: "Tools", sub: "Lambing dates, meal planner, dose, draft value…", icon: "grid", href: `#/l/${lid}/tools` },
+      // like Dairy, Pigs, Layers and Broilers (review B #28)
+      ["owner", "manager"].includes(ctx.role) && { label: "Sheep settings", sub: "Rams in, raddle colours, draft weight, FEC threshold", icon: "settings", href: `#/l/${lid}/targets` },
     ].filter(Boolean);
   },
   async settingsRows(ctx) {
@@ -61,7 +63,7 @@ const M = {
   async headline(ledger) {
     if (!OPS.includes(ledger.role)) return { value: "", unit: "", line: "Sheep money is in Money" };
     const snap = await loadSheep(ledger);
-    return { value: num(snap.totals.ewes), unit: "ewes", line: `${STAGE_NAMES[snap.stage.stage]} · day ${snap.stage.day}` };
+    return { value: num(snap.totals.ewes), unit: "ewes", line: snap.stage.stage === "tupping" && !snap.cy.actual ? "Rams not in yet" : `${STAGE_NAMES[snap.stage.stage]} · day ${snap.stage.day}` };
   },
   async alerts(ledger, role) {
     if (!OPS.includes(role)) return [];

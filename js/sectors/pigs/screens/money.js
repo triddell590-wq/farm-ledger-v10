@@ -10,7 +10,7 @@ import { openMoneySheet } from "../../../ui/money-sheet.js";
 import { largeTitle, backLink, groupLabel } from "../../../screens/common.js";
 import { liveScreen } from "./live.js";
 import { pounds, n0, n1, d2 } from "../ui.js";
-import { moneyFigures, ownMoneyRow, AHDB_COP, SPP_NOTE } from "../model/money.js";
+import { moneyFigures, ownMoneyRow, AHDB_COP, SPP_NOTE, missingCostLines } from "../model/money.js";
 import { batchName } from "../model/batches.js";
 import { saveSettings } from "../actions.js";
 
@@ -22,6 +22,7 @@ export default async function money(ctx) {
     const lid = snap.lid; const p = periods.get(lid) || 365;
     const from = addDays(snap.today, -p); const rows = (snap.data.finance || []).filter((f) => f.date > from);
     const m = moneyFigures(rows, { contract: snap.s.contract.on ? snap.s.contract : null });
+    const missing = missingCostLines(rows); // B #23
     const contract = snap.s.contract.on && snap.s.contract.integratorOwns;
     const kv = (k, v, sub = "") => html`<div class="row no-lead pg-kv"><span class="main"><span class="primary">${k}</span>${sub ? html`<span class="secondary">${sub}</span>` : ""}</span><span class="v">${v}</span></div>`;
     const batches = snap.data.batches.filter((b) => b.numberIn != null).sort((a, b) => b.no - a.no).slice(0, 8);
@@ -32,7 +33,8 @@ export default async function money(ctx) {
         <div class="num-tile"><span class="label">Money in</span><span class="value">${pounds(contract ? m.contractIncome : m.totalIn)}</span><span class="delta">${contract ? "contract payments" : `${n0(m.pigsSold)} pigs on kill sheets`}</span></div>
         <div class="num-tile"><span class="label">Money out</span><span class="value">${pounds(contract ? m.ownCosts : m.totalOut)}</span><span class="delta">${contract ? "your own costs" : `feed ${pounds(m.feed)}`}</span></div></div>
       ${contract ? html`<div class="section"><div class="list">${kv("Contract income", pounds(m.contractIncome))}${kv("Your costs (power, labour, slurry…)", pounds(m.ownCosts))}${kv("Left over", pounds(m.contractIncome - m.ownCosts))}</div><p class="pg-note">Pigs and feed belong to the integrator, so feed cost and pig value aren't your money and aren't shown.</p></div>`
-        : html`<div class="section">${groupLabel("Per pig")}<div class="list">${kv("Price per pig", pounds(m.pricePerPig))}${kv("Price p/kg deadweight", m.pricePpk != null ? n1(m.pricePpk) + "p" : "—", spp ? `SPP you entered: ${spp}p · ${m.pricePpk != null ? (m.pricePpk - spp >= 0 ? "+" : "") + n1(m.pricePpk - spp) + "p" : ""}` : "")}${kv("Feed £ per pig", pounds(m.feedPerPig))}${kv("Margin over feed per pig", pounds(m.marginOverFeed))}${kv("Margin over variable costs per pig", pounds(m.marginPerPig))}${kv("Cost of production", m.copPpk != null ? n1(m.copPpk) + "p/kg dw" : "—", `AHDB GB ${AHDB_COP.ppk}p (${AHDB_COP.label})`)}</div>
+        : html`<div class="section">${groupLabel("Per pig")}<div class="list">${kv("Price per pig", pounds(m.pricePerPig))}${kv("Price p/kg deadweight", m.pricePpk != null ? n1(m.pricePpk) + "p" : "—", spp ? `SPP you entered: ${spp}p · ${m.pricePpk != null ? (m.pricePpk - spp >= 0 ? "+" : "") + n1(m.pricePpk - spp) + "p" : ""}` : "")}${kv("Feed £ per pig", pounds(m.feedPerPig))}${kv("Margin over feed per pig", pounds(m.marginOverFeed))}${kv("Margin over variable costs per pig", pounds(m.marginPerPig))}${kv("Cost of production — feed + recorded costs only", m.copPpk != null ? n1(m.copPpk) + "p/kg dw" : "—", missing.length ? `Not recorded: ${missing.join(", ").toLowerCase()}. AHDB's ${AHDB_COP.ppk}p is a full cost, so add these before comparing.` : `AHDB GB ${AHDB_COP.ppk}p (${AHDB_COP.label})`)}</div>
+          ${m.marginPerPig != null && Math.abs(m.marginPerPig - m.marginOverFeed) < 0.005 ? html`<p class="pg-note">Margin over variable costs equals margin over feed because no other variable costs (vet, bedding) are recorded in this period.</p>` : ""}
           ${canWriteMeta(snap.role, "settings") ? html`<div class="form-group" style="margin-top:8px"><div class="field"><label>Standard Pig Price (p/kg)</label><input inputmode="decimal" data-spp value="${spp || ""}" placeholder="from your processor or AHDB"></div></div>` : ""}<p class="pg-note">${SPP_NOTE}</p></div>
         <div class="section">${groupLabel("Per batch — feed cost per kg gain")}<div class="list">${batches.length ? batches.map((b) => { const f = snap.c.bf.get(b.id); return html`<a class="row no-lead pg-kv" href="#/l/${lid}/batch/${b.id}"><span class="main"><span class="primary">${batchName(b)}${b.closed ? " · closed" : ""}</span><span class="secondary">${f?.feedPounds ? `${pounds(f.feedPounds)} feed · ${pounds(f.feedPerPig, 2)}/pig` : "no feed £ yet"}</span></span><span class="v">${f?.costPerKgGain != null ? Math.round(f.costPerKgGain * 100) + "p/kg" : "—"}</span><span class="chev">${raw(icon("chevron"))}</span></a>`; }) : html`<div class="row no-lead"><span class="main"><span class="secondary">No batches yet.</span></span></div>`}</div></div>
         ${m.weanerBands.length ? html`<div class="section">${groupLabel("Weaner sales")}<div class="list">${m.weanerBands.map((b) => kv(b.band, `${n0(b.head)} · ${pounds(b.perHead)}/head`))}</div></div>` : ""}`}

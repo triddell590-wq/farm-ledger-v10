@@ -12,6 +12,8 @@ import { tbNext } from "../model/duties.js";
 import { evaluate, summary } from "../model/checklist.js";
 import { REGISTERS } from "../model/registers.js";
 import { RT_HEADER, bvdRuleState } from "../model/content.js";
+import { readyScore, readyLine } from "../../../ui/ready-check.js";
+import { rtRows, dairyHasData } from "./checklist.js";
 
 export const SHARED_REGS = ["register", "medicine", "movements", "deaths", "vetops", "tb", "calvings", "breeding"];
 export const DAIRY_REGS = ["withhold", "tank", "quality", "mastitis", "dryoffs", "machine", "scores", "foottrims", "training", "abfailures"];
@@ -38,11 +40,12 @@ export function herdStatus(snap) {
 
 function render(snap) {
   const { lid } = snap; const rows = evaluate(snap.c, snap.meta.rtChecklist?.items || {}); const sm = summary(rows);
+  const rd = readyScore(rtRows(snap, snap.meta.rtChecklist?.items || {}), dairyHasData(snap)); const rl = readyLine(rd); // A #14
   const hs = herdStatus(snap); const gaps = rows.filter((r) => r.key && r.status !== "ok").slice(0, 2).map((r) => r.text.toLowerCase());
   const reg = (k) => html`<a class="row" href="#/l/${lid}/paperwork/${k}"><span class="tile">${raw(icon("records"))}</span><span class="main"><span class="primary">${REGISTERS[k].title}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>`;
   return el(html`<div>${backLink(`#/l/${lid}/more`, "More")}${largeTitle("Paperwork", [snap.s.herdNo ? `Herd ${snap.s.herdNo}` : null, snap.s.registerMode === "nifais" ? "Register kept on NIFAIS Online" : "Register kept in this app"].filter(Boolean).join(" · "))}
-    <a class="num-tile hero" href="#/l/${lid}/rt"><span class="label">Red Tractor ready?</span><span class="value">${Math.round((sm.done / sm.n) * 100)}%</span>
-      <span class="sub">${sm.done} of ${sm.n} in place${sm.keyGaps ? ` · ${sm.keyGaps} Key standard${sm.keyGaps > 1 ? "s" : ""} open: ${gaps.join("; ")}${sm.keyGaps > 2 ? "…" : ""}` : " · no Key gaps"}</span><span class="source">${RT_HEADER}</span></a>
+    <a class="num-tile hero" href="#/l/${lid}/rt"><span class="label">Red Tractor ready?</span><span class="value">${rl.value}</span>
+      <span class="sub">${!rd.hasData ? rl.sub : `${rd.ok} of ${rd.n} checked from your records · your own checks ${rd.selfDone} of ${rd.selfN}`}${!rd.hasData ? "" : sm.keyGaps ? ` · ${sm.keyGaps} Key standard${sm.keyGaps > 1 ? "s" : ""} open: ${gaps.join("; ")}${sm.keyGaps > 2 ? "…" : ""}` : " · no Key gaps"}</span><span class="source">${RT_HEADER}</span></a>
     <div class="section">${groupLabel("Herd status")}<div class="list">
       <a class="row no-lead" href="#/l/${lid}/tb"><span class="main"><span class="primary">TB</span><span class="secondary ${hs.tbLevel ? hs.tbLevel + "-ink" : ""}">${hs.tb}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
       <a class="row no-lead" href="#/l/${lid}/dairy-settings"><span class="main"><span class="primary">BVD</span><span class="secondary ${hs.bvdLevel ? hs.bvdLevel + "-ink" : ""}">${hs.bvd}</span><span class="secondary">${hs.bvdRule}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>

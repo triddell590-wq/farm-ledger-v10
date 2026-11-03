@@ -26,6 +26,8 @@ export function ageLong(a, today) {
   const b = new Date(a.dob + "T12:00:00Z"), n = new Date(today + "T12:00:00Z");
   let m = (n.getUTCFullYear() - b.getUTCFullYear()) * 12 + n.getUTCMonth() - b.getUTCMonth(); let d = n.getUTCDate() - b.getUTCDate();
   if (d < 0) { m -= 1; d += new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), 0)).getUTCDate(); }
+  // over 2 years: years and months, as a farmer says it (review A #15)
+  if (m >= 24) { const y = Math.floor(m / 12), mo = m % 12; return `${y} yr${mo ? ` ${mo} mo` : ""}`; }
   return m >= 1 ? `${m} mo ${d} d` : `${d} d`;
 }
 

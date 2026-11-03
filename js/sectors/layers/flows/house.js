@@ -2,6 +2,7 @@
 // the space check, range, trap grid), place a flock (breed standard, hatch date, pullets in), edit
 // the flock's plan (depop week, turnaround, next flock — the Salmonella and packer dates move
 // with it), and depopulate (spent hens out).
+import { checkCapacity, checkDate } from "../../../core/sanity.js";
 import { html } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { textField, checkRow } from "../../../ui/form.js";
@@ -59,6 +60,7 @@ export function placeSheet(snap, { houseId = null } = {}) {
     <p class="ly-sumbar" data-sum></p>
   </form>`);
   const es = entrySheet({ title: "Place a flock", body, label: "Place flock", missing: (v) => (!+v.placed ? "Add the number of pullets" : !v.hatchDate ? "Add the hatch date" : null),
+    checks: (v) => { const h = hs.find((x) => x.id === (v.houseId || hid)); return [...checkCapacity(v.placed, h?.places, { what: "pullets", where: h?.name || "the house" }), ...checkDate(v.placedDate, snap.today, { future: true, what: "The placement date" })]; },
     save(v, sh) {
       const f0 = { hatchDate: v.hatchDate };
       const id = placeFlock(snap, { ...v, houseId: v.houseId || hid, ageAtPlacement: weekOfAge(f0, v.placedDate), plannedDepop: dateAtWeek(f0, +v.depopWk || 76), daeraNotified: v.daeraNotified ? snap.today : undefined });

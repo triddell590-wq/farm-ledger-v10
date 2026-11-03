@@ -24,6 +24,7 @@ export default async function settings(ctx) {
     <p class="form-label">The unit</p><div class="form-group">
       ${chips("system", "System", Object.entries(SYSTEMS), s.system)}
       ${checkRow("smallHerd", "Small herd mode", s.smallHerd, "Plain words, no week numbers or batches — same records underneath")}
+      ${checkRow("assured", "I'm Red Tractor assured", s.assured, "Shows the Red Tractor checklist, alarm tests, eMB-Pigs and the quarterly vet, vermin and water jobs")}
       ${chips("interval", "Batch interval", [["1", "Weekly"], ["2", "2-weekly"], ["3", "3-weekly"], ["4", "4-weekly"], ["5", "5-weekly"]], String(s.interval))}
       ${chips("weekStart", "Production week starts", [["1", "Mon"], ["2", "Tue"], ["3", "Wed"], ["4", "Thu"], ["5", "Fri"], ["6", "Sat"], ["7", "Sun"]], String(s.weekStart))}
       ${F("herdMark", "Herd mark / establishment number", s.herdMark, { type: "text" })}
@@ -56,7 +57,7 @@ export default async function settings(ctx) {
     const intake = String(v.intake || "").split(",").map((x) => x.split(":").map((y) => +y.trim())).filter(([a, b]) => a > 0 && b > 0).map(([upToKg, kgDay]) => ({ upToKg, kgDay }));
     const same = JSON.stringify(intake) === JSON.stringify(DEFAULT_INTAKE);
     const moveDays = Math.min(7, n("moveDays") ?? 5);
-    const patch = { system: v.system, smallHerd: !!v.smallHerd, interval: +v.interval || 3, weekStart: +v.weekStart || 1, herdMark: v.herdMark, farrowingPlaces: n("farrowingPlaces"), finisherPlaces: n("finisherPlaces"), mainsWater: !!v.mainsWater,
+    const patch = { system: v.system, smallHerd: !!v.smallHerd, assured: !!v.assured, interval: +v.interval || 3, weekStart: +v.weekStart || 1, herdMark: v.herdMark, farrowingPlaces: n("farrowingPlaces"), finisherPlaces: n("finisherPlaces"), mainsWater: !!v.mainsWater,
       gestation: n("gestation"), lactation: n("lactation"), moveDays, scanFrom: n("scanFrom"), scanTo: n("scanTo"), returnFrom: n("returnFrom"), returnTo: n("returnTo"),
       killOut: n("killOut"), bandMin: n("bandMin"), bandMax: n("bandMax"), targetLive: n("targetLive"), feedWithdrawH: Math.min(8, n("feedWithdrawH") ?? 8),
       targets, waterDrop: n("waterDrop"), checkBy: v.checkBy || "12:00", downtimeH: n("downtimeH"), leadDays: n("leadDays"),

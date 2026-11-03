@@ -7,13 +7,16 @@
 //     legal, kind, title, body, href, due }
 // Kinds a person can switch on/off: legal · withdrawal · sampling · tasks · invites.
 
+import { inferDue, sameObligation, bellCount, SOON_DAYS } from "./today-rules.js";
+import { daysBetween } from "../core/dates.js";
+
 export const KINDS = ["legal", "withdrawal", "sampling", "tasks", "invites"];
 export const KIND_LABELS = {
   legal: "Legal deadlines (late and due)",
   withdrawal: "Withdrawal periods ending",
   sampling: "Samples and tests due",
   tasks: "Jobs due today",
-  invites: "Someone joins your ledger",
+  invites: "Someone joins your farm",
 };
 export const DEFAULT_TZ = "Europe/London";
 export const DEFAULT_PREFS = Object.freeze({
@@ -99,33 +102,35 @@ export function forRole(item) {
 }
 
 const LEVEL = { late: 0, due: 1, info: 2 };
-/** Normalise a ledger's alerts() and tasks() output into items, money-safe for the role, sorted. */
+// A "due" thing more than SOON_DAYS away is coming up, not due: it folds into "for your
+// information" in the centre, never counts on the bell and never goes in a push.
+const levelFor = (level, due, today) => (level === "due" && due && today && daysBetween(today, due) > SOON_DAYS ? "info" : level);
+/** Normalise a ledger's alerts() and tasks() output into items, money-safe for the role, sorted.
+ *  One obligation = one item: a job that is the same thing as an alert (services/today-rules.js
+ *  sameObligation) is dropped and the alert takes the job's date. */
 export function itemsFrom(ledger, alerts = [], tasks = [], today) {
   const base = { ledgerId: ledger.id, ledgerName: ledger.name || "", ledgerType: ledger.type, role: ledger.role };
-  const out = [];
+  const raw = [];
+  const live = tasks.filter((t) => t && t.title && !t.done).map((t) => ({ ...t, key: String(t.key || t.id || `t:${t.title}`) }));
+  const used = new Set();
   for (const a of alerts) {
     if (!a || !a.title) continue;
     const key = String(a.key || `t:${a.title}`);
-    const it = { ...base, source: "alert", id: `${ledger.id}|a|${key}`, key, level: a.level || "info", legal: !!a.legal, title: String(a.title), body: String(a.body || ""), href: a.href || `#/l/${ledger.id}`, due: a.date || a.due || null };
-    it.kind = classify(it); out.push(forRole(it));
+    const twin = live.find((t) => !used.has(t.key) && sameObligation({ ...a, key }, t));
+    if (twin) used.add(twin.key);
+    const due = a.date || a.due || (twin && twin.due) || (a.level === "due" ? inferDue(`${a.title} ${a.body || ""}`, today) : null);
+    const lvl = twin && twin.due && today && twin.due < today && a.level !== "info" ? "late" : levelFor(a.level || "info", due, today);
+    raw.push({ ...base, source: "alert", id: `${ledger.id}|a|${key}`, key, level: lvl, legal: !!(a.legal || (twin && twin.legal)), title: String(a.title), body: String(a.body || ""), href: a.href || `#/l/${ledger.id}`, due: due || null });
   }
-  const seen = new Set(out.map((x) => x.key));
-  // A ledger often lists the same job as an alert and as a To-do row ("Register calf … on NIFAIS
-  // by 30 Oct" / "Register calf … on NIFAIS"): keep the alert only.
-  const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
-  const alertTitles = out.map((x) => norm(x.title));
-  const alertSpots = new Set(out.filter((x) => x.legal && x.href && x.href !== `#/l/${ledger.id}`).map((x) => `${x.href}|${x.level}`));
-  for (const t of tasks) {
-    if (!t || !t.title || t.done) continue;
-    const key = String(t.key || t.id || `t:${t.title}`);
-    if (seen.has(key)) continue; seen.add(key);
-    const nt = norm(t.title);
-    if (nt.length >= 12 && alertTitles.some((at) => at.startsWith(nt) || nt.startsWith(at))) continue;
-    const lvl = t.due && today && t.due < today ? "late" : "due";
-    if (t.legal && t.href && alertSpots.has(`${t.href}|${lvl}`)) continue; // same legal job, same screen
-    const it = { ...base, source: "task", id: `${ledger.id}|t|${key}`, key, level: lvl, legal: !!t.legal, title: String(t.title), body: String(t.sub || t.note || ""), href: t.href || `#/l/${ledger.id}`, due: t.due || null };
-    it.kind = classify(it); out.push(forRole(it));
+  const seen = new Set(raw.map((x) => x.key));
+  const titles = new Set(raw.map((x) => x.title.toLowerCase()));
+  for (const t of live) {
+    if (used.has(t.key) || seen.has(t.key) || titles.has(String(t.title).toLowerCase())) continue;
+    seen.add(t.key); titles.add(String(t.title).toLowerCase());
+    const lvl = t.due && today && t.due < today ? "late" : levelFor("due", t.due, today);
+    raw.push({ ...base, source: "task", id: `${ledger.id}|t|${t.key}`, key: t.key, level: lvl, legal: !!t.legal, title: String(t.title), body: String(t.sub || t.note || ""), href: t.href || `#/l/${ledger.id}`, due: t.due || null });
   }
+  const out = raw.map((it) => { it.kind = classify(it); return forRole(it); });
   return out.sort((a, b) => LEVEL[a.level] - LEVEL[b.level] || (b.legal - a.legal) || String(a.due || "").localeCompare(String(b.due || "")));
 }
 
@@ -138,8 +143,9 @@ export function filterForPrefs(items, prefs) {
 /** Legal items that are late (the ones that get an immediate push and a note on opening the app). */
 export const lateLegal = (items) => items.filter((i) => i.kind === "legal" && i.level === "late");
 
-/** Count shown on the bell and the app badge: late + due (not info). */
-export const badgeCount = (items) => items.filter((i) => i.level === "late" || i.level === "due").length;
+/** Count shown on the bell and the app badge: distinct legal items that are late or due within
+ *  3 days (withdrawal periods and plain jobs don't count; see services/today-rules.js). */
+export const badgeCount = (items, today) => bellCount(items, today);
 
 /** Group items by ledger, keeping the ledger order given. */
 export function groupByLedger(items, ledgers) {
@@ -174,7 +180,7 @@ export function lateMessage(list) {
 /** Message when someone accepts an invite you made. */
 export function inviteMessage(inv) {
   const who = inv.usedByName || "Someone"; const role = inv.role ? ` as ${inv.role}` : "";
-  return { title: `${who} joined ${inv.ledgerName || "your ledger"}`, body: `They accepted your invite${role}. You can change what they can do in People.`, url: inv.ledgerId ? `#/l/${inv.ledgerId}/more/people` : "#/farm/people", tag: `fl-invite-${shortHash(inv.code || who)}` };
+  return { title: `${who} joined ${inv.ledgerName || "your farm"}`, body: `They accepted your invite${role}. You can change what they can do in People.`, url: inv.ledgerId ? `#/l/${inv.ledgerId}/more/people` : "#/farm/people", tag: `fl-invite-${shortHash(inv.code || who)}` };
 }
 
 // Stable short hash (FNV-1a, two 32-bit lanes) so the same key gives the same log id in the

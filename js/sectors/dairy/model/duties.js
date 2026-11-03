@@ -68,7 +68,7 @@ export function todayTasks(c) {
   // parlour machine: ISO 6690 test and liner change, 12 months
   const svc = (type) => data.parlourService.filter((x) => !x.deleted && x.type === type).map((x) => x.date).sort().pop();
   for (const [type, label] of [["ISO 6690 static test", "ISO 6690 machine test due"], ["Liner change", "Liner change due (12 months)"]]) {
-    const y = yearlyDue(svc(type), today); if (y.due && y.left <= 30) push({ key: `parlour:${type}:${y.due}`, title: `${label}${type.startsWith("ISO") ? ` ${y.due < today ? "— overdue" : "by " + y.due.slice(8) + "/" + y.due.slice(5, 7)}` : ""}`, due: y.due < today ? y.due : today, href: L("parlour-machine") });
+    const y = yearlyDue(svc(type), today); if (y.due && y.left <= 30) push({ key: `parlour:${type}:${y.due}`, title: `${label}${type.startsWith("ISO") ? ` ${y.due < today ? "— overdue" : "by " + y.due.slice(8) + "/" + y.due.slice(5, 7)}` : ""}`, due: y.due, href: L("parlour-machine") });
   }
   // mobility scoring every N weeks
   const lastMob = data.scoreSessions.filter((x) => !x.deleted && x.method !== "bcs").map((x) => x.date).sort().pop();
@@ -96,7 +96,7 @@ export function todayTasks(c) {
   if (fails.length >= 2 && !(forms.length && forms[forms.length - 1] >= fails[fails.length - 1].date)) push({ key: `dp6:${fails[fails.length - 1].id}`, title: "Fill in the antibiotic failure investigation form (DP.6)", due: today, href: L("ab-failures") });
   // TB test (reminders at 30, 14 and 3 days, as Beef)
   const tb = tbNext(c);
-  if (tb && daysBetween(today, tb) <= 30) push({ key: `tb:${tb}`, title: daysBetween(today, tb) < 0 ? "TB test overdue — book it with your vet" : `TB test due ${tb.slice(8)}/${tb.slice(5, 7)} — book it with your vet`, due: daysBetween(today, tb) <= 3 ? today : today, legal: true, href: L("tb") });
+  if (tb && daysBetween(today, tb) <= 30) push({ key: `tb:${tb}`, title: daysBetween(today, tb) < 0 ? "TB test overdue — book it with your vet" : `TB test due ${tb.slice(8)}/${tb.slice(5, 7)} — book it with your vet`, due: tb < today ? tb : [addDays(tb, -14), today].sort()[1], legal: true, href: L("tb") });
   // moves and deaths: register + NIFAIS
   for (const mv of data.movements.filter((x) => !x.deleted && x.date >= addDays(today, -30))) {
     const n = (mv.animalIds || []).length; const what = `${n} animal${n === 1 ? "" : "s"} ${mv.direction === "on" ? "in" : "off"} ${mv.date.slice(8)}/${mv.date.slice(5, 7)}`;
@@ -110,7 +110,7 @@ export function todayTasks(c) {
     const a = ix.byId.get(d.animalId);
     out.push({ key: `death:${d.id}`, title: `${R.mode === "nifais" ? "Record" : "Notify"} the death of ${a ? cowLabel(a) : "an animal"} on NIFAIS (${R.deathDays} days)`, due: addDays(d.date, R.deathDays), legal: true, href: L("paperwork/deaths"), action: { type: "rec", coll: "deaths", id: d.id, field: "nifaisDone" } });
   }
-  const show = out.filter((t) => t.due <= addDays(today, 0) || t.legal || t.key.startsWith("reg:"));
+  const show = out.filter((t) => t.due <= addDays(today, 30) || t.legal || t.key.startsWith("reg:")); // later than today waits in Coming up
   return show.sort((a, b) => String(a.due).localeCompare(String(b.due)));
 }
 

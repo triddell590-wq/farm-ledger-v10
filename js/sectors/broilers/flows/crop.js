@@ -13,6 +13,7 @@ import { regionRule } from "../model/content.js";
 import { workingDaysBefore } from "../model/time.js";
 import { dm, n0 } from "../ui.js";
 import { photoStrip } from "../../../ui/photo-strip.js";
+import { checkCapacity, checkDate } from "../../../core/sanity.js";
 
 export function houseSheet(snap, { houseId } = {}) {
   const old = houseId ? snap.ix.houseById.get(houseId) : null;
@@ -61,6 +62,8 @@ export async function startCropFlow(snap, { houseId } = {}) {
   body.appendChild(strip.node);
   const es = entrySheet({ title: `Chicks placed · ${house.name}`, body, label: "Start crop", size: "large",
     missing: (v) => (!v.placedDate ? "Add the placement date" : !(+v.placed > 0) ? "Add the chicks placed" : !(+v.clearDay > 0) ? "Add the clear-out day" : null),
+    // chicks against the floor (about 25 a m² is the most any house places) and the date (A #2)
+    checks: (v) => [...(house.usableM2 ? checkCapacity(v.placed, Math.round(+house.usableM2 * 25), { what: "chicks", where: `${house.name} (${n0(house.usableM2)} m²)` }) : []), ...checkDate(v.placedDate, snap.today, { future: true, what: "The placement date" })],
     save(v, sh) {
       const std = BREED_STANDARDS.find((b) => b.id === v.breedStdId);
       const id = startCrop(snap, house, { ...v, hybrid: std?.hybrid, notifiedDaera: body.querySelector("[name=notifiedDaera]")?.value, approvalRef: body.querySelector("[name=approvalRef]")?.value });

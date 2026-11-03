@@ -1,6 +1,7 @@
 // Purchase — cattle arriving (design/10 §6.5). Read a mart docket (photo on the phone, or paste
 // the text) or type each animal. Saves the animals (moved on, from, lot), the purchase, a
 // movement on (NIFAIS job), the money out, and starts the 28-day isolation checklist.
+import { checkDate, checkLiveKg, checkLineTotal, checkMoney } from "../../../core/sanity.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -68,6 +69,7 @@ export default function purchaseSheet(snap) {
   body.appendChild(strip.node);
   const { form, refresh } = entrySheet({
     title: "Purchase", body, label: "Save purchase", missing,
+    checks: (v) => [...checkDate(v.date, snap.today, { future: true, what: "The purchase date" }), ...read().filter((x) => x.tag).flatMap((x) => [...checkLiveKg(x.kg, x.tag), ...checkLineTotal(x.price, x.tag)]), ...checkMoney(v.total, "The total paid")],
     async save(v, sh) {
       const list = read().filter((x) => x.tag);
       const r = recordPurchase(snap.lid, snap, { date: v.date, fromName: v.fromName, fromAddress: v.fromAddress, herdNo: v.herdNo, statementNo: v.statementNo, animals: list, prevMoves: v.prevMoves, notified: v.notified, total: v.total || null });

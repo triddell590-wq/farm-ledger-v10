@@ -98,10 +98,10 @@ function quality(snap) {
 
 export function qualitySheet(snap, r = {}) {
   const body = el(html`<form novalidate><div class="form-group">${textField({ name: "date", label: "Sample date", type: "date", value: r.date || snap.today })}
-    ${textField({ name: "scc", label: "SCC (thousands per ml)", value: r.scc ?? "", inputmode: "numeric", placeholder: "186", optional: true })}${textField({ name: "tbc", label: "TBC / Bactoscan (thousands)", value: r.tbc ?? "", inputmode: "numeric", placeholder: "14", optional: true })}
+    ${textField({ name: "scc", label: "SCC (thousands per ml)", value: r.scc ?? "", inputmode: "numeric", placeholder: "e.g. 186", optional: true })}${textField({ name: "tbc", label: "TBC / Bactoscan (thousands)", value: r.tbc ?? "", inputmode: "numeric", placeholder: "e.g. 14", optional: true })}
     ${textField({ name: "fat", label: "Butterfat %", value: r.fat ?? "", inputmode: "decimal", optional: true })}${textField({ name: "protein", label: "Protein %", value: r.protein ?? "", inputmode: "decimal", optional: true })}${textField({ name: "lactose", label: "Lactose %", value: r.lactose ?? "", inputmode: "decimal", optional: true })}</div>
     <div class="form-group">${chipsField("inhibitory", "Antibiotic (inhibitory) test", [["pass", "Pass"], ["fail", "Fail"], ["", "Not tested"]], r.inhibitory ?? "pass")}</div>
-    <div class="form-group" data-fail hidden>${textField({ name: "action", label: "Action taken", value: r.action || "", placeholder: "Found 214 milked into the tank; vet called" })}${textField({ name: "vetInformed", label: "Vet told on", type: "date", value: r.vetInformed || "", optional: true })}</div></form>`);
+    <div class="form-group" data-fail hidden>${textField({ name: "action", label: "Action taken", value: r.action || "", placeholder: "e.g. Found 214 milked into the tank; vet called" })}${textField({ name: "vetInformed", label: "Vet told on", type: "date", value: r.vetInformed || "", optional: true })}</div></form>`);
   const nn = (v) => (v === "" ? null : +v);
   const es = entrySheet({ title: r.id ? "Milk result" : "Add milk results", body, label: "Save results",
     missing: (v) => (!v.date ? "Add the date" : v.scc === "" && v.tbc === "" && v.fat === "" && v.inhibitory !== "fail" ? "Add at least one result" : v.inhibitory === "fail" && !v.action ? "Note the action taken to save" : null),

@@ -1,6 +1,6 @@
 // Every Sheep write goes through here (screens never build records themselves), so the record
 // shapes in design/11 §12 live in one file. Writes return at once (offline-first).
-import { addRecord, updateRecord } from "../../services/records.js";
+import { addRecord, updateRecord, asAction } from "../../services/records.js";
 import { setMeta } from "../../services/records.js";
 import { auth } from "../../core/auth.js";
 import { todayStr, addDays } from "../../core/dates.js";
@@ -11,7 +11,7 @@ export const me = () => auth.user?.displayName || auth.user?.email || "";
 const ev = (lid, kind, rec) => addRecord(lid, "events", clean({ kind, date: todayStr(), by: me(), ...rec }));
 
 // ---- mobs
-export function createMob(lid, { name, cls, species = "sheep", breed, birthYears = [], fieldName, count = 0, date = todayStr(), note }) {
+function createMob_(lid, { name, cls, species = "sheep", breed, birthYears = [], fieldName, count = 0, date = todayStr(), note }) {
   const id = addRecord(lid, "mobs", clean({ name, class: cls, species: cls === "goats" ? "goat" : species, breed, birthYears, fieldName, active: true, note }));
   ev(lid, "countCheck", { mobId: id, date, counts: { count: +count || 0 }, reason: "start" });
   return id;
@@ -37,7 +37,7 @@ export const tagLost = (lid, { tag, date = todayStr(), mobId, colour = "red" }) 
 export const tagFitted = (lid, e, newTag, date = todayStr()) => updateRecord(lid, "events", e, { fittedOn: date, newTag });
 
 // ---- doses (one record per mob event: Research B batch layout)
-export function dose(lid, v) {
+function dose_(lid, v) {
   const rec = clean({
     kind: "use", date: v.date || todayStr(), mobId: v.mobId, mobName: v.mobName, reason: v.reason, productId: v.productId, productName: v.productName, batch: v.batch,
     wormerGroup: v.wormerGroup || undefined, wormerColour: v.wormerGroup ? WORMER_GROUPS[v.wormerGroup]?.colour : undefined,
@@ -79,7 +79,7 @@ export const noMoney = (o) => Object.fromEntries(Object.entries(o || {}).filter(
  * holds every price (lines, gross, deductions, net) for owner/manager/accountant (01 §15.2).
  * v.total or v.lines[].price give the gross; money=false (worker) writes no finance record.
  */
-export function sale(lid, v, { money = false } = {}) {
+function sale_(lid, v, { money = false } = {}) {
   const mvId = movement(lid, { ...v, kind: "off" });
   const lines = v.lines || [];
   const gross = Math.round((lines.reduce((n, l) => n + (+l.price || 0), 0) || +v.total || 0) * 100) / 100;
@@ -117,3 +117,7 @@ export function tickGenerated(lid, snap, t, done, by = {}) {
   if (existing) return updateRecord(lid, "tasks", existing, stamp, { history: false });
   return addRecord(lid, "tasks", { title: t.title, due: t.due, sourceRef: t.key, note: "", money: false, ...stamp });
 }
+// Each of these is one action: the records it adds share an actionId (services/linked.js).
+export const createMob = asAction(createMob_);
+export const sale = asAction(sale_);
+export const dose = asAction(dose_);

@@ -11,6 +11,7 @@ import { isFemale, onFarm } from "../model/cows.js";
 import { fertilityOf } from "../model/fertility.js";
 import { rulesFor } from "../model/duties.js";
 import { cowLabel } from "../ui.js";
+import { checkDate } from "../../../core/sanity.js";
 
 export default function calvingSheet(snap, { animalId = null } = {}) {
   const R = rulesFor(snap.s);
@@ -33,6 +34,7 @@ export default function calvingSheet(snap, { animalId = null } = {}) {
   function sire() { const id = row.ids()[0]; const a = id && snap.ix.byId.get(id); const f = a && fertilityOf(snap.s, snap.ix, a, snap.today); const i = body.querySelector("[name=sireText]"); if (f?.lastServe?.sireText && !i.value) i.value = f.lastServe.sireText; }
   sire();
   const es = entrySheet({ title: "Calving", body, label: "Save calving",
+    checks: (v) => [...checkDate(v.date, snap.today, { what: "The calving date" }), ...(+v.colL > 8 ? [`${v.colL} litres of colostrum in one feed is a lot (aim for 4).`] : [])],
     missing: (v) => (!row.ids().length ? "Choose the cow to save" : !v.sex0 || (v.n === "2" && !v.sex1) ? "Choose each calf's sex" : null),
     save(v, sh) {
       const n = v.n === "2" ? 2 : 1; const calves = [];

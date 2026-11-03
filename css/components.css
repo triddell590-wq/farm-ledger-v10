@@ -16,10 +16,27 @@
 .rail-pill .tile{width:28px;height:28px;border-radius:9px}
 .rail-pill .tile svg{width:20px;height:20px}
 .rail-add{flex:none;width:44px;height:44px;border-radius:var(--r-full);display:grid;place-items:center;color:var(--ink-2)}
+/* phones: one "Farm ▾ / Beef herd ▾" button instead of a sideways strip (review B #11, #16) */
+.rail{display:none}
+.rail-add-lbl{display:none}
+.ledger-btn{flex:1 1 auto;min-width:0;max-width:max-content;display:flex;align-items:center;gap:8px;height:44px;padding:0 10px 0 8px;border-radius:var(--r-full);
+  background:var(--surface);color:var(--ink);box-shadow:var(--e-1);font-size:16px;font-weight:700;border:0;font-family:inherit}
+.ledger-btn .tile{flex:none;width:28px;height:28px;border-radius:9px}
+.ledger-btn .tile svg{width:20px;height:20px}
+.ledger-btn .lb-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ledger-btn .lb-down{flex:none;display:grid;place-items:center;color:var(--ink-2);margin-left:-2px}
+.ledger-btn:active{transform:scale(.98)}
+.topbar-in .bell{margin-left:auto}
+.lp .row .secondary{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp .lp-status[data-level=late]{color:var(--late-ink);font-weight:600}
+.lp .lp-status[data-level=due]{color:var(--due-ink);font-weight:600}
+.lp .lp-here{color:var(--accent);display:grid;place-items:center;flex:none}
+.lp .row[aria-current=page]{background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
 .compact-bar{position:absolute;left:0;right:0;top:100%;height:44px;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;
-  background:color-mix(in srgb,var(--bg) 94%,transparent);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--hair);transition:opacity var(--d-quick)}
+  background:var(--bg);border-bottom:1px solid var(--hair);transition:opacity var(--d-quick)} /* solid: nothing shows through (B #40) */
 .compact-bar span{font-size:17px;font-weight:700;transform:translateY(-8px);transition:transform var(--d-quick) var(--ease-out);white-space:nowrap;max-width:70%;overflow:hidden;text-overflow:ellipsis}
 .topbar.collapsed .compact-bar{opacity:1}
+.topbar.collapsed{background:color-mix(in srgb,var(--bg) 97%,transparent)}
 .topbar.collapsed .compact-bar span{transform:none}
 .topbar.no-compact .compact-bar{display:none}
 
@@ -110,11 +127,16 @@
 .field + .field::before{content:"";position:absolute;top:0;right:0;left:16px;height:1px;background:var(--hair)}
 .field > label,.field > .label{flex:none;max-width:48%;font-size:var(--body-size);color:var(--ink)}
 .field input,.field select,.field textarea{flex:1;min-width:0;min-height:44px;border:0;background:transparent;text-align:right;font-size:var(--body-size);color:var(--ink);padding:0;outline-offset:4px}
+/* search boxes read left to right (review A #40) */
+.field input[type=search],.search-field input,.pg-search input{text-align:left}
+.pill.best-match{font-weight:700}
 .field textarea{text-align:left;min-height:88px;padding:10px 0;resize:vertical}
 .field.stacked{flex-direction:column;align-items:stretch;gap:0}
 .field.stacked > label{max-width:none;padding-top:8px;font-size:14px;color:var(--ink-2);font-weight:500}
 .field select{appearance:none;color:var(--grass-deep);text-align-last:right}
 .field input::placeholder{color:var(--ink-3)}
+/* Example hints never look like a typed value: lighter, italic, "e.g. …" (review A #18) */
+input::placeholder,textarea::placeholder{color:var(--ink-3);opacity:.75;font-style:italic;font-weight:400}
 .field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible{outline:none}
 .field:focus-within{box-shadow:inset 3px 0 0 var(--grass)}
 .field .eye{flex:none;width:48px;height:48px;display:grid;place-items:center;color:var(--ink-2);margin-right:-12px}
@@ -169,16 +191,22 @@ button.num-tile{box-shadow:var(--e-1)}
 .alert + .alert{margin-top:12px}
 
 /* ---------- task rows (§6.10) ---------- */
-.task{display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 16px;position:relative;background:var(--surface)}
+.task{display:flex;align-items:center;gap:12px;min-height:60px;padding:0 16px;position:relative;background:var(--surface)}
 .task + .task::before{content:"";position:absolute;top:0;right:0;left:56px;height:1px;background:var(--hair)}
-.task .tick{flex:none;width:48px;height:48px;margin:-10px -10px -10px -10px;display:grid;place-items:center}
+.task .tick{flex:none;width:48px;height:48px;margin:0 -10px;display:grid;place-items:center;align-self:center}
+.task .tick-space{flex:none;width:28px}
 .task .tick i{width:28px;height:28px;border-radius:50%;border:2px solid var(--ink-3);display:grid;place-items:center;color:var(--on-grass);transition:background-color var(--d-quick),border-color var(--d-quick)}
 .task .tick svg{width:18px;height:18px;stroke-dasharray:24;stroke-dashoffset:24;transition:stroke-dashoffset 180ms var(--ease-out)}
 .task.done .tick i{background:var(--grass);border-color:var(--grass)}
 .task.done .tick svg{stroke-dashoffset:0}
-.task .t-text{flex:1;min-width:0;transition:color 200ms}
+.task .t-text{flex:1;min-width:0;min-height:48px;display:flex;flex-direction:column;justify-content:center;padding:8px 0;align-self:stretch;transition:color 200ms}
+.task a.t-text{color:inherit;text-decoration:none}
+.task .primary{display:block;font-size:var(--body-size);line-height:24px;font-weight:500;overflow-wrap:anywhere}
+.task a.t-text .primary{color:var(--grass)}
 .task.done .t-text .primary{text-decoration:line-through;color:var(--ink-2)}
-.task .secondary{font-size:15px;line-height:20px;color:var(--ink-2)}
+.task .secondary{display:block;font-size:15px;line-height:20px;color:var(--ink-2)}
+.task .secondary.late{color:var(--late-ink);font-weight:600}
+.task-none{padding:14px 16px;font-size:15px;line-height:20px;color:var(--ink-2)}
 .task.collapsing{animation:collapse 240ms var(--ease-in) forwards;will-change:height}
 @keyframes collapse{to{min-height:0;height:0;padding-top:0;padding-bottom:0;opacity:0}}
 .disclosure{display:flex;align-items:center;gap:6px;min-height:48px;padding:0 16px;color:var(--ink-2);font-size:15px;font-weight:600;width:100%;position:relative}
@@ -248,6 +276,8 @@ button.num-tile{box-shadow:var(--e-1)}
 /* ---------- toasts (§6.15) ---------- */
 .toast-wrap{position:fixed;left:0;right:0;bottom:calc(12px + var(--tabbar-h) + 16px + var(--safe-b));z-index:80;display:flex;justify-content:center;pointer-events:none;padding:0 16px}
 .toast-wrap.no-tabbar{bottom:calc(24px + var(--safe-b))}
+.toast-wrap.beside-fab{padding-right:calc(16px + 64px + 12px)} /* never over the + button */
+.toast-wrap.over-sheet{top:calc(8px + var(--safe-t));bottom:auto;padding-right:16px} /* over the dimmed screen, not the sheet */
 .toast{pointer-events:auto;max-width:560px;width:100%;display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 8px 8px 16px;border-radius:var(--r-md);
   background:var(--ink);color:var(--bg);box-shadow:var(--e-float);font-size:15px;line-height:20px}
 .toast .msg{flex:1}
@@ -299,8 +329,9 @@ button.num-tile{box-shadow:var(--e-1)}
 
 /* ---------- share tiles ---------- */
 .share-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.share-tile{height:72px;border-radius:var(--r-md);background:var(--surface);box-shadow:var(--e-1);display:flex;align-items:center;justify-content:center;gap:10px;font-weight:600}
-.share-tile svg{width:24px;height:24px;color:var(--grass)}
+.share-tile{min-height:72px;height:auto;border-radius:var(--r-md);background:var(--surface);box-shadow:var(--e-1);display:flex;align-items:center;justify-content:flex-start;gap:10px;font-weight:600;
+  padding:10px 12px 10px 14px;text-align:left;line-height:1.2;overflow-wrap:anywhere;hyphens:auto} /* labels wrap inside the tile (B #41) */
+.share-tile svg{flex:none;width:24px;height:24px;color:var(--grass)}
 
 /* ---------- money bars ---------- */
 .bar-track{height:10px;border-radius:5px;background:var(--surface-2);overflow:hidden;display:flex}
@@ -367,9 +398,11 @@ button.num-tile{box-shadow:var(--e-1)}
 @media (min-width:1024px){
   .screen{padding-left:calc(260px + var(--gutter))}
   .topbar-in{padding-left:calc(260px + var(--gutter))}
-  .side .rail{position:fixed;left:0;top:0;bottom:0;width:244px;flex-direction:column;padding:calc(20px + var(--safe-t)) 12px;-webkit-mask-image:none;mask-image:none;overflow-y:auto;background:var(--bg);border-right:1px solid var(--hair);gap:4px;z-index:31}
+  .side .ledger-btn{display:none}
+  .side .rail{display:flex;position:fixed;left:0;top:0;bottom:0;width:244px;flex-direction:column;padding:calc(20px + var(--safe-t)) 12px;-webkit-mask-image:none;mask-image:none;overflow-y:auto;background:var(--bg);border-right:1px solid var(--hair);gap:4px;z-index:31}
   .side .rail .rail-pill{width:100%}
-  .side .rail .rail-add{width:100%;border-radius:var(--r-full);justify-content:flex-start;padding-left:12px;display:flex;gap:8px;align-items:center}
+  .side .rail .rail-add{width:100%;height:auto;min-height:44px;border-radius:var(--r-full);justify-content:flex-start;padding:8px 12px;display:flex;gap:8px;align-items:center;font-size:14px;font-weight:600}
+  .side .rail .rail-add-lbl{display:inline}
   .tabbar{left:calc(50% + 130px)}
 }
 
@@ -410,3 +443,57 @@ html{scroll-padding-bottom:calc(var(--kb,0px) + 24px)}
 .view-pills::-webkit-scrollbar{display:none}
 .view-pills a{flex:1 0 auto;display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:999px;background:var(--surface-2);color:var(--ink-2);font-size:15px;font-weight:600;white-space:nowrap}
 .view-pills a.on{background:var(--ink);color:var(--bg)}
+
+/* empty sector home: one start card (review A #19, B #6) */
+.start-card{padding:24px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:8px}
+.start-card .start-illus{color:var(--accent)}
+.start-card h2{margin:4px 0 0}
+.start-card p{margin:0;max-width:34ch}
+.start-card .btn-col{width:100%;margin-top:10px}
+
+/* demo farm band (review A #46): always visible, above the top bar */
+.demo-banner{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;min-height:40px;padding:calc(4px + var(--safe-t)) var(--gutter) 4px;
+  background:var(--due-soft);color:var(--due-ink);font-size:14px;border-bottom:1px solid color-mix(in srgb,var(--due) 35%,transparent)}
+.demo-banner span{flex:1;min-width:0}
+.demo-banner a{font-weight:700;color:var(--due-ink);text-decoration:underline;min-height:32px;display:inline-flex;align-items:center}
+:root.demo .topbar{top:40px}
+:root.demo .topbar{padding-top:0}
+.welcome .demo-link{align-self:center;margin-top:4px}
+
+/* map: draw bar on one row; credits behind "i"; head counts on fields (review A #27, #28) */
+.map-draw-bar{flex-wrap:nowrap;justify-content:space-between;gap:6px}
+.map-draw-bar .map-chip{padding:0 12px}
+.map-draw-bar .map-count{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:8px 10px}
+.map-info{width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,.95);color:#1B221D;font:700 16px/34px Georgia,serif;font-style:italic;box-shadow:0 1px 5px rgba(0,0,0,.4);border:0;margin-top:8px!important}
+.fl-field-label .fl-head{font-weight:600;font-size:12px;opacity:.95}
+
+/* registers: cards on phones, the table on wide screens (review A #25, #26) */
+.reg-cards{display:none}
+@media (max-width:700px){
+  .reg-cards{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .reg-wide{display:none}
+}
+.reg-card{background:var(--surface);border-radius:var(--r-md);box-shadow:var(--e-1);padding:12px 14px}
+.reg-card.tap{cursor:pointer}
+.reg-card-h{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.reg-card-h .reg-k{font-size:12px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.02em}
+.reg-card-h b{font-size:16px}
+.reg-card dl{margin:0;display:grid;gap:3px}
+.reg-card dl div{display:flex;gap:12px;justify-content:space-between;font-size:14px;line-height:19px}
+.reg-card dt{color:var(--ink-2);flex:none;max-width:48%}
+.reg-card dd{margin:0;text-align:right;min-width:0;overflow-wrap:anywhere}
+/* sire chart: names in full above their bar (A #25) */
+.beef-page .bars .bar-row{grid-template-columns:1fr auto;row-gap:4px}
+.beef-page .bars .bar-row span:first-child{grid-column:1/-1;white-space:normal}
+
+/* beef herd: one Filter button, active filters as removable chips, compact rows (A #44) */
+.herd-page .filter-bar{flex-direction:row;flex-wrap:wrap;align-items:center}
+.herd-page .filter-bar .search-field{flex:1 1 200px;min-width:0}
+.herd-page .filter-btn{flex:none;height:48px;padding:0 14px;gap:6px}
+.herd-page .active-filters{flex-basis:100%;gap:6px}
+.herd-page .active-filters .chip{height:36px;padding:0 10px 0 12px;gap:4px}
+.herd-list.compact .row{min-height:48px;padding-top:6px;padding-bottom:6px}
+.herd-list.compact .row .tile{width:32px;height:32px}
+.herd-list.compact .row .secondary{display:none}
+.herd-filter .chips{flex-wrap:wrap}
+.tag-msg{color:var(--late-ink);margin:4px 16px 8px;font-size:14px;line-height:19px;font-weight:600}

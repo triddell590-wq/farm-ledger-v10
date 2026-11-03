@@ -13,6 +13,7 @@ import { lastWeight, onFarm } from "../model/animals.js";
 import { tagParts } from "../model/tags.js";
 import { listDate } from "../../../ui/format.js";
 import { pill } from "../ui.js";
+import { checkDose, checkDate, checkLiveKg } from "../../../core/sanity.js";
 
 export const REASONS = ["Pneumonia", "Scour", "Navel", "Lame", "Worm/fluke", "BTV-3 vaccine", "Vaccine", "Other"];
 const ROUTES = ["Injection (SC)", "Injection (IM)", "Pour-on", "Oral drench", "Bolus", "Intramammary", "Topical spray", "Other"];
@@ -63,8 +64,11 @@ export default function treatmentSheet(snap, { animalIds = [], reason = "", grou
     const heaviest = Math.max(0, ...rows.map((a) => +(weights[a.id] ?? lastWeight(snap.ix, a)?.kg ?? 0)));
     const all = v.reason === "Worm/fluke";
     box.replaceChildren(el(html`<div class="card pad" style="margin-top:12px"><table class="dose-table"><thead><tr><th>Animal</th><th>Weight kg</th><th>Dose</th></tr></thead><tbody>
-      ${rows.map((a) => { const w = weights[a.id] ?? lastWeight(snap.ix, a)?.kg ?? ""; const d = doseFor(all ? heaviest : +w, { ratePerKg: ratePerKg(v), band: +v.band || 10 }); return html`<tr><td>${tagParts(a.tag).tail}</td><td><input inputmode="decimal" data-w="${a.id}" value="${w}" aria-label="Weight of ${tagParts(a.tag).tail}" placeholder="enter"></td><td>${d != null ? `${d} ${v.unit}` : "—"}</td></tr>`; })}
-    </tbody></table><p class="hint" style="margin:8px 0 0">${all ? "Wormers: everyone dosed to the heaviest, as advised." : "Weights rounded up to the band before working out the dose."}</p></div>`));
+      ${rows.map((a) => { const lw = lastWeight(snap.ix, a); const typed = weights[a.id] != null && weights[a.id] !== ""; const w = typed ? weights[a.id] : lw?.kg ?? ""; const d = doseFor(all ? heaviest : +w, { ratePerKg: ratePerKg(v), band: +v.band || 10 });
+        // say which weight the dose came from (review A #35): typed now, last weighing (date) or an estimate
+        const src = typed ? "typed now" : lw ? `${lw.est ? "est. " : "weighed "}${listDate(lw.date)}` : "no weight yet";
+        return html`<tr><td>${tagParts(a.tag).tail}</td><td><input inputmode="decimal" data-w="${a.id}" value="${w}" aria-label="Weight of ${tagParts(a.tag).tail}" placeholder="enter"><br><span class="ink-2" style="font-size:12px" data-wsrc>${src}</span></td><td>${d != null ? `${d} ${v.unit}` : "—"}${all && d != null && +w !== heaviest ? html`<br><span class="ink-2" style="font-size:12px">at ${heaviest} kg</span>` : ""}</td></tr>`; })}
+    </tbody></table><p class="hint" style="margin:8px 0 0">${all ? `Wormers: everyone dosed to the heaviest (${heaviest || "?"} kg), as advised.` : "Weights rounded up to the band before working out the dose."}</p></div>`));
     box.querySelectorAll("[data-w]").forEach((i) => i.addEventListener("change", () => { weights[i.dataset.w] = i.value; paintTable(); }));
   };
   const paintWd = () => {
@@ -86,6 +90,14 @@ export default function treatmentSheet(snap, { animalIds = [], reason = "", grou
   let F = null;
   const { form, refresh } = entrySheet({
     title: "Treatment", body, label: "Save treatment", missing, dirty: () => !!who.ids().length,
+    checks: (v) => {
+      // dose against the product's label dose in the store (review A #2): more than 3x or under a third
+      const p = prodOf(v); const out = checkDate(v.date, snap.today, { what: "The treatment date" });
+      if (p && v.mode === "fixed" && +p.dosePerHead > 0) out.push(...checkDose(v.dose, p.dosePerHead, { unit: v.unit || "ml", product: p.name }));
+      if (p && v.mode === "weight" && +p.rateAmount > 0 && +p.rateKg > 0) out.push(...checkDose(v.rate, Math.round((+p.rateAmount / +p.rateKg) * 1000) / 10, { unit: `${v.unit || "ml"} per 100 kg`, product: p.name }));
+      if (v.mode === "weight") for (const id of who.ids()) { const a = snap.ix.byId.get(id); const w = weights[id]; if (a && w) out.push(...checkLiveKg(w, tagParts(a.tag).tail)); }
+      return out;
+    },
     async save(v, sh) {
       const p = prodOf(v); const all = v.reason === "Worm/fluke";
       const rows = who.ids().map((id) => snap.ix.byId.get(id)).filter(Boolean);

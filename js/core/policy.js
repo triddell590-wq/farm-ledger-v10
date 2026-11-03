@@ -6,9 +6,16 @@ export const SECTORS = ["beef", "sheep", "dairy", "pigs", "layers", "broilers"];
 // "farm" is the farm space: a hidden ledger holding farm-wide records (shared money, medicine
 // store, map, documents). Its id is the farmId every sector ledger on that farm carries.
 export const LEDGER_TYPES = ["farm", ...SECTORS];
+// What farmers call each part of the farm (review A #42): the word "ledger" stays in code/data.
 export const SECTOR_NAMES = {
-  beef: "Beef", sheep: "Sheep", dairy: "Dairy", pigs: "Pigs",
-  layers: "Poultry – Layers", broilers: "Poultry – Broilers",
+  beef: "Beef herd", sheep: "Sheep flock", dairy: "Dairy herd", pigs: "Pigs",
+  layers: "Laying hens", broilers: "Broilers",
+};
+// Default names earlier versions gave new ledgers; shown as the names above (never stored over
+// a name someone typed).
+export const OLD_DEFAULT_NAMES = {
+  beef: ["Beef"], sheep: ["Sheep"], dairy: ["Dairy"], pigs: ["Pigs"],
+  layers: ["Poultry – Layers", "Poultry - Layers", "Layers"], broilers: ["Poultry – Broilers", "Poultry - Broilers", "Broilers"],
 };
 export const REGIONS = ["NI", "ENG", "SCO", "WAL"];
 export const REGION_NAMES = { NI: "Northern Ireland", ENG: "England", SCO: "Scotland", WAL: "Wales" };
@@ -17,7 +24,7 @@ export const ACTIVE_REGIONS = ["NI"]; // others are content-only later
 export const ROLES = ["owner", "manager", "worker", "viewer", "accountant"];
 export const ROLE_NAMES = { owner: "Owner", manager: "Manager", worker: "Worker", viewer: "Viewer", accountant: "Accountant" };
 export const ROLE_HELP = {
-  owner: "Everything, including deleting the ledger and handing it on.",
+  owner: "Everything, including deleting it and handing it on.",
   manager: "Everything day to day, including money and inviting helpers.",
   worker: "Records animals, treatments and jobs. Doesn't see money.",
   viewer: "Can look at records but not change them. Doesn't see money.",

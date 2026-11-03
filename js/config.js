@@ -22,3 +22,7 @@ export const WARM_START_MS = 30 * 60 * 1000;       // skip the splash if resumed
 // Cloud Messaging → Web configuration (see build/notify/README.md). Empty = push not set up yet:
 // the Notifications screen says so, and in-app alerts, the bell and the badge still work.
 export const FCM_VAPID_KEY = "BCUYQdt5fupX066RH_m8Aqq5ohYOgd1Y23IZv17D1aa-JSWOstORdeNGbNiMRcHwIc1M375NcU9LjGGch8jlyJk";
+// Support contact shown on Help (Farm → More → Help and contact). Leave blank until Tom chooses
+// one: the page then shows only an email / phone button for what is filled in, or a short
+// "ask the person who invited you" line when both are blank.
+export const SUPPORT = Object.freeze({ email: "", phone: "07851635259" }); // Tom, 29 Oct 2026

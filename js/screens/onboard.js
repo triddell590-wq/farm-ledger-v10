@@ -1,5 +1,7 @@
-// Onboarding (design/01 §6): 1 Your farm · 2 What do you farm (type picker) · 3 A few numbers,
-// then "Building your ledgers…" and the Overview. The type picker doubles as "Add a ledger".
+// Onboarding (design/01 §6): 1 Your farm · 2 What do you farm (type picker) · 3 A few details,
+// then "Setting up…" and the Overview. The type picker doubles as "Add cattle, sheep, pigs or
+// poultry". Setup numbers are used (review B #5): layers and broilers get their houses made,
+// pigs and sheep keep herd/flock size; beef and dairy point to the herd list import instead.
 import { html, raw } from "../core/html.js";
 import { el } from "../ui/dom.js";
 import { icon } from "../ui/icons.js";
@@ -7,7 +9,8 @@ import { illustration } from "../ui/illustrations.js";
 import { textField, radioGroup, chipGroup, stepperField, selectField, wireForm, guardButton } from "../ui/form.js";
 import { SECTORS, REGIONS, REGION_NAMES, ACTIVE_REGIONS, canEditLedger } from "../core/policy.js";
 import { sectorName } from "../sectors/registry.js";
-import { META, SETUP_FIELDS } from "../sectors/meta.js";
+import { META, SETUP_FIELDS, SETUP_NOTES, ADD_LEDGER, setupNumber } from "../sectors/meta.js";
+import { addRecord } from "../services/records.js";
 import { createFarm, createLedger, updateLedger } from "../services/ledgers.js";
 import { updateProfile } from "../services/profile.js";
 import { session } from "../services/session.js";
@@ -52,7 +55,7 @@ function stepFarm() {
     <p class="ob-lede">This is how your farm shows on records and printouts.</p>
     <form novalidate style="margin-top:24px">
       <div class="form-group">
-        ${textField({ name: "farmName", label: "Farm name", value: d.farmName || "", placeholder: "Drumlin Farm", autofocus: true, autocomplete: "organization" })}
+        ${textField({ name: "farmName", label: "Farm name", value: d.farmName || "", placeholder: "e.g. Drumlin Farm", autofocus: true, autocomplete: "organization" })}
         ${textField({ name: "keeperName", label: "Your name on records", value: d.keeperName ?? (u.displayName || ""), autocomplete: "name" })}
       </div>
       <h2 class="group-label" style="margin-top:28px">Where is the farm?</h2>
@@ -81,8 +84,8 @@ function stepTypes(add) {
   const picked = new Set((d.types || []).filter((t) => SECTORS.includes(t)));
   const body = el(html`<div>
     ${add ? html`<div class="ob-head"><a class="back-link" href="#/farm/more">${raw(icon("back"))}Back</a></div>` : head(2, "#/onboard/1")}
-    <h1 class="t-display">${add ? "Add a ledger" : "What do you farm?"}</h1>
-    <p class="ob-lede">Pick each one. Each gets its own ledger, built for that kind of farming.</p>
+    <h1 class="t-display">${add ? ADD_LEDGER : "What do you farm?"}</h1>
+    <p class="ob-lede">Pick each one. Each gets its own home screen, built for that kind of farming.</p>
     <div class="type-grid" role="group" aria-label="Farming types" style="margin-top:24px">
       ${SECTORS.map((s) => html`<button type="button" class="type-tile${have.has(s) ? " have" : ""}" role="checkbox" data-sector="${s}" data-type="${s}" aria-checked="${picked.has(s)}"
           aria-label="${sectorName(s)}, ${META[s].desc}${have.has(s) ? ", you have this" : ""}">
@@ -96,7 +99,7 @@ function stepTypes(add) {
   const btn = body.querySelector("[data-next]");
   const upd = () => {
     const n = picked.size;
-    guardButton(btn, add ? `Add ${n} ${n === 1 ? "ledger" : "ledgers"}` : `Continue with ${n} ${n === 1 ? "ledger" : "ledgers"}`, () => (n ? null : "Pick at least one"));
+    guardButton(btn, add ? (n === 1 ? `Add ${sectorName([...picked][0])}` : `Add these ${n}`) : n === 1 ? `Continue with ${sectorName([...picked][0])}` : `Continue with these ${n}`, () => (n ? null : "Pick at least one"));
     body.querySelectorAll(".type-tile").forEach((t) => {
       const on = picked.has(t.dataset.type);
       t.setAttribute("aria-checked", String(on));
@@ -112,14 +115,15 @@ function stepTypes(add) {
   });
   upd();
   btn.onclick = () => { if (!picked.size) return; go(add ? "/add-ledger/numbers" : "/onboard/3"); };
-  return makeScreen({ body, title: add ? "Add a ledger" : "What do you farm?", area: add ? "farm" : "auth", tab: "ob", depth: add ? 1 : 2, chrome: { rail: false }, transition: add ? undefined : "push", remember: false });
+  return makeScreen({ body, title: add ? ADD_LEDGER : "What do you farm?", area: add ? "farm" : "auth", tab: "ob", depth: add ? 1 : 2, chrome: { rail: false }, transition: add ? undefined : "push", remember: false });
 }
 
 // ---------- 3. A few numbers ----------
 function fieldFor(s, f, val) {
   const name = `${s}.${f.key}`;
   const v = val ?? f.value;
-  if (f.kind === "stepper") return stepperField(name, f.label, v ?? 0, { min: f.min ?? 0, step: f.step || 1 });
+  if (f.kind === "stepper") return stepperField(name, f.label, v ?? 0, { min: f.min ?? 0, max: f.max ?? 1e9, step: f.step || 1 });
+  if (f.kind === "number") return textField({ name, label: f.label, value: v ?? "", inputmode: "numeric", placeholder: f.placeholder || "", optional: true });
   if (f.kind === "chips" || f.kind === "chip") return html`<div class="field" style="flex-wrap:wrap;padding-top:10px;padding-bottom:10px"><span class="label">${f.label}</span>${chipGroup(name, f.options.map((o) => ({ value: o, label: o, sector: s })), v || [], { multi: f.kind === "chips" })}</div>`;
   if (f.kind === "month") return selectField({ name, label: f.label, value: v, options: f.options });
   return textField({ name, label: f.label, value: v ?? "", inputmode: f.inputmode, optional: true });
@@ -131,23 +135,28 @@ function stepNumbers(add) {
   const nums = d.numbers || {};
   const body = el(html`<div>
     ${add ? html`<div class="ob-head"><a class="back-link" href="#/add-ledger">${raw(icon("back"))}Back</a></div>` : head(3, "#/onboard/2")}
-    <h1 class="t-display">A few numbers</h1>
-    <p class="ob-lede">Rough is fine. They set up your home screens and reminders.</p>
+    <h1 class="t-display">A few details</h1>
+    <p class="ob-lede">Rough is fine, and you can skip any of it. You can change it later in settings.</p>
     <form novalidate>
     ${types.map((s) => html`<div data-sector="${s}">
       <h2 class="sector-head"><span class="tile">${raw(icon(s))}</span>${sectorName(s)}</h2>
       <div class="form-group">${SETUP_FIELDS[s].map((f) => fieldFor(s, f, nums[s]?.[f.key]))}</div>
+      ${SETUP_NOTES[s] ? html`<p class="hint" data-setup-note="${s}">${SETUP_NOTES[s]}</p>` : ""}
     </div>`)}
     </form>
     <div class="btn-col" style="margin-top:28px">
-      <button type="button" class="btn" data-finish>${add ? "Add ledgers" : "Finish setup"}</button>
+      <button type="button" class="btn" data-finish>${add ? "Add" : "Finish setup"}</button>
       ${add ? "" : html`<button type="button" class="text-btn" data-skip style="align-self:center">Skip for now</button>`}
     </div>
   </div>`);
   const f = wireForm(body);
   const collect = () => {
     const v = f.values(); const out = {};
-    for (const [k, x] of Object.entries(v)) { const [s, key] = k.split("."); if (!key) continue; (out[s] = out[s] || {})[key] = x; }
+    for (const [k, x] of Object.entries(v)) {
+      const [s, key] = k.split("."); if (!key) continue;
+      const def = SETUP_FIELDS[s]?.find((f) => f.key === key);
+      (out[s] = out[s] || {})[key] = def && def.kind === "number" ? setupNumber(x) : x;
+    }
     return out;
   };
   f.onChange(() => save({ numbers: collect() }));
@@ -155,11 +164,11 @@ function stepNumbers(add) {
     const numbers = skip ? {} : collect();
     body.querySelectorAll("button").forEach((b) => (b.disabled = true));
     try { await build(types, numbers, add); }
-    catch (e) { console.error(e); toast(e.code === "permission-denied" ? "You can't add ledgers to this farm." : "Couldn't set up your ledgers. Try again."); body.querySelectorAll("button").forEach((b) => (b.disabled = false)); }
+    catch (e) { console.error(e); toast(e.code === "permission-denied" ? "You can't add to this farm." : "Couldn't finish setting up. Try again."); body.querySelectorAll("button").forEach((b) => (b.disabled = false)); }
   };
   body.querySelector("[data-finish]").onclick = () => finish(false);
   const sk = body.querySelector("[data-skip]"); if (sk) sk.onclick = () => finish(true);
-  return makeScreen({ body, title: "A few numbers", area: add ? "farm" : "auth", tab: "ob", depth: add ? 2 : 3, chrome: { rail: false }, transition: add ? undefined : "push", remember: false });
+  return makeScreen({ body, title: "A few details", area: add ? "farm" : "auth", tab: "ob", depth: add ? 2 : 3, chrome: { rail: false }, transition: add ? undefined : "push", remember: false });
 }
 
 const clean = (o) => { const r = {}; for (const [k, v] of Object.entries(o || {})) if (v !== "" && v != null && !(Array.isArray(v) && !v.length)) r[k] = v; return r; };
@@ -168,7 +177,7 @@ const clean = (o) => { const r = {}; for (const [k, v] of Object.entries(o || {}
 async function build(types, numbers, add) {
   const d = load();
   const stage = document.getElementById("stage");
-  const moment = el(html`<div class="building screen no-chrome" style="position:fixed;inset:0;z-index:50"><div class="ticks">${types.map((s, i) => html`<span class="tile lg" data-sector="${s}" style="animation-delay:${i * 160}ms">${raw(icon(s, { size: 40, stroke: 1.75 }))}</span>`)}</div><p class="t-headline">Building your ledgers…</p></div>`);
+  const moment = el(html`<div class="building screen no-chrome" style="position:fixed;inset:0;z-index:50"><div class="ticks">${types.map((s, i) => html`<span class="tile lg" data-sector="${s}" style="animation-delay:${i * 160}ms">${raw(icon(s, { size: 40, stroke: 1.75 }))}</span>`)}</div><p class="t-headline">Setting up your farm…</p></div>`);
   stage.appendChild(moment);
   const t0 = Date.now();
   let farmId, farmName, region;
@@ -189,6 +198,7 @@ async function build(types, numbers, add) {
     const n = sameType(s);
     const id = await createLedger({ type: s, farmId, farmName, region, name: n ? `${sectorName(s)} ${n + 1}` : sectorName(s), settings: clean(numbers[s]) });
     firstId = firstId || id;
+    try { makeStarterRecords(s, id, numbers[s] || {}); } catch (e) { console.warn("starter records", e); }
   }
   await session.load(true);
   session.setFarm(farmId);
@@ -199,3 +209,16 @@ async function build(types, numbers, add) {
   if (add && types.length === 1) go(`/l/${firstId}`, { replace: true });
   else go(add ? "/farm/today" : "/farm/today?welcome=1", { replace: true });
 }
+
+/** Houses for layers and broilers from the setup numbers (review B #5), so the home isn't empty. */
+export function makeStarterRecords(type, lid, n) {
+  const houses = Math.min(20, Math.max(0, +n.houses || 0));
+  if (type === "layers" && houses) {
+    const sys = { Organic: 0, "Free range": 1, Barn: 2, Colony: 3 }[n.layerSystem];
+    for (let i = 1; i <= houses; i++) addRecord(lid, "houses", strip({ name: `House ${i}`, order: i, places: setupNumber(n.birdsPerHouse), system: sys }));
+  }
+  if (type === "broilers" && houses) {
+    for (let i = 1; i <= houses; i++) addRecord(lid, "houses", { name: `House ${i}` });
+  }
+}
+const strip = (o) => { const r = {}; for (const [k, v] of Object.entries(o)) if (v != null) r[k] = v; return r; };

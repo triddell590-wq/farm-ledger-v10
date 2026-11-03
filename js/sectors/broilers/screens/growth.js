@@ -81,9 +81,10 @@ function densitySummary(snap, crop, area) {
   const mx = plannedMax(ix, crop, s, area, today); const n = densityNeeds(ix, crop, s, mx);
   const thin = cropEvents(ix, crop, s).find((e) => e.kind === "thin" && !e.done);
   const overPlanned = p.some((x) => x.day >= cropDay(crop, today) && x.kg > lim);
-  return html`<div class="section">${groupLabel("Density", `farm limit ${lim} kg/m²`)}
+  const hn = ix.houseById.get(crop.houseId)?.name || "";
+  return html`<div class="section">${groupLabel(`Density${hn ? ` · ${hn}` : ""}`, `farm limit ${lim} kg/m²`)}
     <a class="card br-chartcard br-link" href="#/l/${lid}/density/${crop.id}">${densityChart({ points: p, limit: lim, thinDay: thin?.day ?? null, maxDay: Math.max(42, p.length + 1), aria: "Projected stocking density with the legal tiers" })}
-      <p class="br-cap">${overPlanned && cross != null ? html`<b class="due">Crosses ${lim} kg/m² on day ${cross} — thin by day ${cross}.</b> ` : html`<b>Planned maximum ${n1(mx)} kg/m²</b>${n.tier === "none" ? " · no DAERA notice needed. " : n.notifyOk ? " · DAERA told. " : html` · <b class="due">tell DAERA by ${dm(n.notifyBy)}</b>. `}`}Open the density planner ${raw(icon("chevron"))}</p></a></div>`;
+      <p class="br-cap">${overPlanned && cross != null ? html`<b class="due">Crosses ${lim} kg/m² on day ${cross} — thin by day ${cross}.</b> ` : html`<b>Planned maximum ${n1(mx)} kg/m²</b>${n.tier === "none" ? " · no DAERA notice needed. " : n.notifyOk ? " · DAERA told. " : html` · <b class="due">tell DAERA by ${dm(n.notifyBy)}</b>. `}`}</p><span class="br-open" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 4px 2px;border-top:1px solid var(--hair);margin-top:8px;font-weight:700;color:var(--accent-ink)"><span>Open the density planner</span>${raw(icon("chevron"))}</span></a></div>`;
 }
 
 export function mortalityCard(snap, crop, area) {

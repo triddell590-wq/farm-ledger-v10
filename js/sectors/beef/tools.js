@@ -19,7 +19,7 @@ import { DAERA_BREEDS, tagParts } from "./model/tags.js";
 
 const LIST = [["calving", "Calving date", "Due date and window from a service or bull dates"], ["heifer", "Heifer breeding window", "Serve-by dates for the Suckler Cow Scheme"], ["dose", "Dose by weight", "Dose per head, rounded up to a weight band"],
   ["wean", "200-day weight", "Adjusted weaning weight and % of the cow's weight"], ["finish", "Finishing date", "Ready-by date and carcase at today's gain"], ["max-bid", "Buy-in max bid", "Break-even £/kg and the most to pay"],
-  ["fodder", "Fodder budget", "When the silage runs out"], ["meal", "Meal calculator", "kg of meal a head for the gain you want"], ["slurry", "Slurry storage", "Weeks of storage against the 22 weeks needed"], ["scale", "Import from scale head", "Coming soon"]];
+  ["fodder", "Fodder budget", "When the silage runs out"], ["meal", "Meal calculator", "kg of meal a head for the gain you want"], ["slurry", "Slurry storage", "Weeks of storage against the 22 weeks needed"]]; // "Import from scale head" stays hidden until it works (review A #38)
 // Slurry produced, m³ per head per week. GUESS from typical figures — check against DAERA NAP tables before relying on it.
 const SLURRY = { cow: 0.23, bull: 0.25, heifer: 0.15, finisher: 0.17, store: 0.13, weanling: 0.09, calf: 0.06 };
 
@@ -28,7 +28,7 @@ export default async function tools(ctx) {
   if (!tool) return { el: el(html`<div class="beef-page">${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Tools", "Worked out on this phone — no signal needed")}<div class="list">${LIST.map(([k, l, sub]) => html`<a class="row" href="${k === "fodder" ? `#/l/${snap.lid}/feed` : `#/l/${snap.lid}/tools/${k}`}"><span class="tile">${raw(icon(k === "scale" ? "scale" : k === "dose" ? "syringe" : k === "fodder" || k === "meal" ? "feed" : k === "max-bid" ? "money" : "grid"))}</span><span class="main"><span class="primary">${l}</span><span class="secondary">${sub}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>`)}</div></div>`), title: "Tools", depth: 1, tab: "more" };
   const [, label] = LIST.find(([k]) => k === tool) || [tool, "Tool"];
   const body = el(html`<div class="beef-page">${backLink(`#/l/${snap.lid}/tools`, "Tools")}${largeTitle(label)}<form novalidate class="form-group" data-in></form><div class="card pad tool-out" data-out aria-live="polite"></div></div>`);
-  const T = TOOLS[tool] || TOOLS.scale; const form = body.querySelector("[data-in]");
+  const T = TOOLS[tool] || { inputs: () => "", out: () => ans("Not found", "This tool isn't available. Go back to Tools.") }; const form = body.querySelector("[data-in]");
   form.append(el(html`<div style="display:contents">${T.inputs(snap)}</div>`));
   const f = wireForm(form); const paint = () => body.querySelector("[data-out]").replaceChildren(el(html`<div>${T.out(f.values(), snap)}</div>`));
   f.onChange(paint); paint();
@@ -78,7 +78,6 @@ const TOOLS = {
     out(v) { const perWeek = Object.entries(v).filter(([k]) => k.startsWith("h_")).reduce((t, [k, n]) => t + (+n || 0) * (SLURRY[k.slice(2)] ?? 0.15), 0); if (!+v.tank || !perWeek) return ans("—", "Add your tank size.");
       const wk = +v.tank / perWeek; return ans(`${num(wk, 1)} weeks`, `${num(perWeek, 1)} m³ a week. Cattle need 22 weeks of storage under the Nutrients Action Programme${wk < 22 ? " — you're short" : " ✓"}.`, "GUESS: per-head slurry figures are typical values; check against the DAERA NAP tables"); },
   },
-  scale: { inputs: () => "", out: () => ans("Coming soon", "Importing weights from a Tru-Test or Gallagher scale head (CSV) arrives once we've checked their file formats. Until then use Weigh (crush mode).") },
 };
 function dailyCost(snap) {
   const from = addDays(snap.today, -90); const head = snap.data.animals.filter(onFarm).length || 1;

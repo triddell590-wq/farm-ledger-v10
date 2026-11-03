@@ -14,6 +14,7 @@ import { toast } from "../ui/toast.js";
 import { go } from "../core/router.js";
 import { makeScreen, largeTitle, groupLabel, emptyState } from "./common.js";
 import { ROLE_DISPLAY } from "./roles.js";
+import { WORDS } from "../sectors/meta.js";
 
 export function ledgerTabs(ledger, mod) {
   return mod.tabs.filter((t) => !t.roles || t.roles.includes(ledger.role)).map((t) => ({ ...t, href: `#/l/${ledger.id}/${t.id}` }));
@@ -22,8 +23,8 @@ export function ledgerTabs(ledger, mod) {
 export default async function ledgerScreen({ params }) {
   const ledger = session.ledger(params.lid);
   if (!ledger || ledger.type === "farm") {
-    const body = el(html`<div>${largeTitle("Ledger not found")}${emptyState({ iconName: "lock", title: "You can't open this ledger", body: "It may have been deleted, or you were removed from it.", action: "Go to your farm", href: "#/farm/today" })}</div>`);
-    return makeScreen({ body, title: "Ledger not found", area: "farm", depth: 1, chrome: { tabs: null } });
+    const body = el(html`<div>${largeTitle("Not found")}${emptyState({ iconName: "lock", title: "You can't open this", body: "It may have been deleted, or you were removed from it.", action: "Go to your farm", href: "#/farm/today" })}</div>`);
+    return makeScreen({ body, title: "Not found", area: "farm", depth: 1, chrome: { tabs: null } });
   }
   session.setFarm(ledger.farmId);
   const mod = await sectorModule(ledger.type);
@@ -52,16 +53,17 @@ export default async function ledgerScreen({ params }) {
 async function moreTab(ledger, mod, ctx) {
   const extra = mod.moreRows ? await mod.moreRows(ctx) : [];
   const owner = ledger.role === "owner";
+  const W = WORDS[ledger.type] || { noun: "herd", settings: "Settings" };
   const body = el(html`<div>
     ${largeTitle("More", `${ledger.name} · ${ROLE_DISPLAY[ledger.role]}`)}
     ${extra.length ? html`<div class="list">${extra.map((r) => html`<a class="row" href="${r.href}"><span class="tile">${raw(icon(r.icon))}</span><span class="main"><span class="primary">${r.label}</span>${r.sub ? html`<span class="secondary">${r.sub}</span>` : ""}</span><span class="chev">${raw(icon("chevron"))}</span></a>`)}</div>` : ""}
-    <div class="section">${groupLabel(`This ledger`)}
+    <div class="section">${groupLabel(ledger.name)}
     <div class="list">
-      <a class="row" href="#/l/${ledger.id}/more/people"><span class="tile neutral">${raw(icon("people"))}</span><span class="main"><span class="primary">People on this ledger</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
-      <a class="row" href="#/l/${ledger.id}/more/photos"><span class="tile neutral">${raw(icon("camera"))}</span><span class="main"><span class="primary">Photos</span><span class="secondary">${ledger.role === "accountant" ? "Photos on money records" : "Every photo on this ledger's records"}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
-      ${ledger.role !== "viewer" ? html`<a class="row" href="#/l/${ledger.id}/more/records"><span class="tile neutral">${raw(icon("trash"))}</span><span class="main"><span class="primary">Edit or delete records</span><span class="secondary">Find anything added here, delete it, or bring it back</span></span><span class="chev">${raw(icon("chevron"))}</span></a>` : ""}
-      <a class="row" href="#/l/${ledger.id}/more/settings"><span class="tile neutral">${raw(icon("settings"))}</span><span class="main"><span class="primary">Ledger settings</span><span class="secondary">${canEditLedger(ledger.role) ? "Name, official numbers, targets, reminders" : "See the ledger's details"}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
-      ${owner ? "" : html`<button type="button" class="row destructive" data-leave><span class="tile late">${raw(icon("logout"))}</span><span class="main"><span class="primary">Leave this ledger</span></span></button>`}
+      <a class="row" href="#/l/${ledger.id}/more/people"><span class="tile neutral">${raw(icon("people"))}</span><span class="main"><span class="primary">People on this ${W.noun}</span><span class="secondary">Who can open ${ledger.name}, and what they can do</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
+      <a class="row" href="#/l/${ledger.id}/more/photos"><span class="tile neutral">${raw(icon("camera"))}</span><span class="main"><span class="primary">Photos</span><span class="secondary">${ledger.role === "accountant" ? "Photos on money records" : "Every photo on these records"}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
+      ${ledger.role !== "viewer" ? html`<a class="row" href="#/l/${ledger.id}/more/records"><span class="tile neutral">${raw(icon("edit"))}</span><span class="main"><span class="primary">Fix a mistake</span><span class="secondary">Edit, delete or bring back records</span></span><span class="chev">${raw(icon("chevron"))}</span></a>` : ""}
+      <a class="row" href="#/l/${ledger.id}/more/settings"><span class="tile neutral">${raw(icon("settings"))}</span><span class="main"><span class="primary">${W.settings}</span><span class="secondary">${canEditLedger(ledger.role) ? "Name, official numbers, targets, reminders" : "See the details"}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
+      ${owner ? "" : html`<button type="button" class="row destructive" data-leave><span class="tile late">${raw(icon("logout"))}</span><span class="main"><span class="primary">Leave ${ledger.name}</span></span></button>`}
     </div></div>
     <div class="section"><div class="list"><a class="row" href="#/settings"><span class="tile neutral">${raw(icon("user"))}</span><span class="main"><span class="primary">Account and settings</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div></div>
   </div>`);

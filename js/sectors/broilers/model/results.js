@@ -49,10 +49,17 @@ export function paymentEstimate(profile, r, area = 0) {
     const v = metric[b.metric]; if (v == null || b.value === "" || b.value == null) continue;
     const hit = b.op === "<" ? v < +b.value : v > +b.value; if (!hit) continue;
     const mult = b.per === "kg" ? qty.kg : b.per === "bird" ? qty.bird : 1;
-    lines.push({ label: b.label || `${b.metric} ${b.op} ${b.value}`, amount: (+b.amount || 0) * mult });
+    lines.push({ label: bonusLabel(b), amount: (+b.amount || 0) * mult });
   }
   const total = lines.reduce((t, l) => t + l.amount, 0);
   return { lines, total, perBird: qty.bird ? total / qty.bird : null };
+}
+const BONUS_NAMES = { fcr: ["FCR", ""], mortality: ["Mortality", "%"], rejects: ["Rejections", "%"], footpad: ["Footpad score", ""], epef: ["EPEF", ""], avgKg: ["Average weight", " kg"] };
+/** "Mortality over 4%", "FCR under 1.55" — the unit always shown (review B #38). */
+export function bonusLabel(b) {
+  const n = BONUS_NAMES[b && b.metric];
+  if (!n || b.value == null || b.value === "") return (b && b.label) || "";
+  return `${n[0]} ${b.op === "<" ? "under" : "over"} ${b.value}${n[1]}`;
 }
 /** Settlement vs estimate: { diff, pct, flag } (flag when it differs by more than 2%). */
 export function settlementCheck(estimate, paid) {

@@ -53,7 +53,7 @@ export function parseSows(text) {
 function importHtml(snap) {
   return html`<div>${backLink(`#/l/${snap.lid}/sows`, "Sows")}${largeTitle("Import sows", "Paste from a spreadsheet or your old sow cards")}
     <p class="pg-note">One sow per line: <b>sow number, ear tag, parity</b> (and “gilt” or “boar” if it is one). Commas or tabs both work. Sows already in the herd are skipped.</p>
-    <div class="form-group" style="margin-top:12px"><div class="field stacked"><label for="pg-imp">Sows</label><textarea id="pg-imp" rows="10" data-text placeholder="1187, UK NI1234 01187, 4&#10;0932, UK NI1234 00932, 6&#10;1301, UK NI1234 01301, 0, gilt"></textarea></div></div>
+    <div class="form-group" style="margin-top:12px"><div class="field stacked"><label for="pg-imp">Sows</label><textarea id="pg-imp" rows="10" data-text placeholder="e.g.&#10;1187, UK NI1234 01187, 4&#10;0932, UK NI1234 00932, 6&#10;1301, UK NI1234 01301, 0, gilt"></textarea></div></div>
     ${canWrite(snap.role, "sows") ? html`<button type="button" class="btn" style="margin-top:12px" data-import>Import</button>` : ""}</div>`;
 }
 export { KINDS };

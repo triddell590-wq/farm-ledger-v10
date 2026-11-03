@@ -32,7 +32,7 @@ export function openViewer(o) {
     <button type="button" class="ph-nav next" data-next aria-label="Next photo">${raw(icon("chevron"))}</button>
     <div class="ph-foot"><div data-cap></div><div class="ph-meta" data-meta></div></div>
     <div class="ph-confirm" hidden><div class="box" role="alertdialog" aria-labelledby="ph-c-t">
-      <h2 id="ph-c-t">Delete this photo?</h2><p>It's removed from the record for everyone on this ledger.</p>
+      <h2 id="ph-c-t">Delete this photo?</h2><p>It's removed from the record for everyone.</p>
       <button type="button" class="btn danger" data-yes>Delete photo</button>
       <button type="button" class="btn secondary" data-no>Keep it</button></div></div>
   </div>`);

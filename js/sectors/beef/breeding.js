@@ -7,12 +7,12 @@ import { segmented, wireForm } from "../../ui/form.js";
 import { toast } from "../../ui/toast.js";
 import { canRead, canWrite } from "../../core/policy.js";
 import { daysBetween, addDays, shortDate, todayStr } from "../../core/dates.js";
-import { listDate, num } from "../../ui/format.js";
+import { listDate, num, listDateY } from "../../ui/format.js";
 import { largeTitle, groupLabel, emptyState, backLink } from "../../screens/common.js";
 import { liveSnap } from "./data.js";
 import { pill, numTile, tagHtml, animalLabel, sparkBars } from "./ui.js";
 import { onFarm, lastWeight, ageText } from "./model/animals.js";
-import { breedingFemales, dueInfo, scStatus, SC_WORDS, SC_LEVEL, notSeenBulling, lastCalving, birthsToRegister, replacementHeifers, heiferWindow, HEIFER_WORDS, fertilityKpis, scYearReport } from "./model/breeding.js";
+import { breedingFemales, dueInfo, scStatus, SC_WORDS, SC_LEVEL, notSeenBulling, lastCalving, birthsToRegister, replacementHeifers, heiferWindow, HEIFER_WORDS, fertilityKpis, scYearReport, calvingSeason, calvedInSeason } from "./model/breeding.js";
 import { schemeYear, schemeYearLabel, scLimitDays, SC_PAYMENT } from "./model/rules.js";
 import { breedCode, colourCode, sexCode, tagParts } from "./model/tags.js";
 import { updateAnimal } from "./actions.js";
@@ -32,8 +32,8 @@ export default async function breeding(ctx) {
 
 function render(snap, st, repaint) {
   const cows = breedingFemales(snap.data, snap.ix, snap.today);
-  const calvedSeason = [...snap.ix.calvings.values()].filter((l) => l.some((c) => daysBetween(c.date, snap.today) <= 240)).length;
-  const node = el(html`<div>${largeTitle("Breeding", `${num(cows.length)} cows · ${num(calvedSeason)} calved this season`)}
+  const season = calvingSeason(snap.s, snap.today); const calvedSeason = calvedInSeason(snap.ix, season).length; // same rule as Today (A #12)
+  const node = el(html`<div>${largeTitle("Breeding", `${cows.length === 1 ? "1 cow" : num(cows.length) + " cows"} · ${num(calvedSeason)} calved in ${season.name}`)}
     <div class="seg-wrap">${segmented("seg", SEGS.map(([value, label]) => ({ value, label })), st.seg)}</div>
     <div data-body style="margin-top:16px"></div>
     <div class="section"><div class="list"><a class="row" href="#/l/${snap.lid}/breeding/fertility"><span class="tile">${raw(icon("birth"))}</span><span class="main"><span class="primary">Fertility</span><span class="secondary">Calving interval, spread, born and weaned per 100 cows, SC Scheme year</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
@@ -87,7 +87,7 @@ function board(snap, st, again) {
     ${list.length ? html`<div class="list" style="margin-top:12px">${list.map(({ c, sc, nsb }) => {
       const lc = lastCalving(ix, c); const d = sc?.due || {};
       const line2 = lc ? `Calved ${listDate(lc.date).slice(4)} · ${daysBetween(lc.date, today)} d · ${d.empty ? "empty" : d.basis === "scan" ? "in calf (scan)" : d.basis === "ai" ? "served (AI)" : d.basis === "bull" ? "bull in" : nsb ? "not seen bulling" : "not served yet"}` : "No calving recorded";
-      const line3 = sc ? (sc.status === "ok" ? `Due ${listDate(sc.expected).slice(4)} · interval ${daysBetween(lc.date, sc.expected)} d` : sc.status === "empty" ? `Scanned empty ${listDate(d.scan?.date).slice(4)}` : `Must calve by ${listDate(sc.deadline).slice(4)} ${sc.deadline.slice(0, 4)}${money ? ` for £${SC_PAYMENT}` : ""}`) : "";
+      const line3 = sc ? (sc.status === "ok" ? `Due ${listDate(sc.expected).slice(4)} · interval ${daysBetween(lc.date, sc.expected)} d` : sc.status === "empty" ? `Scanned empty ${listDate(d.scan?.date).slice(4)}` : `Must calve by ${listDateY(sc.deadline).slice(4)}${money ? ` for £${SC_PAYMENT}` : ""}`) : "";
       return html`<div class="row board-row"><a class="main" href="#/l/${lid}/animal/${c.id}"><span class="primary">${animalLabel(c)}</span><span class="secondary">${line2}</span><span class="secondary">${line3}</span></a>${sc ? (sc.status === "ok" ? html`<span class="pill ok" aria-label="On track for the Suckler Cow Scheme">${raw(icon("check"))}On track</span>` : pill(SC_LEVEL[sc.status], SC_WORDS[sc.status])) : ""}
         ${sc?.status === "empty" && canWrite(snap.role, "animals") ? html`<span class="row-actions"><button type="button" class="text-btn" data-cull="${c.id}">${c.cull ? "On cull list ✓" : "Cull list"}</button><button type="button" class="text-btn" data-reserve="${c.id}">Re-serve</button></span>` : ""}</div>`;
     })}</div>` : html`<div class="card pad ink-2" style="margin-top:12px">${cows.length ? "No cows in this list." : "No cows yet. Cows show here once a calving is recorded for them."}</div>`}
@@ -130,7 +130,7 @@ function heifers(snap) {
   if (!list.length) return el(emptyState({ sector: "beef", title: "No replacement heifers", body: "Heifers 9 months and older that haven't calved show here with their breeding window." }));
   return el(html`<div class="list">${list.map(({ h, w }) => { const lw = lastWeight(ix, h); const lvl = { open: "due", served: "neutral", inCalf: "ok", young: "neutral", missed: "late" }[w.status];
     return html`<a class="row no-lead" href="#/l/${lid}/animal/${h.id}"><span class="main"><span class="primary">${animalLabel(h)} · ${ageText(h, today)}${lw ? ` · ${lw.kg} kg${lw.kg < s.heiferServeKg ? ` (target ${s.heiferServeKg})` : ""}` : ""}</span>
-      <span class="secondary">Serve ${listDate(w.serveFrom).slice(4)} – ${listDate(w.serveTo).slice(4)} ${w.serveTo.slice(0, 4)} to calve between 21 and ${w.maxM} months</span><span class="secondary">Best: serve by ${listDate(w.best).slice(4)} to calve at 24 months</span>
+      <span class="secondary">Serve ${listDate(w.serveFrom).slice(4)} – ${listDateY(w.serveTo).slice(4)} to calve between 21 and ${w.maxM} months</span><span class="secondary">Best: serve by ${listDate(w.best).slice(4)} to calve at 24 months</span>
       ${w.status === "missed" ? html`<span class="secondary">Won't count for £100, but still worth calving.</span>` : ""}</span>${pill(lvl, w.status === "open" ? `Open · ${w.daysLeft} d left` : HEIFER_WORDS[w.status])}</a>`; })}</div>`);
 }
 
@@ -141,7 +141,8 @@ async function fertility(ctx) {
     const paint = () => {
       const k = fertilityKpis(snap.data, snap.ix, st.year); const t = snap.s.kpiTargets || {}; const money = canRead(snap.role, "finance");
       const sy = schemeYear(snap.today); const rep = scYearReport(snap.data, snap.ix, sy); const ok = rep.filter((r) => r.qualifies).length;
-      const why = {}; rep.filter((r) => !r.qualifies).forEach((r) => r.reasons.forEach((x) => { const key = x.replace(/\d+/g, "#"); why[key] = (why[key] || 0) + 1; }));
+      // one line per calving that misses, with its real numbers ("0412 Daisy: interval 438 days (limit 405)")
+      const misses = rep.filter((r) => !r.qualifies).map((r) => `${r.dam ? animalLabel(r.dam) + ": " : ""}${r.reasons.join("; ")}`);
       const cum = []; let c = 0; for (const w of k.weeks) { c += w; cum.push(c); }
       const node = el(html`<div>${backLink(`#/l/${snap.lid}/breeding`, "Breeding")}${largeTitle("Fertility", `${k.calvings} calvings in ${st.year}`)}
         <div class="seg-wrap">${segmented("year", [st.year, st.year - 1].map((y) => ({ value: String(y), label: String(y) })), String(st.year))}</div>
@@ -155,7 +156,7 @@ async function fertility(ctx) {
         </div><p class="source">Targets based on AHDB and AFBI suckler herd figures; set your own in Targets.</p>
         ${k.weeks.length ? html`<div class="section">${groupLabel("Calving spread", "calvings per week")}<div class="card pad">${sparkBars(k.weeks)}<p class="hint" style="margin:8px 0 0">${cum[2] != null ? `${Math.round((cum[2] / k.calvings) * 100)}% calved by week 3 (target 65%)` : ""}</p></div></div>` : ""}
         <div class="section">${groupLabel(`SC Scheme ${schemeYearLabel(sy)}`)}<div class="card pad"><p style="margin:0"><b>${ok} of ${rep.length}</b> calvings qualify${money ? ` · £${num(ok * SC_PAYMENT)} (estimate until paid)` : ""}</p>
-          ${Object.keys(why).length ? html`<ul class="hint" style="margin:8px 0 0;padding-left:20px">${Object.entries(why).map(([r, n]) => html`<li>${n} × ${r.replace(/#/g, "…")}</li>`)}</ul>` : ""}
+          ${misses.length ? html`<ul class="hint" style="margin:8px 0 0;padding-left:20px">${misses.slice(0, 6).map((m) => html`<li>${m}</li>`)}${misses.length > 6 ? html`<li>and ${misses.length - 6} more</li>` : ""}</ul>` : ""}
           <a class="text-btn" href="#/l/${snap.lid}/paperwork/sc">See each calving ›</a></div></div></div>`);
       const f = wireForm(node); f.onChange(() => { st.year = Number(f.values().year); paint(); });
       body.replaceChildren(node);

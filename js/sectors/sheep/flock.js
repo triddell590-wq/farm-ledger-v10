@@ -1,12 +1,16 @@
 // Sheep → Flock (the home, design/11 §3): year strip → alerts (max 3) → the stage board →
 // To do today → compact lamb funnel → mob strip.
+import { newsworthy } from "../../content/region-rules.js";
+import { DISEASE_BANNER } from "./model/content.js";
 import { viewPills } from "../../ui/view-pills.js";
 import { html, raw } from "../../core/html.js";
 import { el } from "../../ui/dom.js";
+import { startHome } from "../../ui/start-card.js";
 import { icon } from "../../ui/icons.js";
 import { openSheet } from "../../ui/sheet.js";
 import { radioGroup, wireForm } from "../../ui/form.js";
 import { taskList } from "../../ui/tasks.js";
+import { nowCount, homeDedupe, alertLevel } from "../../services/today-rules.js";
 import { todaysTasks } from "../../services/tasks.js";
 import { auth } from "../../core/auth.js";
 import { canRead, canWrite } from "../../core/policy.js";
@@ -42,33 +46,41 @@ export default async function flock(ctx) {
 }
 
 async function paint(body, snap) {
+  if (!activeMobs(snap.data).length && !snap.data.sheep?.length) { // empty flock: one start card (A #19)
+    const w = canWrite(snap.role, "mobs");
+    body.replaceChildren(el(startHome({ type: "sheep", title: "Flock", context: contextLine(snap), actions: w ? [{ id: "mob", label: "Add a mob of ewes", attr: 'data-flow="newMob"' }] : [] })));
+    return;
+  }
   const { lid, stage } = snap; const money = canRead(snap.role, "finance");
   const shown = stageFor(snap); const auto = savedStage(lid) === "auto";
   const all = sheepAlerts(snap.c, { money });
-  const bannerA = all.filter((a) => a.banner); const restricted = all.find((a) => a.key === "restricted");
-  const alerts = all.filter((a) => !a.banner && a.key !== "restricted");
+  const bannerA = all.filter((a) => a.banner && newsworthy(DISEASE_BANNER, snap.today)); const restricted = all.find((a) => a.key === "restricted");
+  const LV = { late: 0, due: 1, info: 2 };
   const by = { uid: auth.user?.uid, name: auth.user?.displayName || auth.user?.email };
   const gen = todayTasks(snap.c, snap.doneKeys).map((t) => ({ id: t.key, title: t.title, due: t.due, href: t.href, legal: t.legal, generated: true, done: false, ledger: snap.ledger, tick: (d) => tickGenerated(lid, snap, t, d, by) }));
   const stored = (await todaysTasks([snap.ledger])).filter((t) => !t.sourceRef || t.done);
-  const tasks = [...gen, ...stored].sort((a, b) => (a.done - b.done) || String(a.due).localeCompare(String(b.due)));
+  const dd = homeDedupe(all.filter((a) => !a.banner && a.key !== "restricted"), [...gen, ...stored]); const tasks = dd.tasks;
+  const alerts = dd.alerts.map((a) => ({ ...a, level: alertLevel(a, snap.today) })).sort((a, b) => LV[a.level] - LV[b.level]);
   const f = shownFunnel(snap.data, snap.cy, cycleFor(snap.s, addDays(snap.cy.ramsIn, -1), snap.data.events), snap.today).main; const t = snap.totals; const mobs = activeMobs(snap.data);
   const morning = overnight(snap.c);
   const scrollY = window.scrollY;
+  // no "day N of tupping" before the rams are in (review B #27)
+  const notIn = stage.stage === "tupping" && !snap.cy.actual && !snap.data.events.some((e) => !e.deleted && e.kind === "raddle" && e.date >= snap.cy.ramsIn && e.date < snap.cy.nextRamsIn);
   const node = el(html`<div>
     ${largeTitle("Flock", contextLine(snap))}${viewPills(snap.lid, [["flock", "Flock"], ["rams", "Rams"]], "flock", "Flock views")}
-    ${yearStrip(snap)}
-    <p class="ynote">Today: day ${stage.day} of ${STAGE_NAMES[stage.stage].toLowerCase()}${auto ? "" : ` · showing ${STAGE_NAMES[shown].toLowerCase()} (set by you)`}</p>
+    ${/* one stage control (review B #25): the Sheep year tab has the stages; Flock keeps the chip */ ""}
+    ${notIn ? html`<p class="ynote">Rams not in yet · planned ${short(snap.cy.ramsIn)}${auto ? "" : ` · showing ${STAGE_NAMES[shown].toLowerCase()} (set by you)`}</p>` : html`<p class="ynote">Today: day ${stage.day} of ${STAGE_NAMES[stage.stage].toLowerCase()}${auto ? "" : ` · showing ${STAGE_NAMES[shown].toLowerCase()} (set by you)`}</p>`}
     <button type="button" class="stage-chip" data-stage>${raw(icon("clock"))}Stage: ${STAGE_NAMES[shown]} · change</button>
     ${restricted ? banner("late", restricted.title, restricted.body) : ""}
     ${bannerA.map((a) => banner("info", a.title, " " + a.body))}
     ${alerts.length ? html`<div class="section" data-alerts>${alerts.slice(0, 3).map((a) => alertCard(a, false))}${alerts.length > 3 ? html`<button type="button" class="text-btn" data-more-alerts style="margin-top:4px">${alerts.length - 3} more ${alerts.length - 3 === 1 ? "thing needs" : "things need"} attention ›</button>` : ""}</div>` : ""}
     <div class="section">${groupLabel(STAGE_NAMES[shown])}${board(shown, snap)}</div>
-    <div class="section" data-tasks>${groupLabel("To do today", tasks.filter((x) => !x.done).length || "")}${morning ? html`<div class="info-card" style="margin-bottom:8px">${raw(icon("info"))}<span>${morning}</span></div>` : ""}</div>
+    <div class="section" data-tasks>${groupLabel("To do today", nowCount(tasks, snap.today) || "")}${morning ? html`<div class="info-card" style="margin-bottom:8px">${raw(icon("info"))}<span>${morning}</span></div>` : ""}</div>
     <div class="section">${groupLabel(`Lamb funnel · ${f.crop}`, html`<a class="text-btn" href="#/l/${lid}/funnel">Full funnel</a>`)}${f.enough ? funnelView(f, { compact: true }) : html`<div class="card pad t-callout ink-2">The funnel fills as you record rams in, scanning, lambing and weaning.</div>`}</div>
-    <p class="mob-strip"><a href="#/l/${lid}/mobs">${plural(mobs.length, "mob")} · ${plural(t.ewes, "ewe")} · ${plural(t.rams, "ram")} · ${plural(t.lambs + t.eweLambs, "lamb")}${t.goats ? " · " + plural(t.goats, "goat") : ""}</a></p>
+    <p class="mob-strip"><a href="#/l/${lid}/mobs">${plural(mobs.length, "mob")} · ${plural(t.ewes, "ewe")} · ${plural(t.rams, "ram")} · ${t.eweLambs ? `${plural(t.eweLambs, "ewe lamb")} · ` : ""}${plural(t.lambs, "lamb")}${t.goats ? " · " + plural(t.goats, "goat") : ""}</a></p>
   </div>`);
   const tb = node.querySelector("[data-tasks]");
-  if (tasks.length) tb.append(taskList(tasks, { max: 12, onChange: () => {} }));
+  if (tasks.length) tb.append(taskList(tasks, { max: 12, onChange: () => {}, today: snap.today }));
   else if (!mobs.length) tb.append(el(emptyState({ sector: "sheep", title: "No sheep yet", body: "Start with your mobs — how many ewes, rams and lambs and where they are. Add tags later if you use EID.", action: canWrite(snap.role, "mobs") ? "Add a mob" : null, actAttr: 'data-flow="newMob"' })));
   else { const n = nextTask(snap.c, snap.doneKeys); tb.append(el(html`<div class="card pad t-callout ink-2">Nothing due today.${n ? ` Next: ${n.title.charAt(0).toLowerCase() + n.title.slice(1)} on ${short(n.show)}.` : ""}</div>`)); }
   body.replaceChildren(node);

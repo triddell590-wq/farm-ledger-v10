@@ -1,11 +1,14 @@
 // Beef → Today (design/10 §3): header with season mode, alerts, the season block, To do today,
 // Coming up this week, herd strip. Season modes reorder, never hide.
+import { newsworthy } from "../../content/region-rules.js";
 import { html, raw } from "../../core/html.js";
 import { el } from "../../ui/dom.js";
+import { startHome } from "../../ui/start-card.js";
 import { icon } from "../../ui/icons.js";
 import { openSheet } from "../../ui/sheet.js";
 import { radioGroup, wireForm } from "../../ui/form.js";
 import { taskList } from "../../ui/tasks.js";
+import { nowCount, homeDedupe, alertLevel } from "../../services/today-rules.js";
 import { todaysTasks } from "../../services/tasks.js";
 import { auth } from "../../core/auth.js";
 import { canRead, canWrite } from "../../core/policy.js";
@@ -16,8 +19,8 @@ import { alertCard } from "../../screens/overview-today.js";
 import { liveSnap } from "./data.js";
 import { numTile, sparkBars, tagHtml, animalLabel } from "./ui.js";
 import { autoMode, MODE_NAMES, scLimitDays } from "./model/rules.js";
-import { onFarm, classOf, CLASS_NAMES, ageMonths, lastWeight } from "./model/animals.js";
-import { breedingFemales, dueInfo, scStatus, notSeenBulling, replacementHeifers, heiferWindow, birthsToRegister, lastCalving } from "./model/breeding.js";
+import { onFarm, classOf, CLASS_NAMES, CLASS_ONE, ageMonths, lastWeight } from "./model/animals.js";
+import { breedingFemales, dueInfo, scStatus, notSeenBulling, replacementHeifers, heiferWindow, birthsToRegister, lastCalving, calvingSeason, calvedInSeason } from "./model/breeding.js";
 import { deadlineAnimals, finishingFacts } from "./model/finishing.js";
 import { beefAlerts, todayTasks, weekTasks, tbNext } from "./model/duties.js";
 import { mealToday } from "./model/feed.js";
@@ -46,14 +49,23 @@ export default async function today(ctx) {
 }
 
 async function paint(body, snap) {
+  if (!snap.data.animals.length) { // empty herd: one start card, no zero tiles (A #19)
+    const w = canWrite(snap.role, "animals");
+    body.replaceChildren(el(startHome({ type: "beef", title: "Today", context: contextLine(snap), actions: w ? [{ id: "import", label: "Import your herd list (NIFAIS CSV)" }, { id: "add", label: "Add one animal" }] : [] })));
+    const b = (id) => body.querySelector(`[data-start="${id}"]`);
+    if (b("import")) b("import").onclick = () => import("./flows/animal-edit.js").then((m) => m.importHerdSheet(snap));
+    if (b("add")) b("add").onclick = () => import("./flows/animal-edit.js").then((m) => m.addAnimalSheet(snap));
+    return;
+  }
   const { lid, today } = snap; const money = canRead(snap.role, "finance");
   const mode = modeFor(snap); const auto = savedMode(lid) === "auto";
-  const alerts = beefAlerts(snap.c, { money });
   const by = { uid: auth.user?.uid, name: auth.user?.displayName || auth.user?.email };
   const gen = todayTasks(snap.c, snap.doneKeys).map((t) => ({ id: t.key, title: t.title, due: t.due, href: t.href, legal: t.legal, generated: true, done: false, ledger: snap.ledger, tick: (d) => tickGenerated(lid, snap, t, d, by) }));
   const stored = (await todaysTasks([snap.ledger])).filter((t) => !t.sourceRef || t.done);
-  const tasks = [...gen, ...stored].sort((a, b) => (a.done - b.done) || String(a.due).localeCompare(String(b.due)));
+  const dd = homeDedupe(beefAlerts(snap.c, { money }), [...gen, ...stored]); const tasks = dd.tasks;
   const week = weekTasks(snap.c, snap.doneKeys);
+  const LV = { late: 0, due: 1, info: 2 };
+  const alerts = dd.alerts.map((a) => ({ ...a, level: alertLevel(a, today) })).sort((a, b) => LV[a.level] - LV[b.level]);
   const dueSoon = breedingFemales(snap.data, snap.ix, today).some((c) => { const d = dueInfo(snap.data, snap.s, snap.ix, c); const dd = d.date || d.from; return dd && daysBetween(today, dd) <= 14 && daysBetween(today, dd) >= -21; });
   const blocks = [mode]; if (dueSoon && mode !== "calving") blocks.unshift("calving");
   const head = snap.data.animals.filter(onFarm);
@@ -63,17 +75,15 @@ async function paint(body, snap) {
     ${largeTitle("Today", contextLine(snap))}
     <button type="button" class="mode-chip" data-mode>${raw(icon("clock"))}${MODE_NAMES[mode]} mode${auto ? "" : " (set by you)"} · change</button>
     ${alerts.length ? html`<div class="section" data-alerts>${alerts.slice(0, 3).map((a) => alertCard(a, false))}${alerts.length > 3 ? html`<button type="button" class="text-btn" data-more-alerts style="margin-top:4px">${alerts.length - 3} more ${alerts.length - 3 === 1 ? "thing needs" : "things need"} attention ›</button>` : ""}</div>` : ""}
-    ${beefBanner(snap.s).map((n) => html`<div class="info-card disease-banner ${n.level}" style="margin-top:12px">${raw(icon(n.level === "info" ? "info" : "alert"))}<span>${n.text}</span></div>`)}
+    ${beefBanner(snap.s).filter((b) => newsworthy(b, today)).map((n) => html`<div class="info-card disease-banner ${n.level}" style="margin-top:12px">${raw(icon(n.level === "info" ? "info" : "alert"))}<span>${n.text}</span></div>`)}
     ${snap.meta.settings?.suspicion ? html`<div class="alert late" style="margin-top:12px"><span class="a-icon">${raw(icon("alert"))}</span><div><div class="a-title">Holding restricted: ${snap.meta.settings.suspicion.what} suspicion</div><div class="a-body">Cattle can only go direct to slaughter until the results are back.</div><div class="a-actions"><a class="text-btn" href="#/l/${lid}/disease">Record the result</a></div></div></div>` : ""}
     ${blocks.map((b) => html`<div class="section">${groupLabel(MODE_NAMES[b])}<div class="season">${seasonBlock(b, snap, money)}</div></div>`)}
     ${blocks.includes("winter") ? "" : feedCard(snap)}
-    <div class="section" data-tasks>${groupLabel("To do today", tasks.filter((t) => !t.done).length || "")}</div>
-    ${week.length ? html`<div class="section"><div class="list"><button type="button" class="disclosure" data-week aria-expanded="false">Coming up this week (${week.length}) ${raw(icon("down", { size: 18 }))}</button>
-      <div data-week-list hidden>${week.map((t) => html`<div class="row no-lead"><span class="main"><span class="primary">${t.title}</span><span class="secondary">${listDate(t.show)}</span></span></div>`)}</div></div></div>` : ""}
+    <div class="section" data-tasks>${groupLabel("To do today", nowCount(tasks, today) || "")}</div>
     <p class="herd-strip">${herdStrip(snap, head)}</p>
   </div>`);
   const tb = node.querySelector("[data-tasks]");
-  if (tasks.length) tb.append(taskList(tasks, { max: 12, onChange: () => {} }));
+  if (tasks.length || week.length) tb.append(taskList(tasks, { max: 12, onChange: () => {}, today, coming: week.map((t) => ({ title: t.title, due: t.show, href: t.href })) }));
   else if (!alerts.length) {
     const tbn = tbNext(snap.c);
     tb.append(el(emptyState({ sector: "beef", title: head.length ? "Nothing due today" : "No cattle yet", body: head.length ? `The herd's up to date.${tbn ? ` Next thing: TB test ${daysBetween(today, tbn) >= 0 ? `in ${daysBetween(today, tbn)} days` : "overdue"}.` : ""}` : "Add your herd once and every register, reminder and list fills itself.", action: !head.length && canWrite(snap.role, "animals") ? "Add cattle" : null, href: !head.length ? `#/l/${lid}/herd` : null })));
@@ -82,12 +92,11 @@ async function paint(body, snap) {
   if (scrollY) window.scrollTo(0, scrollY);
   node.querySelector("[data-mode]").onclick = () => modeSheet(snap, () => paint(body, snap));
   const ma = node.querySelector("[data-more-alerts]"); if (ma) ma.onclick = () => openSheet({ title: "Needs attention", body: el(html`<div>${alerts.map((a) => alertCard(a, false))}</div>`), cancelText: "Done" });
-  const wk = node.querySelector("[data-week]"); if (wk) wk.onclick = () => { const l = node.querySelector("[data-week-list]"); l.hidden = !l.hidden; wk.setAttribute("aria-expanded", String(!l.hidden)); };
 }
 
 function herdStrip(snap, head) {
   const by = {}; for (const a of head) { const c = classOf(snap.ix, a, snap.today); by[c] = (by[c] || 0) + 1; }
-  return ["cow", "bull", "heifer", "calf", "weanling", "store", "finisher"].filter((c) => by[c]).map((c) => `${num(by[c])} ${CLASS_NAMES[c].toLowerCase()}`).join(" · ") || "No cattle on the farm yet.";
+  return ["cow", "bull", "heifer", "calf", "weanling", "store", "finisher"].filter((c) => by[c]).map((c) => (by[c] === 1 ? `1 ${CLASS_ONE[c]}` : `${num(by[c])} ${CLASS_NAMES[c].toLowerCase()}`)).join(" · ") || "No cattle on the farm yet.";
 }
 
 function modeSheet(snap, after) {
@@ -108,14 +117,15 @@ function seasonBlock(mode, snap, money) {
     const dues = cows.map((c) => ({ c, d: dueInfo(data, s, ix, c) })).map((x) => ({ ...x, dd: x.d.date || x.d.from })).filter((x) => x.dd && daysBetween(today, x.dd) >= -21 && !(lastCalving(ix, x.c) && lastCalving(ix, x.c).date > addDays(x.dd, -200)));
     const week = dues.filter((x) => daysBetween(today, x.dd) <= 7).sort((a, b) => a.dd.localeCompare(b.dd));
     const bars = Array.from({ length: 14 }, (_, i) => dues.filter((x) => x.dd === addDays(today, i)).length);
-    const seasonStart = addDays(today, -120);
-    const calvedN = [...ix.calvings.values()].filter((l) => l.some((c) => c.date >= seasonStart)).length;
-    const total = calvedN + dues.length;
+    // one season definition with Breeding, named on the tile (review A #12)
+    const season = calvingSeason(s, today); const calvedIds = new Set(calvedInSeason(ix, season));
+    const calvedN = calvedIds.size;
+    const total = calvedN + dues.filter((x) => !calvedIds.has(x.c.id) && x.dd >= season.from && x.dd <= season.to).length;
     const reg = birthsToRegister(data, s, today); const late = reg.filter((r) => r.late).length;
     const next = dues.filter((x) => x.dd >= today).sort((a, b) => a.dd.localeCompare(b.dd));
     return html`${numTile({ hero: true, label: "Due this week", value: num(week.length), delta: next[0] ? `Next: ${animalLabel(next[0].c)} · ${listDate(next[0].dd)}` : "None due in the next 14 days", href: L("breeding/calving") })}
       ${bars.some(Boolean) ? html`<div class="num-tile hero" style="min-height:0;padding-top:8px"><span class="label">Due by day, next 14 days</span>${sparkBars(bars)}</div>` : ""}
-      ${numTile({ label: "Calved", value: `${num(calvedN)}${total ? ` of ${num(total)}` : ""}`, delta: "this season", href: L("breeding/fertility") })}
+      ${numTile({ label: "Calved", value: `${num(calvedN)}${total ? ` of ${num(total)}` : ""}`, delta: season.name, href: L("breeding/fertility") })}
       ${numTile({ label: "To register", value: num(reg.length), delta: reg.length ? `${late} late · ${reg.length - late} due` : "All done", href: L("breeding/register"), tone: late ? "late" : "" })}`;
   }
   if (mode === "breeding" || mode === "grazing") {

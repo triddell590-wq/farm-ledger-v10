@@ -17,6 +17,7 @@ import { currentCrop, lastCrop } from "../model/crop.js";
 import { addDays } from "../model/time.js";
 import { tickChecklist } from "../actions.js";
 import { evidenceButton, wireEvidenceButtons } from "../../../ui/photo-strip.js";
+import { readyScore, readyHero, readyLists, wireReady } from "../../../ui/ready-check.js";
 
 const TILES = [["house", "House records", "records"], ["density", "Density notices", "chart"], ["salmonella", "Salmonella results", "scan"], ["fci", "FCI copies", "document"], ["medicines", "Medicines", "syringe"], ["alarms", "Alarm and generator tests", "bell"], ["environment", "Environment log", "temp"], ["training", "Training certificate", "user"]];
 
@@ -24,20 +25,28 @@ export default async function checklist(ctx) {
   const page = ctx.match.groups.page;
   return liveScreen(ctx, { title: page === "rt" ? "Red Tractor Chicken" : "Inspector is here", tab: "paperwork", paint: (snap) => (page === "rt" ? rt(snap) : inspect(snap)),
     after: (node, snap) => {
-      node.querySelectorAll("[data-tick]").forEach((b) => (b.onclick = () => { const on = b.getAttribute("aria-checked") !== "true"; tickChecklist(snap, b.dataset.tick, on); toast(on ? "Ticked" : "Unticked"); }));
+      wireReady(node, (id, on) => { tickChecklist(snap, id, on); toast(on ? "Ticked" : "Unticked"); });
       node.querySelector("[data-pack]")?.addEventListener("click", () => printDoc({ title: "Inspection pack", __html: packHtml(snap) }));
       wireEvidenceButtons(node, { lid: snap.lid, role: snap.role, list: "checklist", labelOf: (id) => `Red Tractor Chicken ${id}` });
     } });
 }
 
+/** Red Tractor Chicken items as ready-check rows (review A #14). */
+export function brRtRows(snap) {
+  const fix = (t) => String(t || "").replace(/\d{4}-\d\d-\d\d/g, (m) => d2(m));
+  return evaluate(snap.c, snap.meta.checklist || {}).map((x) => x.auto
+    ? { id: x.id, text: x.text, sec: GROUPS[x.g], auto: true, state: x.state === "open" ? "due" : x.state, note: fix(x.note) }
+    : { id: x.id, text: x.text, sec: GROUPS[x.g], auto: false, state: x.state === "na" ? "na" : "open", done: x.state === "ok", note: fix(x.note) });
+}
+export const broilersHasData = (snap) => snap.ix.crops.length > 0;
+
 function rt(snap) {
-  const L = (h) => `#/l/${snap.lid}/${h}`; const list = evaluate(snap.c, snap.meta.checklist || {}); const sm = summary(list);
+  const L = (h) => `#/l/${snap.lid}/${h}`; const rows = brRtRows(snap); const sc = readyScore(rows, broilersHasData(snap));
   const can = canWriteMeta(snap.role, "checklist");
-  return html`<div>${backLink(L("paperwork"), "Paperwork")}${largeTitle("Inspection ready?", `${sm.ok} of ${sm.total} ready${sm.gaps ? ` · ${sm.gaps} gap${sm.gaps > 1 ? "s" : ""} in the records` : ""}`)}
+  return html`<div>${backLink(L("paperwork"), "Paperwork")}${largeTitle("Inspection ready?", sc.hasData ? `${sc.ok} of ${sc.n} checked from your records · ${sc.selfDone} of ${sc.selfN} ticked` : "Start a crop and the app starts checking")}
     <div class="info-card">${raw(icon("info"))}<span>${RT_HEADER} ${RT_NOTE}</span></div>
-    ${Object.entries(GROUPS).map(([g, name]) => { const items = list.filter((x) => x.g === g); if (!items.length) return ""; return html`<div class="section">${groupLabel(name, `${items.filter((x) => x.state === "ok").length}/${items.filter((x) => x.state !== "na").length}`)}<div class="list">${items.map((x) => html`<div class="row no-lead br-rt">
-      ${x.auto && x.state !== "gap" ? html`<span class="tile ${x.state === "ok" ? "ok" : ""}">${raw(icon(x.state === "ok" ? "check" : "info"))}</span>` : html`<button type="button" class="checkbox" role="checkbox" aria-checked="${x.state === "ok"}" aria-label="${x.text}" data-tick="${x.id}" ${raw(can ? "" : "disabled")}>${raw(icon("check"))}</button>`}
-      <span class="main"><span class="primary">${x.text}</span><span class="secondary">${String(x.note || "").replace(/\d{4}-\d\d-\d\d/g, (m) => d2(m)) || (x.state === "open" ? "Tick when it's in place" : "")}${x.auto && x.state !== "na" ? " · from your records" : ""}</span><span class="row-actions">${evidenceButton(x.id)}</span></span>${x.state === "gap" ? pill("due", "Gap") : x.state === "na" ? pill("neutral", "n/a", "") : ""}</div>`)}</div></div>`; })}
+    ${readyHero(sc)}
+    ${readyLists(rows, { can, actions: (r) => evidenceButton(r.id) })}
   </div>`;
 }
 

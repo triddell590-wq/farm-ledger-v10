@@ -1,5 +1,6 @@
 // Annual inventory wizard (design/11 §9.4): count date 1–5 December only, counts by category
 // prefilled from mob counts, compared with the register; then the date it was sent to DAERA.
+import { sourceText } from "../../ui/format.js";
 import { html } from "../../core/html.js";
 import { el } from "../../ui/dom.js";
 import { toast } from "../../ui/toast.js";
@@ -19,7 +20,7 @@ export default async function inventory(ctx) {
     const can = canWrite(snap.role, "inventories"); const src = ruleRecord("inventories");
     const dflt = snap.today >= w.from && snap.today <= w.to ? snap.today : w.from;
     return html`<div>${backLink(`#/l/${snap.lid}/paperwork`, "Paperwork")}${largeTitle("Annual inventory", `Count between ${short(w.from)} and ${short(w.to)} ${w.year}`)}
-      <div class="info-card"><span>Return date: ${w.deadline ? short(w.deadline) + " (from DAERA's letter)" : "not set — add it from DAERA's November letter in Targets"}. Rule checked ${src?.checkedOn || ""} (${src?.source || "DAERA"}).</span></div>
+      <div class="info-card"><span>Return date: ${w.deadline ? short(w.deadline) + " (from DAERA's letter)" : "not set — add it from DAERA's November letter in Targets"}. ${sourceText(src?.source || "DAERA", src?.checkedOn)}.</span></div>
       ${rec?.countDate ? html`<div class="section">${groupLabel("Counted")}${kvRows([["Count date", short(rec.countDate)], ...Object.entries(INVENTORY_CATS).map(([k, l]) => [l, num(rec.counts?.[k] || 0)]), ["Total", num(rec.total), "", rec.total !== rec.registerTotal ? `Register said ${rec.registerTotal}${rec.countCheckNote ? " · " + rec.countCheckNote : ""}` : "Matches your register ✓"], ["Sent to DAERA", rec.submittedOn ? short(rec.submittedOn) : "Not yet", rec.submittedOn ? "ok" : "due", rec.ref ? `Ref ${rec.ref}` : ""]])}</div>` : ""}
       ${can ? html`<form class="section" novalidate data-f>${groupLabel(rec?.countDate ? "Change the count" : "Count the flock")}
         <div class="form-group">${textField({ name: "countDate", label: "Count date (1–5 Dec)", type: "date", value: rec?.countDate || dflt })}${Object.entries(INVENTORY_CATS).map(([k, l]) => textField({ name: k, label: l, inputmode: "numeric", value: String(rec?.counts?.[k] ?? pre[k]) }))}</div>

@@ -1,6 +1,7 @@
 // Dairy → More → Calves (design/12 §7.2, §4.2 calf card): calf shed board by pen, today's
 // mixing sheet from the feeding plans, heifer growth vs % of mature weight, calf details
 // (colostrum, disbudding with anaesthetic + pain relief, stage, weaning) and weighings.
+import { plural as pl } from "../../../ui/format.js";
 import { viewPills } from "../../../ui/view-pills.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
@@ -46,7 +47,7 @@ function render(snap) {
       <span class="secondary">${col?.litres ? `Colostrum ${col.litres} L${col.time ? " at " + col.time : ""}${col.brix ? ` · Brix ${col.brix}%` : ""}` : "Colostrum not recorded"}${c.disbud?.date ? ` · disbudded${c.disbud.anaesthetic && c.disbud.analgesic ? " ✓" : " (pain relief?)"}` : ""}${c.weanDate ? ` · weaned ${c.weanDate.slice(8)}/${c.weanDate.slice(5, 7)}` : ""}</span></span>
       ${!col?.litres ? pill("due", "Colostrum") : brix === false ? pill("due", "Low Brix") : c.destination === "Sell" ? pill("neutral", "To sell") : ""}</button>`; };
   const node = el(html`<div>${largeTitle("Calves", `${num(kids.length)} calves · ${num(pens.size)} pen${pens.size === 1 ? "" : "s"}`)}${viewPills(lid, [["cows", "All cows"], ["calves", "Calves"], ["scores", "Mobility & BCS"]], "calves", "Cow views")}
-    ${sectionOf("Today's mixing sheet", mixRows.length ? html`<div class="card pad">${mixRows.map(({ p, n, m }) => html`<p class="t-callout" style="margin:0 0 8px"><b>${p.pen || "Pen"}:</b> ${n} calves × ${p.lPerFeed} L × ${p.feedsPerDay} feeds = <b>${num(m.litresDay, 1)} L</b> → <b>${num(m.kgDay, 1)} kg powder</b> (${p.gPerL} g/L)${w ? html` <button type="button" class="text-btn" data-plan="${p.id}" style="min-height:28px;padding:0 4px">Edit</button>` : ""}</p>`)}
+    ${sectionOf("Today's mixing sheet", mixRows.length ? html`<div class="card pad">${mixRows.map(({ p, n, m }) => html`<p class="t-callout" style="margin:0 0 8px"><b>${p.pen || "Pen"}:</b> ${pl(n, "calf", "calves")} × ${p.lPerFeed} L × ${p.feedsPerDay} feeds = <b>${num(m.litresDay, 1)} L</b> → <b>${num(m.kgDay, 1)} kg powder</b> (${p.gPerL} g/L)${w ? html` <button type="button" class="text-btn" data-plan="${p.id}" style="min-height:28px;padding:0 4px">Edit</button>` : ""}</p>`)}
         <p class="t-head" style="margin:4px 0 0">Whole shed: ${num(tot.L, 1)} L · ${num(tot.kg, 1)} kg a day</p><p class="formula">Calves × litres per feed × feeds a day; × grams per litre ÷ 1000. Per feed: ${num(tot.L / Math.max(1, s.calfPlan.feedsPerDay), 1)} L.</p></div>`
       : html`<p class="hint">Add a feeding plan per pen and the mixing sheet works itself out (e.g. 6 calves × 3 L × 2 feeds = 36 L → 5.4 kg at 150 g/L).</p>`)}
     ${w ? html`<button type="button" class="btn secondary" data-plan style="margin-top:8px">Add a feeding plan</button>` : ""}
@@ -73,7 +74,7 @@ export function calfSheet(snap, a) {
     <div class="form-group">${textField({ name: "colL", label: "Litres", value: col.litres ?? "", inputmode: "decimal" })}${textField({ name: "colTime", label: "Time", type: "time", value: col.time || "" })}${textField({ name: "brix", label: "Brix %", value: col.brix ?? "", inputmode: "decimal", optional: true })}</div>
     <p class="form-label">Disbudding</p>
     <div class="form-group">${textField({ name: "disbudDate", label: "Date", type: "date", value: d.date || "" })}${checkRow("anaesthetic", "Local anaesthetic given", !!d.anaesthetic)}${checkRow("analgesic", "Pain relief (NSAID) given", !!d.analgesic)}</div>
-    <div class="form-group">${textField({ name: "vaccines", label: "Vaccinations", value: c.vaccines || "", optional: true, placeholder: "Rispoval IN 12 Oct" })}${textField({ name: "weanDate", label: "Weaned on", type: "date", value: c.weanDate || "" })}</div></form>`);
+    <div class="form-group">${textField({ name: "vaccines", label: "Vaccinations", value: c.vaccines || "", optional: true, placeholder: "e.g. Rispoval IN 12 Oct" })}${textField({ name: "weanDate", label: "Weaned on", type: "date", value: c.weanDate || "" })}</div></form>`);
   return entrySheet({ title: "Calf details", body, label: "Save calf", missing: (v) => (v.disbudDate && (!v.anaesthetic || !v.analgesic) ? "Disbudding needs anaesthetic and pain relief ticked" : null),
     save(v, sh) {
       updateCow(snap.lid, a, { calf: { ...c, pen: v.pen, stage: v.stage, destination: v.destination, colostrum: v.colL || v.colTime || v.brix ? { litres: v.colL === "" ? null : +v.colL, time: v.colTime, brix: v.brix === "" ? null : +v.brix } : null, disbud: v.disbudDate ? { date: v.disbudDate, anaesthetic: v.anaesthetic, analgesic: v.analgesic } : null, vaccines: v.vaccines, weanDate: v.weanDate || null } });

@@ -7,6 +7,7 @@ import { openSheet } from "../../../ui/sheet.js";
 import { wireForm, guardButton, chipGroup } from "../../../ui/form.js";
 import { toast } from "../../../ui/toast.js";
 import { currentCrop, cropDay } from "../model/crop.js";
+import { isThisRight } from "../../../ui/sanity.js";
 
 export const nowHM = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 export const opt = (list) => list.map((x) => (Array.isArray(x) ? { value: x[0], label: x[1] ?? x[0] } : { value: x, label: x }));
@@ -22,7 +23,7 @@ export const warn = (text, level = "") => html`<div class="warn-card ${level}" s
 export const lawNote = (text) => html`<p class="br-law">${text}</p>`;
 
 /** Open an entry sheet: body (form), label, missing(values) -> reason|null, save(values, sheet). */
-export function entrySheet({ title, body, label, missing = () => null, save, size, footerExtra }) {
+export function entrySheet({ title, body, label, checks, missing = () => null, save, size, footerExtra }) {
   const btn = el(html`<button type="button" class="btn">${label}</button>`);
   const foot = footerExtra ? el(html`<div class="br-foot"></div>`) : btn;
   if (footerExtra) foot.append(footerExtra, btn);
@@ -32,7 +33,7 @@ export function entrySheet({ title, body, label, missing = () => null, save, siz
   f.onChange(refresh); body.addEventListener("click", () => setTimeout(refresh, 0)); refresh();
   let start = JSON.stringify(f.values());
   const sh = openSheet({ title, body, footer: foot, size, isDirty: () => JSON.stringify(f.values()) !== start, discardTitle: `Discard this ${title.toLowerCase().replace(/ ·.*$/, "")}?` });
-  btn.onclick = async () => { const v = f.values(); if (missing(v)) return; btn.disabled = true; try { await save(v, sh); } catch (e) { console.error(e); toast("Couldn't save that. Try again."); } finally { btn.disabled = false; } };
+  btn.onclick = async () => { const v = f.values(); if (missing(v)) return; if (checks && !(await isThisRight(() => checks(v)))) return; btn.disabled = true; try { await save(v, sh); } catch (e) { console.error(e); toast("Couldn't save that. Try again."); } finally { btn.disabled = false; } };
   const rebase = () => { start = JSON.stringify(f.values()); };
   return { sheet: sh, form: f, refresh, btn, rebase };
 }

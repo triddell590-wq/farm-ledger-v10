@@ -1,5 +1,6 @@
 // Broilers alerts (design/15 §13). c = { s, ix, data, today, now, lid, money }
 // Levels: late (red edge, legal or urgent) · due (amber) · info. Copy never diagnoses.
+import { signedPct } from "../../../ui/format.js";
 import { houseState, deathsOn, aliveStart, avgDeaths, cumMortPct, legalLine, cropDay, waterChangePct, listOf, cropEvents, currentCrop } from "./crop.js";
 import { stdOf, daysUnder, vsStdPct } from "./growth.js";
 import { plannedMax, densityNeeds, crossDay, farmLimit, projection } from "./density.js";
@@ -106,6 +107,6 @@ export function broilerAlerts(c) {
   const inv = regionRule("inventories"); const y = today.slice(0, 4); const countDate = `${y}-${inv.birdsCountMonthDay}`;
   if (today >= `${y}-${inv.reminderMonthDay}` && today <= addDays(countDate, 14) && !(data.birdRegisterReturns || []).some((r) => !r.deleted && r.year === +y && r.submittedOn)) out.push({ key: `birdreg:${y}`, level: "due", title: "Count birds on 1 June", body: "NI Bird Register: one entry for each establishment number.", href: L("birdreg"), legal: true });
   // settlement vs estimate (money roles only)
-  if (c.money) for (const f of (data.finance || []).filter((x) => !x.deleted && x.settlement?.flag && x.date >= addDays(today, -30))) out.push({ key: `settle:${f.id}`, level: "info", title: `Settlement differs from the estimate by ${f.settlement.pct > 0 ? "+" : ""}${(+f.settlement.pct).toFixed(1)}%`, body: f.note || "", href: L(`crop-result/${f.settlement.cropId}`) });
+  if (c.money) for (const f of (data.finance || []).filter((x) => !x.deleted && x.settlement?.flag && x.date >= addDays(today, -30))) out.push({ key: `settle:${f.id}`, level: "info", title: `Settlement differs from the estimate by ${signedPct(f.settlement.pct)}`, body: f.note || "", href: L(`crop-result/${f.settlement.cropId}`) });
   return out.sort((a, b) => ORDER[a.level] - ORDER[b.level]);
 }

@@ -12,6 +12,8 @@ import { recordWeights } from "../actions.js";
 import { lastWeight, describe, classOf } from "../model/animals.js";
 import { listDate } from "../../../ui/format.js";
 import { store } from "../../../core/store.js";
+import { checkLiveKg, checkWeightJump } from "../../../core/sanity.js";
+import { isThisRight } from "../../../ui/sanity.js";
 
 export default async function weighSession(snap, { animalIds, title } = {}) {
   let ids = animalIds;
@@ -39,8 +41,16 @@ export default async function weighSession(snap, { animalIds, title } = {}) {
     if (val && lw && daysBetween(lw.date, date) > 0) { const gain = (+val - lw.kg) / daysBetween(lw.date, date); const t = target(a); g.innerHTML = ""; g.append(el(html`<span class="${gain >= t ? "ok-ink" : "late-ink"}">Gain since last: ${gain.toFixed(2)} kg/day ${gain >= t ? "▲" : "▼"} target ${t}</span>`)); }
     else g.textContent = "";
   };
-  const next = (save = true) => {
-    if (save && +val > 0) got.set(list[i].id, +val);
+  let asking = false;
+  const next = async (save = true) => {
+    if (asking) return;
+    if (save && +val > 0) {
+      // a sudden jump or an impossible weight is usually a missed or extra digit (review A #2)
+      const a = list[i]; const lw = lastWeight(snap.ix, a);
+      const issues = [...checkLiveKg(val), ...(lw ? checkWeightJump({ kg: +val, prevKg: lw.kg, prevDate: lw.date, date }) : [])];
+      if (issues.length) { asking = true; const ok = await isThisRight(issues); asking = false; if (!ok) return; }
+      got.set(list[i].id, +val);
+    }
     val = ""; vibrate(10);
     if (i < list.length - 1) { i++; const prev = got.get(list[i].id); val = prev ? String(prev) : ""; paint(); } else finish();
   };
@@ -49,7 +59,7 @@ export default async function weighSession(snap, { animalIds, title } = {}) {
     if (e.target.closest("[data-skip]")) next(false);
     if (e.target.closest("[data-prev]") && i > 0) { if (+val > 0) got.set(list[i].id, +val); i--; val = got.get(list[i].id) ? String(got.get(list[i].id)) : ""; paint(); }
   });
-  const onKey = (e) => { if (/^\d$/.test(e.key) && val.length < 4) { val += e.key; paint(); } else if (e.key === "Backspace") { val = val.slice(0, -1); paint(); } else if (e.key === "Enter") next(); };
+  const onKey = (e) => { if (asking) return; if (/^\d$/.test(e.key) && val.length < 4) { val += e.key; paint(); } else if (e.key === "Backspace") { val = val.slice(0, -1); paint(); } else if (e.key === "Enter") next(); };
   document.addEventListener("keydown", onKey); sh.done.then(() => { document.removeEventListener("keydown", onKey); if (got.size && !finished) finish(true); });
   let finished = false;
   function finish(silent) {

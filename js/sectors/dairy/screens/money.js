@@ -87,7 +87,7 @@ export function chequeSheet(snap, existing = null) {
   const prev = new Date(snap.today.slice(0, 7) + "-15"); prev.setMonth(prev.getMonth() - 1);
   const body = el(html`<form novalidate>
     <div class="form-group">${textField({ name: "month", label: "Milk month", type: "month", value: c.month || prev.toISOString().slice(0, 7) })}${textField({ name: "date", label: "Paid on", type: "date", value: existing?.date || snap.today })}
-      ${textField({ name: "litres", label: "Litres", value: c.litres ?? "", inputmode: "numeric", placeholder: "98,400" })}${textField({ name: "cows", label: "Cows in milk (average)", value: c.cows ?? inMilk(snap) ?? "", inputmode: "numeric", optional: true })}</div>
+      ${textField({ name: "litres", label: "Litres", value: c.litres ?? "", inputmode: "numeric", placeholder: "e.g. 98,400" })}${textField({ name: "cows", label: "Cows in milk (average)", value: c.cows ?? inMilk(snap) ?? "", inputmode: "numeric", optional: true })}</div>
     <p class="form-label">Quality on the statement</p>
     <div class="form-group">${textField({ name: "fat", label: "Butterfat %", value: c.fat ?? "", inputmode: "decimal", optional: true })}${textField({ name: "protein", label: "Protein %", value: c.protein ?? "", inputmode: "decimal", optional: true })}
       ${textField({ name: "scc", label: "SCC (thousands)", value: c.scc ?? "", inputmode: "numeric", optional: true })}${textField({ name: "tbc", label: "TBC / Bactoscan (thousands)", value: c.tbc ?? "", inputmode: "numeric", optional: true })}</div>
@@ -120,7 +120,7 @@ export function chequeSheet(snap, existing = null) {
 
 /** Feed delivery (money out, Feed) with kg for concentrate per litre and the FW.8 sample tick. */
 export function feedSheet(snap) {
-  const body = el(html`<form novalidate><div class="form-group">${textField({ name: "product", label: "Feed", placeholder: "18% dairy nut" })}${textField({ name: "kg", label: "Kilograms", inputmode: "numeric", optional: true })}
+  const body = el(html`<form novalidate><div class="form-group">${textField({ name: "product", label: "Feed", placeholder: "e.g. 18% dairy nut" })}${textField({ name: "kg", label: "Kilograms", inputmode: "numeric", optional: true })}
     ${textField({ name: "amount", label: "Cost (£)", inputmode: "decimal" })}${textField({ name: "date", label: "Delivered", type: "date", value: snap.today })}${textField({ name: "supplier", label: "Supplier", optional: true })}${textField({ name: "batch", label: "Batch / ticket no.", optional: true })}</div>
     <div class="form-group">${checkRow("sampleKept", "Sample kept (4 weeks after last use)", true, "Red Tractor FW.8")}</div></form>`);
   return entrySheet({ title: "Feed delivery", body, label: "Save delivery", missing: (v) => (!v.product ? "Add the feed" : !(n(v.amount) > 0) ? "Add the cost" : null),

@@ -14,6 +14,7 @@ import { registerDoc, contractReport } from "../model/registers.js";
 import { notifyState, notifyDays } from "../model/paperwork.js";
 import { pm2Series } from "../model/inventory.js";
 import { notifyMove } from "../actions.js";
+import { registerView } from "../../../ui/register-cards.js";
 
 export default async function registers(ctx) {
   const doc = ctx.match.groups.doc;
@@ -30,7 +31,7 @@ export default async function registers(ctx) {
       ${addKind && canWrite(snap.role, "siteChecks") ? html`<button type="button" class="btn" style="margin:8px 0" data-flow="siteCheck" data-arg="${flowArg({ kind: addKind })}">${raw(icon("plus"))}Add ${addKind === "vermin" ? "a vermin survey" : "a water test"}</button>` : ""}
       ${doc === "visitors" ? html`<a class="btn secondary" href="#/l/${lid}/gate">Gate log and QR sign</a>` : ""}
       <div data-btns></div>
-      <div class="table-scroll"><div class="print-view">${raw(toHtmlTable(d))}</div></div></div>`;
+      ${registerView(d, toHtmlTable(d))}</div>`;
   }, after: (node, snap) => {
     const b = node.querySelector("[data-btns]");
     if (b && doc !== "pm2") b.replaceChildren(docButtons(() => doc.startsWith("contract-") ? contractReport(snap, doc.slice(9), { money: canRead(snap.role, "finance") }) : registerDoc(snap, doc), { csv: !doc.startsWith("contract-") }));

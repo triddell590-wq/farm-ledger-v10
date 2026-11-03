@@ -28,7 +28,7 @@ function stateCard(sup, st) {
   const card = (ic, body, tone = "") => html`<div class="info-card${tone}" data-notify-state>${raw(icon(ic))}<span>${body}</span></div>`;
   if (sup.state === "ios-install") return card("info", html`<b>On iPhone, notifications only work from the Home Screen app.</b><br>1. In Safari, tap the Share button (the square with an arrow pointing up).<br>2. Tap <b>Add to Home Screen</b>, then <b>Add</b>.<br>3. Open Farm Ledger from the new icon, come back here and tap <b>Turn on</b>. Then tap <b>Allow</b>.<br><span class="ink-2">Needs iOS 16.4 or newer. Until then, everything due still shows on the bell and the Today screen.</span>`);
   if (sup.state === "unsupported") return card("info", "This browser can't show notifications. Everything due still shows on the bell and the Today screen each time you open the app.");
-  if (sup.state === "denied") return card("alert", html`<b>Notifications are blocked for Farm Ledger on this phone.</b> To allow them, open your phone's Settings → Notifications → Farm Ledger${sup.ios ? "" : " (or the browser's site settings for this page)"}, switch them on, then come back here.`, " warn");
+  if (sup.state === "denied") return card("alert", html`<b>Notifications are blocked for Farm Ledger on this phone.</b> To allow them, open your phone's Settings → Notifications → Farm Ledger${sup.ios ? "" : " (or the browser's site settings for this page)"}, switch them on, then come back here.<br>You can still choose your reminder times below — they start as soon as notifications are allowed.`, " warn");
   if (!st.on) return card("bell", "Get a short summary each morning and a note the moment a legal job goes late — even when the app is closed. You choose what and when.");
   return "";
 }
@@ -48,14 +48,15 @@ export default async function notifySettings() {
       <div class="section" data-main>${st.on
         ? html`<button type="button" class="btn secondary" data-test>${raw(icon("bell"))}Send a test notification</button><button type="button" class="btn secondary" data-off style="margin-top:12px">Turn off on this phone</button>`
         : can ? html`<button type="button" class="btn" data-on>${raw(icon("bell"))}Turn on notifications</button><p class="hint">Your phone will ask “Allow notifications?” — tap <b>Allow</b>.</p>` : ""}</div>
-      ${st.on ? html`<div data-prefs>
-        <div class="section">${groupLabel("Morning summary")}<div class="form-group">${checkRow("summary", "Send me a summary each day", p.summary, "What's late and due across your ledgers, in one notification.")}${selectField({ name: "summaryTime", label: "At", value: p.summaryTime, options: opts(SUMMARY_TIMES, p.summaryTime) })}</div></div>
+      ${st.on ? "" : html`<p class="hint" data-prefs-note style="margin-top:20px">Your choices below are kept on this phone${sup.state === "denied" ? " and start working when you allow notifications" : can ? " and used as soon as you turn notifications on" : ""}.</p>`}
+      ${html`<div data-prefs>
+        <div class="section">${groupLabel("Morning summary")}<div class="form-group">${checkRow("summary", "Send me a summary each day", p.summary, "What's late and due across the farm, in one notification.")}${selectField({ name: "summaryTime", label: "At", value: p.summaryTime, options: opts(SUMMARY_TIMES, p.summaryTime) })}</div></div>
         <div class="section">${groupLabel("Straight away")}<div class="form-group">${checkRow("late", "When a legal job goes late", p.late, "Once per job. For example: NIFAIS not notified in time, an alarm test overdue.")}</div></div>
         <div class="section">${groupLabel("What to tell me about")}<div class="form-group">${KINDS.map((k) => checkRow(`kind_${k}`, KIND_LABELS[k], p.kinds[k]))}</div></div>
-        ${ledgers.length > 1 ? html`<div class="section">${groupLabel("Which ledgers")}${chipGroup("ledgers", ledgers.map((l) => ({ value: l.id, label: l.name || META[l.type]?.short || l.type, sector: l.type })), chosen)}</div>` : ""}
+        ${ledgers.length > 1 ? html`<div class="section">${groupLabel("Which herds and flocks")}${chipGroup("ledgers", ledgers.map((l) => ({ value: l.id, label: l.name || META[l.type]?.short || l.type, sector: l.type })), chosen)}</div>` : ""}
         <div class="section">${groupLabel("Quiet hours")}<div class="form-group">${checkRow("quiet", "No notifications at night", p.quiet.on, "Late-job notes wait until quiet hours end. Your morning summary still comes at the time you chose.")}${selectField({ name: "quietStart", label: "From", value: p.quiet.start, options: opts(ALL_TIMES, p.quiet.start) })}${selectField({ name: "quietEnd", label: "Until", value: p.quiet.end, options: opts(ALL_TIMES, p.quiet.end) })}</div></div>
         <p class="hint">Times are for ${timeZone().replace("_", " ")}. Workers and Vet / Advisers never see money amounts in notifications. Each phone has its own settings.</p>
-      </div>` : ""}
+      </div>`}
     </div>`));
     const on = out.querySelector("[data-on]");
     if (on) on.onclick = async () => {

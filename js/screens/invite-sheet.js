@@ -26,10 +26,10 @@ export function openInviteSheet(ledgers, { preselect, onDone } = {}) {
     return ["manager", "worker", "viewer", "accountant"].map((r) => ({ value: r, label: ROLE_DISPLAY[r], help: ROLE_SHORT_HELP[r], disabled: !allowed.includes(r) }));
   };
   const body = el(html`<form novalidate>
-    ${ledgers.length > 1 ? html`<h2 class="group-label">Which ledger?</h2><div class="card pad">${chipGroup("ledgers", ledgers.map((l) => ({ value: l.id, label: l.name, sector: l.type })), [...pick])}</div>` : ""}
+    ${ledgers.length > 1 ? html`<h2 class="group-label">To which?</h2><div class="card pad">${chipGroup("ledgers", ledgers.map((l) => ({ value: l.id, label: l.name, sector: l.type })), [...pick])}</div>` : ""}
     <h2 class="group-label" style="margin-top:20px">What can they do?</h2>
     <div data-roles>${radioGroup("role", roleOpts(), "worker")}</div>
-    <div class="form-group" style="margin-top:16px">${textField({ name: "name", label: "Their name", optional: true, placeholder: "Seán" })}</div>
+    <div class="form-group" style="margin-top:16px">${textField({ name: "name", label: "Their name", optional: true, placeholder: "e.g. Seán" })}</div>
     <h2 class="group-label" style="margin-top:20px">Link runs out after</h2>
     ${segmented("days", [{ value: "1", label: "1 day" }, { value: "7", label: "7 days" }, { value: "14", label: "14 days" }], String(DEFAULT_DAYS))}
     <p class="hint" data-expiry>The link works once and runs out in 7 days.</p>
@@ -37,7 +37,7 @@ export function openInviteSheet(ledgers, { preselect, onDone } = {}) {
   </form>`);
   const btn = el(html`<button type="button" class="btn">Create invite link</button>`);
   const f = wireForm(body);
-  const miss = () => { const v = f.values(); if (ledgers.length > 1 && !(v.ledgers || []).length) return "Pick a ledger to continue"; if (!v.role) return "Pick what they can do"; return null; };
+  const miss = () => { const v = f.values(); if (ledgers.length > 1 && !(v.ledgers || []).length) return "Pick a herd or flock to continue"; if (!v.role) return "Pick what they can do"; return null; };
   f.onChange((name) => {
     const v = f.values();
     if (name === "ledgers") { pick.clear(); (v.ledgers || []).forEach((id) => pick.add(id)); const cur = v.role; body.querySelector("[data-roles]").replaceChildren(el(radioGroup("role", roleOpts(), roleOpts().find((o) => o.value === cur && !o.disabled) ? cur : "worker"))); }
@@ -58,7 +58,7 @@ export function openInviteSheet(ledgers, { preselect, onDone } = {}) {
       onDone && onDone();
     } catch (e) {
       console.error(e); guardButton(btn, "Create invite link", miss);
-      body.querySelector("[data-err]").replaceChildren(el(fieldError(e.code === "permission-denied" ? "You can't invite that role to this ledger." : navigator.onLine ? "Couldn't create the link. Try again." : "Inviting needs a signal.")));
+      body.querySelector("[data-err]").replaceChildren(el(fieldError(e.code === "permission-denied" ? "You can't invite that role there." : navigator.onLine ? "Couldn't create the link. Try again." : "Inviting needs a signal.")));
     }
   };
 }

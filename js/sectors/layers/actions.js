@@ -4,7 +4,7 @@
 // also the feed-delivery record the bin maths reads.
 // Money rule (01-platform §15): £ values live ONLY in `finance` (owner, manager, accountant).
 // Packer statements, collections and bird moves carry counts and grades plus the finance id.
-import { addRecord, updateRecord, softDelete, setMeta } from "../../services/records.js";
+import { addRecord, updateRecord, softDelete, setMeta, asAction } from "../../services/records.js";
 import { auth } from "../../core/auth.js";
 import { canWrite } from "../../core/policy.js";
 import { addDays } from "../../core/dates.js";
@@ -31,7 +31,7 @@ export function saveHouse(snap, v, old = null) {
  * rearer, rearerEst, feedSource, plannedDepop, turnaroundWeeks, daeraNotified, pulletCost }.
  * Writes the flock, the "pullets in" movement and (money roles) the pullet bill.
  */
-export function placeFlock(snap, v) {
+function placeFlock_(snap, v) {
   const id = addRecord(snap.lid, "flocks", clean({ houseId: v.houseId, breedStdId: v.breedStdId, hatchDate: v.hatchDate, placedDate: v.placedDate, placed: num(v.placed), ageAtPlacement: num(v.ageAtPlacement), rearer: v.rearer, rearerEst: v.rearerEst, feedSource: v.feedSource, plannedDepop: v.plannedDepop, turnaroundWeeks: num(v.turnaroundWeeks), daeraNotified: v.daeraNotified || undefined, byName: me() }));
   addRecord(snap.lid, "birdMoves", clean({ flockId: id, houseId: v.houseId, date: v.placedDate, direction: "in", n: num(v.placed), kind: "placement", est: v.rearerEst, byName: me() }));
   if (num(v.pulletCost) && money(snap)) addRecord(snap.lid, "finance", clean({ kind: "expense", category: "Animal Purchase", amount: num(v.pulletCost), date: v.placedDate, note: `${num(v.placed)} pullets · ${v.rearer || "rearer"}`, source: "pullets", flockId: id, houseId: v.houseId }));
@@ -39,7 +39,7 @@ export function placeFlock(snap, v) {
 }
 export const updateFlock = (snap, f, changes) => updateRecord(snap.lid, "flocks", f, clean(changes));
 /** Depopulate: the flock leaves (spent hens out), the house starts its turnaround. */
-export function depopFlock(snap, f, v) {
+function depopFlock_(snap, f, v) {
   updateRecord(snap.lid, "flocks", f, clean({ depopDate: v.date, numberOut: num(v.n), destination: v.destination, turnaroundWeeks: num(v.turnaroundWeeks), nextPlacement: v.nextPlacement, turnaround: { stages: [] } }));
   addRecord(snap.lid, "birdMoves", clean({ flockId: f.id, houseId: f.houseId, date: v.date, direction: "out", n: num(v.n), kind: "depop", est: v.est, fci: v.fci || undefined, byName: me() }));
   if (num(v.amount) && money(snap)) addRecord(snap.lid, "finance", clean({ kind: "revenue", category: "Livestock Sales", amount: num(v.amount), date: v.date, note: `${num(v.n)} spent hens · ${v.destination || ""}`.trim(), source: "spentHens", flockId: f.id, houseId: f.houseId }));
@@ -58,7 +58,7 @@ export function turnStage(snap, f, stage, done) {
  * feedKind, feedKg, tMin, tMax, popOpen, popClose, keptIn, checks[], notes, graded{} , source }.
  * One doc per house-day; re-saving the same day updates it. Calculated figures are stored too.
  */
-export function saveDay(snap, house, f, date, v, old = null) {
+function saveDay_(snap, house, f, date, v, old = null) {
   const alive = aliveAt(snap.c, f, date);
   const days = daysFor(snap.c, f.id).filter((d) => d.date < date);
   const prevD = days[days.length - 1];
@@ -69,7 +69,7 @@ export function saveDay(snap, house, f, date, v, old = null) {
     deaths: (v.deaths || []).filter((x) => +x.n > 0), waterMeter: num(v.waterMeter), waterL: num(v.waterL), feed: v.feedKind ? clean({ kind: v.feedKind, kg: num(v.feedKg) }) : undefined,
     tMin: num(v.tMin), tMax: num(v.tMax), popOpen: v.popOpen, popClose: v.popClose, keptIn: v.keptIn, checks: v.checks || [], notes: v.notes, graded: v.graded && Object.values(v.graded).some((x) => +x) ? v.graded : undefined,
     source: v.source || "manual", partial: false, withheld: wd ? true : undefined, classB: cb.on ? true : undefined,
-    alive, henDay: fig.henDay ?? undefined, waterPer1000: fig.waterPer1000 ?? undefined, wk: weekOfAge(f, date), inspectedBy: me(), byName: me(), savedAt: old?.savedAt || hhmm() });
+    alive, henDay: fig.henDay ?? undefined, waterPer1000: fig.waterPer1000 ?? undefined, wk: weekOfAge(f, date), inspectedBy: (v.checks || []).length ? me() : undefined, byName: me(), savedAt: old?.savedAt || hhmm() });
   let id = old?.id;
   if (old) updateRecord(snap.lid, "days", old, data); else id = addRecord(snap.lid, "days", data);
   // feed delivered into this house's bin today → the feed-delivery record (bin maths, UFAS register)
@@ -77,7 +77,7 @@ export function saveDay(snap, house, f, date, v, old = null) {
   return { id, alive, fig };
 }
 /** Deaths only (quick add): merged into the house-day's sheet. */
-export function addDeaths(snap, house, f, date, deaths) {
+function addDeaths_(snap, house, f, date, deaths) {
   const old = snap.data.days.find((d) => d.houseId === house.id && d.date === date);
   const merged = [...(old?.deaths || [])];
   for (const x of deaths) { const m = merged.find((y) => y.cause === x.cause && !x.where); if (m) m.n = +m.n + +x.n; else merged.push({ ...x }); }
@@ -99,7 +99,7 @@ export function saveCollection(snap, v) {
  * Weekly packer statement (§6.2). v: { weekStart, packer, lines[{grade, eggs, ppd}], deductions[{label, amount}], paid? }.
  * Counts go in packerStatements; every £ (grade prices, deductions, paid) only in finance.
  */
-export function saveStatement(snap, v) {
+function saveStatement_(snap, v) {
   const grades = v.lines.filter((l) => +l.eggs).map((l) => ({ grade: l.grade, eggs: +l.eggs }));
   const counted = grades.reduce((t, g) => t + g.eggs, 0);
   const st = { weekStart: v.weekStart, week: isoWeek(v.weekStart), packer: v.packer, grades, counted };
@@ -114,7 +114,7 @@ export function saveStatement(snap, v) {
 }
 export const saveStoreTemp = (snap, v) => { const old = snap.data.storeTemps.find((x) => x.date === v.date); const data = clean({ date: v.date, min: num(v.min), max: num(v.max), byName: me() }); return old ? updateRecord(snap.lid, "storeTemps", old, data) : addRecord(snap.lid, "storeTemps", data); };
 /** Farm-gate (ungraded, small flocks): stock in by lay date, or a sale (+ £ in finance). */
-export function saveFarmGate(snap, v) {
+function saveFarmGate_(snap, v) {
   const id = addRecord(snap.lid, "farmGate", clean({ kind: v.kind, date: v.date, layDate: v.kind === "stock" ? v.layDate || v.date : undefined, eggs: num(v.eggs), byName: me() }));
   if (v.kind === "sale" && num(v.amount) && money(snap)) addRecord(snap.lid, "finance", clean({ kind: "revenue", category: "Eggs", amount: num(v.amount), date: v.date, note: `${num(v.eggs)} farm-gate eggs`, source: "farmGate", farmGateId: id }));
   return id;
@@ -142,7 +142,7 @@ export function saveVaccination(snap, v, old = null) {
   return addRecord(snap.lid, "vaccinations", data);
 }
 /** Whole-house treatment (§7.4): egg withdrawal first, meat (spent hens) second. */
-export function saveTreatment(snap, v) {
+function saveTreatment_(snap, v) {
   const wd = withdrawalDates(v.date, { doses: num(v.doses) || 1, intervalDays: num(v.intervalDays) || 1, eggDays: num(v.eggDays) || 0, meatDays: num(v.meatDays) || 0 });
   const ids = [];
   for (const houseId of [].concat(v.houseIds || v.houseId)) {
@@ -206,3 +206,11 @@ export function tickGenerated(lid, snap, t, done) {
 }
 export const undoAdd = (lid, coll, id) => softDelete(lid, coll, id);
 export { lineAmount, weekStart };
+// Each of these is one action: the records it adds share an actionId (services/linked.js).
+export const placeFlock = asAction(placeFlock_);
+export const saveTreatment = asAction(saveTreatment_);
+export const depopFlock = asAction(depopFlock_);
+export const saveDay = asAction(saveDay_);
+export const addDeaths = asAction(addDeaths_);
+export const saveStatement = asAction(saveStatement_);
+export const saveFarmGate = asAction(saveFarmGate_);

@@ -11,7 +11,7 @@
 export const BREED_STANDARDS = [
   {
     id: "hyline-brown-2025", breed: "Hy-Line Brown", edition: "Hy-Line Brown Performance Standards, Dec 2025",
-    source: "hyline.com — Brown STD ENG (Dec 2025), via Research C tool 2", peakWeek: 25,
+    source: "hyline.com — Brown STD ENG (Dec 2025)", peakWeek: 25,
     lay: [[20, 52.5, 55.0], [25, 93.4, 98.1], [30, 93.3, 98.2], [40, 91.9, 97.2], [50, 90.0, 95.6], [60, 87.4, 93.2], [70, 83.6, 89.8], [80, 79.7, 86.1]],
     eggWt: [[26, 55.2, 58.6], [70, 61.2, 65.0]],
     feed: [[20, 110, 118], [80, 110, 118]],
@@ -23,7 +23,7 @@ export const BREED_STANDARDS = [
   },
   {
     id: "lohmann-brown-classic-alt-2021", breed: "Lohmann Brown-Classic", edition: "Lohmann Brown-Classic, Alternative systems, 2021",
-    source: "lohmann-breeders.com — LB-Classic Alternative infographic 2021, via Research C tool 2", peakWeek: 26,
+    source: "lohmann-breeders.com — LB-Classic Alternative infographic 2021", peakWeek: 26,
     // Lohmann prints peak 94–96% and hen-housed totals (321 @72, 363 @80, 412 @90); the weekly
     // band after peak is derived from those totals (guess, said on screen).
     lay: [[20, 48, 52], [26, 94, 96], [40, 91.5, 93.5], [60, 85.5, 87.5], [72, 80, 82], [80, 77, 79], [90, 72, 74]], derived: ["lay"],
@@ -41,7 +41,7 @@ export const DEFAULT_BREED = "hyline-brown-2025";
 export const AI_STATUS = {
   region: "NI", housingOrder: false, aipz: false, orderFrom: null, outbreakWithin10km: false,
   liftedLine: "Lifted 5 May 2026. The last two seasons started on 1 November — we'll tell you the day one is declared.",
-  checkedOn: "2026-10-15", source: "DAERA (Research B verification pass)",
+  checkedOn: "2026-10-15", source: "DAERA",
 };
 import { regionRule } from "../../../content/region-rules.js";
 
@@ -69,7 +69,7 @@ export const RULES = {
 export const AI_CHECKS = ["Foot dips changed", "Wild birds can't reach feed or water", "Feed covered", "Visitors signed in", "Vehicle wheels disinfected"];
 
 export const LION_HEADER = "Based on the British Lion Code of Practice, Version 8 (June 2023, as amended; 2026 summary). Not endorsed by the British Egg Industry Council.";
-export const RSPCA_HEADER = "Based on RSPCA Assured standards for laying hens — edition to be confirmed before release (Research B could not confirm).";
+export const RSPCA_HEADER = "Based on RSPCA Assured standards for laying hens. Check the current edition with your assessor.";
 
 /** Egg weight grades (EU/UK marketing standard). */
 export const GRADES = [{ id: "XL", min: 73, label: "XL · 73 g and over" }, { id: "L", min: 63, max: 73, label: "L · 63–73 g" }, { id: "M", min: 53, max: 63, label: "M · 53–63 g" }, { id: "S", max: 53, label: "S · under 53 g" }];

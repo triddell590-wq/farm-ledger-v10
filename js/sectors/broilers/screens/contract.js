@@ -3,6 +3,7 @@
 // farmer's own pay formula, settlements against the estimate, income per m² per year and heat
 // cost per bird per crop. Accountants get this as their Money tab. No processor's real formula
 // is shipped — the profile is the farmer's own.
+import { bonusLabel } from "../model/results.js";
 import { html, raw } from "../../../core/html.js";
 import { icon } from "../../../ui/icons.js";
 import { canWrite, canRead } from "../../../core/policy.js";
@@ -40,7 +41,7 @@ function paint(snap, isTab) {
       ["Started", s.contractStart ? d2(s.contractStart) + " " + s.contractStart.slice(0, 4) : "—"],
       ["Notice period", s.noticeMonths ? `${s.noticeMonths} months` : "—", "", null, ne ? `notice given today would end ${dm(ne)} ${ne.slice(0, 4)}` : ""],
       ["FCI email", s.fciEmail || "—", s.fciEmail ? "" : "due"], ["Catch module", `${n0(s.moduleSize)} birds`]])}</div>` : ""}
-    ${money ? html`<div class="section">${groupLabel("How you're paid", "money roles only")}${prof && prof.rate != null ? kvRows([["Base rate", `${pounds(prof.rate, 3)} ${BASIS[prof.basis] || ""}`], ...(prof.bonusRows || []).map((b) => [b.label, `${b.amount < 0 ? "−" : "+"}${pounds(Math.abs(b.amount), 3)} per ${b.per}`, b.amount < 0 ? "due" : "ok"])]) : html`<p class="br-quiet">Add your pay basis and bonus rows to see an estimate for every crop.</p>`}
+    ${money ? html`<div class="section">${groupLabel("How you're paid", "Hidden from workers")}${prof && prof.rate != null ? kvRows([["Base rate", `${pounds(prof.rate, 3)} ${BASIS[prof.basis] || ""}`], ...(prof.bonusRows || []).map((b) => [bonusLabel(b), `${b.amount < 0 ? "−" : "+"}${pounds(Math.abs(b.amount), 3)} per ${b.per}`, b.amount < 0 ? "due" : "ok"])]) : html`<p class="br-quiet">Add your pay basis and bonus rows to see an estimate for every crop.</p>`}
       ${lawNote("Your own copy of how you're paid. Farm Ledger doesn't ship any processor's formula.")}</div>` : ""}
     ${money ? html`<div class="section">${groupLabel("Settlements", settles.length ? `${pounds(yearSum)} in 12 months` : "")}${settles.length ? html`<div class="list">${settles.slice(0, 12).map((f) => html`<div class="row no-lead br-kv"><span class="main"><span class="primary">${String(f.note || "Crop payment").replace(/\s*·\s*£[\d,.]+$/, "")}</span><span class="secondary">${d2(f.date)}${f.settlement?.estimate != null ? ` · estimate ${pounds(f.settlement.estimate)}` : ""}${f.settlement?.ref ? ` · ref ${f.settlement.ref}` : ""}</span></span><span class="v">${pounds(f.amount)}${f.settlement?.flag ? html`<small class="due">${f.settlement.diff >= 0 ? "+" : "−"}${pounds(Math.abs(f.settlement.diff))}</small>` : ""}</span></div>`)}</div>` : html`<p class="br-quiet">No settlements yet. Record one when the statement comes after clear-out.</p>`}
       ${waiting.length && canWrite(snap.role, "finance") ? html`<div class="list br-mt">${waiting.map((c) => html`<button type="button" class="row" data-flow="settlement" data-arg="${flowArg({ cropId: c.id })}"><span class="tile">${raw(icon("money"))}</span><span class="main"><span class="primary">Record the settlement · crop ${c.no || ""} ${ix.houseById.get(c.houseId)?.name || ""}</span><span class="secondary">cleared ${dm(c.clearedDate)}</span></span>${pill("due", "Waiting", "")}</button>`)}</div>` : ""}

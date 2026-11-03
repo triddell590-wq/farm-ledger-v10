@@ -11,7 +11,8 @@ import { todayStr, addDays } from "../../../core/dates.js";
 import { canRead } from "../../../core/policy.js";
 import { cattleRow, entrySheet, opt } from "./common.js";
 import { recordSale } from "../actions.js";
-import { withdrawal, lastWeight, ageMonths } from "../model/animals.js";
+import { withdrawal, lastWeight, ageMonths, shortName } from "../model/animals.js";
+import { confirmPicked } from "../../../ui/confirm-pick.js";
 import { tagParts, isFemale } from "../model/tags.js";
 import { listDate, moneyText } from "../../../ui/format.js";
 import { animalLabel } from "../ui.js";
@@ -20,6 +21,31 @@ import { nifaisDays } from "../model/duties.js";
 import { parseKillSheet } from "../model/docket.js";
 import { readTextSheet } from "./read-text.js";
 import { photoStrip } from "../../../ui/photo-strip.js";
+import { fieldName } from "../../../ui/a11y.js";
+import { checkSaleLine, checkDate } from "../../../core/sanity.js";
+import { dueInfo } from "../model/breeding.js";
+
+/** Breeding stock that is rarely sold by mistake (review A #4): stock bull, pedigree females, cows in calf. */
+export function keeperWarnings(snap, ids) {
+  const out = [];
+  for (const id of ids) {
+    const a = snap.ix.byId.get(id); if (!a) continue; const nm = animalLabel(a);
+    if (a.stockBull) out.push(`${nm} is your stock bull.`);
+    else if (isFemale(a) && (a.pedigree?.herdBookNo || a.pedigree?.regName || a.pedigreeRegistered)) out.push(`${nm} is a pedigree registered female.`);
+    if (isFemale(a)) { const d = dueInfo(snap.data, snap.s, snap.ix, a); if (d && !d.empty && d.date && (d.basis === "scan" || d.inCalf) && d.date >= snap.today) out.push(`${nm} is in calf (due ${listDate(d.date)}).`); }
+  }
+  return out;
+}
+/** Odd numbers on a sale (review A #2): £/kg, kg and £ per line, and the date; plus breeding stock (A #4). */
+export function saleChecks(snap, v, ids, vals) {
+  const out = [...keeperWarnings(snap, ids), ...checkDate(v.date, snap.today, { future: true, what: "The sale date" })];
+  for (const id of ids) {
+    const a = snap.ix.byId.get(id); if (!a) continue;
+    const l = vals[id] || {};
+    out.push(...checkSaleLine({ deadKg: l.deadKg, pricePerKg: l.pricePerKg, liveKg: l.liveKg, price: l.price }, shortName(a)));
+  }
+  return out;
+}
 
 export default function saleSheet(snap, { animalIds = [], kind = null } = {}) {
   const money = canRead(snap.role, "finance");
@@ -47,9 +73,11 @@ export default function saleSheet(snap, { animalIds = [], kind = null } = {}) {
     const v = F ? F.values() : { kind: "mart" }; const c = cols(v.kind).filter(([k]) => money || !["price", "pricePerKg"].includes(k));
     const rows = who.ids().map((id) => snap.ix.byId.get(id)).filter(Boolean);
     body.querySelector("[data-lines]").replaceChildren(el(rows.length ? html`<div class="card pad"><table class="dose-table"><thead><tr><th>Animal</th>${c.map(([, l]) => html`<th>${l}</th>`)}${money && v.kind === "factory" ? html`<th>£</th>` : ""}</tr></thead><tbody>
-      ${rows.map((a) => html`<tr><td>${tagParts(a.tag).tail}<br><span class="ink-2" style="font-size:13px">${Math.floor(ageMonths(a, snap.today) || 0)} mo</span></td>${c.map(([k]) => html`<td><input data-l="${a.id}" data-k="${k}" value="${vals[a.id]?.[k] ?? (k === "liveKg" ? lastWeight(snap.ix, a)?.kg ?? "" : "")}" ${raw(k === "grade" || k === "lot" ? "" : 'inputmode="decimal"')} aria-label="${k} for ${tagParts(a.tag).tail}"></td>`)}
-        ${money && v.kind === "factory" ? html`<td>${(+vals[a.id]?.deadKg && +vals[a.id]?.pricePerKg) ? moneyText(+vals[a.id].deadKg * +vals[a.id].pricePerKg) : "—"}</td>` : ""}</tr>`)}</tbody></table></div>` : html`<p class="hint">Choose the cattle first.</p>`));
-    body.querySelectorAll("[data-l]").forEach((i) => i.addEventListener("change", () => { (vals[i.dataset.l] = vals[i.dataset.l] || {})[i.dataset.k] = i.value; if (v.kind === "factory") paintLines(); }));
+      ${rows.map((a) => html`<tr><td>${tagParts(a.tag).tail}<br><span class="ink-2" style="font-size:13px">${Math.floor(ageMonths(a, snap.today) || 0)} mo</span></td>${c.map(([k]) => html`<td><input data-l="${a.id}" data-k="${k}" value="${vals[a.id]?.[k] ?? (k === "liveKg" ? lastWeight(snap.ix, a)?.kg ?? "" : "")}" ${raw(k === "grade" || k === "lot" ? "" : 'inputmode="decimal"')} aria-label="${fieldName(k, tagParts(a.tag).tail)}"></td>`)}
+        ${money && v.kind === "factory" ? html`<td data-tot="${a.id}">${(+vals[a.id]?.deadKg && +vals[a.id]?.pricePerKg) ? moneyText(+vals[a.id].deadKg * +vals[a.id].pricePerKg) : "—"}</td>` : ""}</tr>`)}</tbody></table></div>` : html`<p class="hint">Choose the cattle first.</p>`));
+    // update the £ cell in place: repainting the table while the farmer moves to the next box loses it
+    const tot = (id) => { const c = body.querySelector(`[data-tot="${id}"]`); if (c) c.textContent = (+vals[id]?.deadKg && +vals[id]?.pricePerKg) ? moneyText(+vals[id].deadKg * +vals[id].pricePerKg) : "—"; };
+    body.querySelectorAll("[data-l]").forEach((i) => ["input", "change"].forEach((ev) => i.addEventListener(ev, () => { (vals[i.dataset.l] = vals[i.dataset.l] || {})[i.dataset.k] = i.value; if (v.kind === "factory") tot(i.dataset.l); })));
     paintGuard();
   };
   const blockers = () => {
@@ -67,6 +95,8 @@ export default function saleSheet(snap, { animalIds = [], kind = null } = {}) {
     g.replaceChildren(el(html`<div>${b.map((x) => x.kind === "wd" ? html`<div class="alert late" role="alert"><span class="a-icon">${raw(icon("alert"))}</span><div style="flex:1"><div class="a-title">${x.animals.length === 1 ? `${animalLabel(x.animals[0])} is in withdrawal until ${listDate(withdrawal(snap.ix, x.animals[0], v.date).until)}` : `${x.animals.length} cattle are in withdrawal`}</div><div class="a-body">${v.kind === "factory" ? "Cattle in withdrawal can't go for slaughter." : "You can sell them live only if you declare it to the buyer."}</div><div class="a-actions"><button type="button" class="text-btn" data-rm-wd>Remove from sale</button></div></div></div>`
       : x.kind === "tb" ? html`<div class="alert late"><span class="a-icon">${raw(icon("alert"))}</span><div><div class="a-title">Your herd is restricted${snap.meta.settings?.suspicion ? ` (${snap.meta.settings.suspicion.what} suspicion)` : snap.meta.settings?.tbStatus === "restricted" ? " (TB)" : " (BVD)"}</div><div class="a-body">Cattle can only go direct to slaughter.</div></div></div>`
       : html`<div class="alert late"><span class="a-icon">${raw(icon("alert"))}</span><div><div class="a-title">BVD rules: breeding-age females in an affected herd can't move for breeding${x.rule.fromText ? ` (from ${x.rule.fromText})` : ""}</div><div class="a-body">Females ${x.rule.minAgeMonths} months and over can only go direct to slaughter for ${x.rule.restrictWeeks} weeks.</div></div></div>`)}</div>`));
+    const keep = keeperWarnings(snap, who.ids());
+    if (keep.length) g.append(el(html`<div class="alert due" data-keeper><span class="a-icon">${raw(icon("alert"))}</span><div style="flex:1"><div class="a-title">Check before selling</div><div class="a-body">${keep.join(" ")}</div></div></div>`));
     const sd = standstillDays(snap.s); const bvdInfo = bvdFemaleRule(snap.s, v.date || snap.today);
     if (bvdInfo && !bvdInfo.inForce && snap.meta.settings?.bvdRestricted && v.kind !== "factory") g.append(el(html`<p class="hint" data-bvd-info>BVD breeding-female rule ${bvdInfo.status === "delayed" ? "delayed" : "announced"} — not in force yet.</p>`));
     const stand = sd == null ? [] : who.ids().map((id) => snap.ix.byId.get(id)).filter(Boolean).map((a) => ({ a, m: snap.data.movements.filter((m) => m.kind === "on" && (m.animalIds || []).includes(a.id) && (m.lot || /mart|market/i.test(m.from || "")) && m.date > addDays(v.date || snap.today, -(sd + 1))).sort((x, y) => y.date.localeCompare(x.date))[0] })).filter((x) => x.m);
@@ -89,14 +119,15 @@ export default function saleSheet(snap, { animalIds = [], kind = null } = {}) {
   const strip = photoStrip({ lid: snap.lid, role: snap.role, parent: { coll: "sales", label: "Sale" }, title: "Docket / kill sheet photos" });
   body.appendChild(strip.node);
   const { form, refresh } = entrySheet({
-    title: "Sale", body, label: "Save sale", missing, dirty: () => !!who.ids().length || strip.dirty(),
+    title: "Sale", body, label: "Save sale", missing, checks: (v) => saleChecks(snap, v, who.ids(), vals), dirty: () => !!who.ids().length || strip.dirty(),
     async save(v, sh) {
+      if (who.ambiguous() && !(await confirmPicked("Record a sale", who.ids().map((id) => snap.ix.byId.get(id)).filter(Boolean).map((a) => ({ short: shortName(a), tag: a.tag }))))) return;
       const c = snap.contacts.find((x) => x.id === v.buyerPick);
       const lines = who.ids().map((id) => ({ animalId: id, ...(vals[id] || {}), liveKg: vals[id]?.liveKg ?? lastWeight(snap.ix, snap.ix.byId.get(id))?.kg ?? null }));
       const r = recordSale(snap.lid, snap, { kind: v.kind, date: v.date, buyer: v.buyer || c?.name || "", buyerAddress: c?.note || "", animalIds: who.ids(), lines, haulage: v.haulage, fci: !!v.fci });
       strip.commit(r.saleId, `Sale · ${v.buyer || c?.name || v.kind}`);
       sh.close(true, { force: true });
-      toast(`${who.ids().length} sold${money && r.total ? ` · ${moneyText(r.total)}` : ""}${v.kind === "factory" ? "" : nifaisDays(snap.s).moveOff === 0 ? " · record the move on NIFAIS today" : ` · notify NIFAIS within ${nifaisDays(snap.s).moveOff} days`}`);
+      toast(`${who.ids().length} sold${money && r.total ? ` · ${moneyText(r.total)}` : ""}${r.awaitingKillSheet ? " · add the kill sheet when it comes (it's on Today)" : v.kind === "factory" ? "" : nifaisDays(snap.s).moveOff === 0 ? " · record the move on NIFAIS today" : ` · notify NIFAIS within ${nifaisDays(snap.s).moveOff} days`}`);
     },
   });
   F = form;

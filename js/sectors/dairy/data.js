@@ -9,6 +9,7 @@ import { dairySettings, PRICE_PROFILE_ID } from "./model/settings.js";
 import { indexHerd } from "./model/cows.js";
 import { board, nowStr } from "./model/milking.js";
 import { notMilked } from "./model/alerts.js";
+import { loadFarmProducts, watchFarmProducts, mergeStores } from "../../services/med-store.js";
 
 export const DAIRY_COLLECTIONS = [...new Set([...collectionsFor("dairy"), "tasks"])].filter((k) => !["photos", "documents"].includes(k));
 export const DAIRY_META = metaFor("dairy");
@@ -25,7 +26,8 @@ export function buildSnap(ledger, data, meta, extra = {}) {
   if (prof?.profile) s.price = { ...s.price, ...prof.profile };
   const ix = indexHerd(data);
   const brd = board(s, data.milkWithhold, ix, now);
-  const store = [...data.medProducts.map((p) => ({ ...p, local: true })), ...(extra.farmStore || []).map((p) => ({ ...p, wdMilkHours: p.wdMilkHours ?? (p.wdMilk !== "" && p.wdMilk != null ? +p.wdMilk * 24 : null), wdMeatDays: p.wdMeatDays ?? p.wdMeat }))];
+  // one store (review A #9): farm products (with days turned into dairy's hours) and this ledger's own; the farm's wins on the same name
+  const store = mergeStores(extra.farmStore || [], data.medProducts).map((p) => ({ ...p, wdMilkHours: p.wdMilkHours ?? (p.wdMilk !== "" && p.wdMilk != null ? +p.wdMilk * 24 : null), wdMeatDays: p.wdMeatDays ?? p.wdMeat }));
   const doneKeys = new Set(data.tasks.filter((t) => t.sourceRef && t.done).map((t) => t.sourceRef));
   const people = Object.fromEntries((extra.members || []).map((m) => [m.uid, m.displayName || m.email]));
   const snap = { ledger, lid: ledger.id, role: ledger.role, today, now, data, meta, s, ix, brd, store, contacts: extra.contacts || [], doneKeys, people };
@@ -39,7 +41,7 @@ export async function loadDairy(ledger, { now } = {}) {
   await Promise.all(DAIRY_COLLECTIONS.map(async (k) => { data[k] = readable(ledger, k) ? await listRecords(ledger.id, k).catch(() => []) : []; }));
   if (readable(ledger, "meta")) await Promise.all(DAIRY_META.map(async (k) => { meta[k] = await getMeta(ledger.id, k).catch(() => null); }));
   const space = farmSpace(ledger); let farmStore = [], contacts = [];
-  if (space && readable(space, "medProducts")) { farmStore = await listRecords(space.id, "medProducts").catch(() => []); contacts = await listRecords(space.id, "contacts").catch(() => []); }
+  if (space && readable(space, "medProducts")) { farmStore = await loadFarmProducts(space, ledger); contacts = await listRecords(space.id, "contacts").catch(() => []); }
   return buildSnap(ledger, data, meta, { farmStore, contacts, now });
 }
 
@@ -53,7 +55,7 @@ export function watchDairy(ledger, cb) {
   if (readable(ledger, "meta")) for (const k of DAIRY_META) subs.push(watchMeta(ledger.id, k, (d) => { meta[k] = d; fire(); }, () => {}));
   const space = farmSpace(ledger);
   if (space && readable(space, "medProducts")) {
-    subs.push(watchRecords(space.id, "medProducts", {}, (l) => { farmStore = l; fire(); }, () => {}));
+    subs.push(watchFarmProducts(space, ledger, (l) => { farmStore = l; fire(); }));
     subs.push(watchRecords(space.id, "contacts", {}, (l) => { contacts = l; fire(); }, () => {}));
   }
   if (!want.length) { ready = true; fire(); }

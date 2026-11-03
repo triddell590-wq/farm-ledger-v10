@@ -92,4 +92,13 @@ export function collation(c) {
   ];
   return { title: "Annual health and performance collation (AH.2)", headers: ["Measure", "Last 12 months"], rows, note: RT_HEADER };
 }
-export function buildRegister(key, c) { const R = REGISTERS[key]; if (!R) return null; return { title: R.title, ...R.build(c), who }; }
+// The record behind each row, for the registers that list one record per row newest first
+// (so on screen a row opens that record: see it, fix it, delete it).
+const ROW_SOURCE = { medicine: "medicines", withhold: "milkWithhold", quality: "milkQuality", mastitis: "mastitis", dryoffs: "dryOffs", machine: "parlourService", scores: "scoreSessions", foottrims: "footTrims", training: "training", movements: "movements", deaths: "deaths", calvings: "calvings", tb: "tbTests", vetops: "vetOps" };
+export function buildRegister(key, c) {
+  const R = REGISTERS[key]; if (!R) return null;
+  const doc = { title: R.title, ...R.build(c), who };
+  const coll = ROW_SOURCE[key];
+  if (coll && c.data[coll]) { const list = c.data[coll].filter((r) => !r.deleted).sort(desc); if (list.length === doc.rows.length) doc.refs = list.map((r) => `${coll}:${r.id}`); }
+  return doc;
+}

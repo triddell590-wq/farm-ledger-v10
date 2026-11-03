@@ -12,6 +12,8 @@ import { fqaScore, FQA_STANDARD } from "./model/fqa.js";
 import { tbNext } from "./model/duties.js";
 import { onFarm } from "./model/animals.js";
 import { REGISTERS } from "./model/reports.js";
+import { readyScore, readyLine } from "../../ui/ready-check.js";
+import { fqaRows, fqaHasData } from "./fqa.js";
 
 export default async function paperwork(ctx) {
   const body = el(html`<div class="beef-page"></div>`);
@@ -39,12 +41,13 @@ function render(snap) {
   const { lid } = snap;
   const ticks = snap.meta.fqa?.items || snap.meta.fqa?.ticks || {};
   const sc = fqaScore({ ...snap.c, overdueNifais: 0 }, ticks);
+  const rd = readyScore(fqaRows(snap, ticks), fqaHasData(snap)); const rl = readyLine(rd); // A #14: records-only score, hidden until there's data
   const hs = herdStatus(snap); const ms = snap.meta.settings || {};
   const gaps = sc.gaps.slice(0, 2).map(({ it }) => (/^[A-Z][a-z]/.test(it.t) ? it.t.charAt(0).toLowerCase() + it.t.slice(1) : it.t)).join("; ");
   const plan = (k, label, help) => { const d = ms[k]; const stale = d && daysBetween(d, snap.today) > 335; return html`<button type="button" class="row" data-plan="${k}"><span class="main"><span class="primary">${label}</span><span class="secondary ${!d || stale ? "due-ink" : ""}">${d ? `${help} ${shortDate(d)}${stale ? " · due again soon" : ""}` : "Not recorded — tap to add the date"}</span></span><span class="chev">${raw(icon("chevron"))}</span></button>`; };
   const node = el(html`<div>${largeTitle("Paperwork", [snap.meta.keeper?.herdNo || snap.s.herdNo ? `Herd ${snap.meta.keeper?.herdNo || snap.s.herdNo}` : null, snap.ledger.farmName].filter(Boolean).join(" · "))}
-    <a class="num-tile hero inspect-hero" href="#/l/${lid}/paperwork/fqa"><span class="label">Inspection ready?</span><span class="value">${sc.pct}%</span>
-      <span class="sub">${sc.gaps.length ? `${sc.gaps.length} gap${sc.gaps.length > 1 ? "s" : ""}: ${gaps}${sc.gaps.length > 2 ? "…" : ""}` : "No gaps found in what the app can check."}</span><span class="source">${FQA_STANDARD.header}</span></a>
+    <a class="num-tile hero inspect-hero" href="#/l/${lid}/paperwork/fqa"><span class="label">Inspection ready?</span><span class="value">${rl.value}</span>
+      <span class="sub">${!rd.hasData ? rl.sub : sc.gaps.length ? `${sc.gaps.length} to look at: ${gaps}${sc.gaps.length > 2 ? "…" : ""}` : "No gaps found in what the app can check."}</span>${rd.hasData ? html`<span class="sub">Your own checks: ${rd.selfDone} of ${rd.selfN} ticked</span>` : ""}<span class="source">${FQA_STANDARD.header}</span></a>
     <div class="section">${groupLabel("Herd status")}<div class="list">
       <a class="row no-lead" href="#/l/${lid}/paperwork/tb"><span class="main"><span class="primary">TB</span><span class="secondary ${hs.tbLevel ? hs.tbLevel + "-ink" : ""}">${hs.tb}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
       <a class="row no-lead" href="#/l/${lid}/herd"><span class="main"><span class="primary">BVD</span><span class="secondary ${hs.bvdLevel ? hs.bvdLevel + "-ink" : ""}">${hs.bvd}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>

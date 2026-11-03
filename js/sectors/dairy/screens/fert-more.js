@@ -1,4 +1,5 @@
 // Fertility sub-screens (design/12 §5.1–5.3): vet visit list, sire plan + straws, KPIs.
+import { plural as pl } from "../../../ui/format.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -28,7 +29,7 @@ function vet(body, snap) {
   const listed = snap.data.animals.filter((a) => onFarm(a) && a.vetCheck).sort(sortByNo);
   const pds = g.pd.filter((x) => !x.a.vetCheck); const nsb = g.notSeen.filter((x) => !x.a.vetCheck);
   const rows = [...pds.map((x) => [x.a, "PD", x.why]), ...listed.map((a) => [a, a.vetCheck.reason, `added ${dm(a.vetCheck.added)}`])];
-  const node = el(html`<div>${back(lid)}${largeTitle("Vet visit list", `${rows.length} cows for the fertility visit`)}
+  const node = el(html`<div>${back(lid)}${largeTitle("Vet visit list", `${pl(rows.length, "cow", "cows")} for the fertility visit`)}
     ${rows.length ? html`<div class="list">${rows.map(([a, why, sub]) => cowRow(snap, a, { extra: html`<span class="secondary">${why} · ${sub}</span>`, action: w && a.vetCheck ? html`<button type="button" class="btn secondary" data-off="${a.id}">Remove</button>` : "" }))}</div>` : html`<div class="card pad t-callout ink-2">Nobody on the list. Cows due a PD join it by themselves; add others from the cow card or the "Not seen bulling" list.</div>`}
     ${nsb.length && w ? html`<div class="section"><button type="button" class="btn secondary" data-nsb>Add ${nsb.length} not seen bulling</button></div>` : ""}
     <div class="section" style="display:flex;gap:8px"><button type="button" class="btn secondary" data-print>Print the list</button>${w && rows.length ? html`<button type="button" class="btn" data-results>Enter the vet's results</button>` : ""}</div></div>`);

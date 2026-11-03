@@ -29,7 +29,7 @@ export default async function moneyTab(farm) {
         <span class="ink-2">Money in</span><span class="v">${money(m.totalIn)}</span>
         <span class="ink-2">Money out</span><span class="v">${money(m.totalOut)}</span>
         <span class="ink-2">Left over</span><span class="v">${money(left)}${margin != null ? html` <span class="t-callout ink-2">${margin}%</span>` : ""}</span></div></div>
-      <div class="section">${groupLabel("By ledger")}
+      <div class="section">${groupLabel("By herd and flock")}
         ${m.byLedger.length ? html`<div class="list">${m.byLedger.map((x) => html`<a class="row" href="${x.ledger.type === "farm" ? "#/farm/money" : `#/l/${x.ledger.id}/money`}" data-sector="${x.ledger.type === "farm" ? "" : x.ledger.type}">
           ${x.ledger.type === "farm" ? html`<span class="tile neutral">${raw(icon("farm"))}</span>` : sectorTile(x.ledger.type)}
           <span class="main"><span class="primary">${x.ledger.type === "farm" ? "Whole farm (not one ledger)" : x.ledger.name}</span>

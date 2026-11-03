@@ -8,31 +8,34 @@
 //           from?, values{}, sectors[], source, checkedOn }
 // Region keys match ledger.region (firestore.rules): "NI" today; "ENG", "SCO", "WAL" added as content later.
 
+/** One statement of how long farm records must be kept (NI), used wherever the app warns before
+ *  deleting: the same numbers as the registers' own notes (review A #32). */
+export const RETENTION_LINE = "The law says you must keep your records after you stop: cattle herd registers 10 years, medicine records 5 years, sheep and pig movement records 3 years";
 export const DEFAULT_RULES = [
   { region: "NI", key: "bvdBreedingFemale", status: "announced", from: "2026-03-01", sectors: ["beef", "dairy"],
     values: { minAgeMonths: 12, restrictWeeks: 41 },
-    source: "DAERA news: BVD movement restrictions on breeding-age females begin 1 March 2026 (Research B: confirm not delayed)", checkedOn: "2026-10-15" },
+    source: "DAERA news: BVD movement restrictions on breeding-age females begin 1 March 2026", checkedOn: "2026-10-15" },
   { region: "NI", key: "herdRegisterNifais", status: "in force", sectors: ["beef", "dairy"],
     values: { birthDays: 23, moveOffDays: 0, otherEventDays: 3 },
-    source: "DAERA cattle identification — NIFAIS Online used as the herd register (Research B verification pass)", checkedOn: "2026-10-15" },
+    source: "DAERA cattle identification — NIFAIS Online used as the herd register", checkedOn: "2026-10-15" },
   { region: "NI", key: "marketStandstill", status: "in force", sectors: ["beef", "sheep", "dairy", "pigs"],
     values: { days: 6, species: ["cattle", "sheep", "goats", "pigs"] },
-    source: "DAERA movement rules (Research B)", checkedOn: "2026-10-15" },
+    source: "DAERA movement rules", checkedOn: "2026-10-15" },
   { region: "NI", key: "xiTags", status: "in force", from: "2025-06-30", sectors: ["beef", "sheep", "dairy"],
     values: { prefix: "XI", alsoAccepted: ["UK"], species: ["cattle", "sheep", "goats"] },
-    source: "DAERA (Research B verification pass)", checkedOn: "2026-10-15" },
+    source: "DAERA", checkedOn: "2026-10-15" },
   { region: "NI", key: "inventories", status: "in force", sectors: ["sheep", "pigs", "layers", "broilers"],
     values: { pigsAndBirdsOn: "06-01", perEstablishment: true, sheepCountFrom: "12-01", sheepCountTo: "12-05", sheepInfoFrom: "11-15", returnDeadline: "from DAERA's yearly letter" },
-    source: "NISRA June survey (pigs, birds); DAERA sheep & goat inventory (Research B)", checkedOn: "2026-10-15" },
+    source: "NISRA June survey (pigs, birds); DAERA sheep & goat inventory", checkedOn: "2026-10-15" },
   { region: "NI", key: "freeRangeHousingOrder", status: "in force", sectors: ["layers"],
     values: { keepFreeRangeLabelWholeOrder: true, derogationWeeks: null },
-    source: "Reg. (EU) 2023/2465 applies in NI — no 16-week derogation (Research B)", checkedOn: "2026-10-15" },
+    source: "Reg. (EU) 2023/2465 applies in NI — no 16-week derogation", checkedOn: "2026-10-15" },
   { region: "NI", key: "sheepTagging", status: "in force", sectors: ["sheep"],
     values: { tagByMonths: 9, tagByMonthsHoused: 6, replaceDays: 28, importRetagDays: 20, slaughterTag: false },
-    source: "DAERA sheep identification (Research B)", checkedOn: "2026-10-15" },
+    source: "DAERA sheep identification", checkedOn: "2026-10-15" },
   { region: "NI", key: "sheepMovement", status: "in force", sectors: ["sheep"],
     values: { notifyDays: 7, registerDays: 7, cprRegisterHours: 48, birthRegisterDaysAfterTagging: 7, tseHours: 24, tseOverMonths: 18 },
-    source: "DAERA flock register guidance (Research B)", checkedOn: "2026-10-15" },
+    source: "DAERA flock register guidance", checkedOn: "2026-10-15" },
 ];
 
 // Farm-wide disease banner items (01 §16.1). level: info | due | late. Info items can be
@@ -40,10 +43,10 @@ export const DEFAULT_RULES = [
 export const DEFAULT_BANNER = [
   { region: "NI", id: "btv-2026", topic: "bluetongue", sectors: ["beef", "sheep", "dairy"], level: "info",
     text: "Bluetongue: no NI cases this season. Live cattle and sheep can't come direct from GB. BTV-3 vaccine allowed under a DAERA general licence.",
-    source: "DAERA (Research B verification pass)", checkedOn: "2026-10-15" },
+    source: "DAERA", checkedOn: "2026-10-15" },
   { region: "NI", id: "ai-2026", topic: "avian influenza", sectors: ["layers", "broilers"], level: "info",
     text: "No housing order in NI · lifted 5 May 2026. AIPZ lifted 15 May 2026.",
-    source: "DAERA, May 2026 (Research B)", checkedOn: "2026-10-15" },
+    source: "DAERA, May 2026", checkedOn: "2026-10-15", changedOn: "2026-05-15" },
 ];
 
 let RULES = DEFAULT_RULES.slice();
@@ -76,6 +79,18 @@ export function ruleInForce(key, today, region = "NI") {
 export function rulesFor(region = "NI", sector) {
   return RULES.filter((r) => r.region === region && (!sector || (r.sectors || []).includes(sector)));
 }
+/** Is a banner worth the top of a home screen? Something in force (due / late), or it changed
+ *  in the last 7 days. "Nothing is happening" notices live on the disease screens instead
+ *  (review B #19). `changedOn` (or `updated` / `from`) is the day the situation last changed. */
+export function newsworthy(b, today) {
+  if (!b) return false;
+  if (b.level && b.level !== "info") return true;
+  const ch = b.changedOn || b.updated || b.from; if (!ch || !today) return false;
+  const d = Math.round((new Date(today + "T12:00:00Z") - new Date(String(ch).slice(0, 10) + "T12:00:00Z")) / 86400000);
+  return d >= 0 && d <= 7;
+}
+/** Banner items for a home screen: only the newsworthy ones. */
+export function homeBanners(region = "NI", types = [], today) { return bannerItems(region, types).filter((b) => newsworthy(b, today)); }
 /** Banner items for a set of ledger types (Overview passes all the farm's types). */
 export function bannerItems(region = "NI", types = []) {
   const want = new Set(types);

@@ -10,6 +10,7 @@ import { onFarm, groupOf, lactation, dim, lastYield, lastScc, cowLabel, cowMatch
 import { fertilityOf, dm } from "./model/fertility.js";
 import { QUARTERS, QUARTER_NAMES } from "./model/milking.js";
 import { tagParts } from "../beef/model/tags.js";
+import { rankMatches, cowKeys, isExact } from "../../core/rank.js";
 
 let cssDone = false;
 export function ensureCss() {
@@ -49,11 +50,11 @@ export function cowLine(snap, a) {
   if (g === "calf") { const d = daysBetween(a.dob, today); return [`${d < 28 ? Math.max(1, Math.floor(d / 7)) + " wk" : Math.floor(d / 30.4) + " mo"}`, /bull|steer|^m/i.test(a.sex || "") ? "bull calf" : "heifer calf", a.calf?.pen ? `Pen ${a.calf.pen}` : null].filter(Boolean).join(" · "); }
   return [a.sex, a.breed].filter(Boolean).join(" · ");
 }
-export function cowRow(snap, a, { selectable = false, selected = false, extra = "", action = "" } = {}) {
+export function cowRow(snap, a, { selectable = false, selected = false, extra = "", action = "", best = false } = {}) {
   const p = cowPill(snap, a);
   const inner = html`${selectable ? html`<span class="checkbox" aria-hidden="true">${raw(icon("check"))}</span>` : ""}
     <span class="cow-no">${cowLabel(a)}</span>
-    <span class="main"><span class="primary">${a.name ? html`<b>${a.name}</b>` : html`<span class="ink-2">${tagParts(a.tag).tail ? "Tag " + tagParts(a.tag).tail : ""}</span>`}</span><span class="secondary">${cowLine(snap, a)}</span>${extra}${p && action ? pill(p[0], p[1]) : ""}</span>
+    <span class="main">${a.name ? html`<span class="primary"><b>${a.name}</b></span><span class="secondary">${cowLine(snap, a)}</span>` : html`<span class="primary">${cowLine(snap, a)}</span>`}${best ? html`<span class="pill ok best-match">Exact match</span>` : ""}${extra}${p && action ? pill(p[0], p[1]) : ""}</span>
     ${p && !action ? pill(p[0], p[1]) : ""}${action}${selectable || action ? "" : html`<span class="chev">${raw(icon("chevron"))}</span>`}`;
   if (selectable) return html`<button type="button" class="row cow-row" role="checkbox" aria-checked="${!!selected}" data-aid="${a.id}">${inner}</button>`;
   if (action) return html`<div class="row cow-row" data-aid="${a.id}">${inner}</div>`;
@@ -80,21 +81,22 @@ export function pickCows(snap, { title = "Choose cows", multi = false, filter = 
   const body = el(html`<div class="picker"><div class="field search-field">${raw(icon("search"))}<input type="search" inputmode="search" placeholder="Cow number, name or tag" aria-label="Search cows" data-q autocomplete="off"></div><div class="list" data-list></div></div>`);
   const btn = el(html`<button type="button" class="btn">Choose</button>`);
   const label = () => (sel.size ? (confirm ? confirm(sel.size) : `Choose ${sel.size}`) : "Pick at least one");
+  let shown = 0, ambiguous = false;
   const paint = () => {
     const q = body.querySelector("[data-q]").value;
-    const rows = all.filter((a) => cowMatches(a, q)).slice(0, 200);
-    body.querySelector("[data-list]").replaceChildren(el(html`<div style="display:contents">${rows.length ? rows.map((a) => cowRow(snap, a, { selectable: true, selected: sel.has(a.id) })) : html`<p class="hint" style="padding:16px">No cows match “${q}”.</p>`}</div>`));
+    const ranked = rankMatches(all, q, cowKeys).slice(0, 200); shown = q.trim() ? ranked.length : 0;
+    body.querySelector("[data-list]").replaceChildren(el(html`<div style="display:contents">${ranked.length ? ranked.map(({ item: a, score }, i) => cowRow(snap, a, { selectable: true, selected: sel.has(a.id), best: q.trim() && i === 0 && isExact(score) && !(ranked[1] && ranked[1].score === score) })) : html`<p class="hint" style="padding:16px">No cows match “${q}”.</p>`}</div>`));
     btn.disabled = !sel.size; btn.textContent = label();
   };
   body.querySelector("[data-q]").addEventListener("input", paint);
-  body.querySelector("[data-q]").addEventListener("keydown", (e) => { if (e.key === "Enter") { const first = all.find((a) => cowMatches(a, e.target.value)); if (first && !multi) sh.close([first.id], { force: true }); } });
+  body.querySelector("[data-q]").addEventListener("keydown", (e) => { if (e.key === "Enter") { const r = rankMatches(all, e.target.value, cowKeys); if (r.length && !multi) sh.close(Object.assign([r[0].item.id], { ambiguous: r.length > 1 }), { force: true }); } });
   body.addEventListener("click", (e) => {
-    const r = e.target.closest("[data-aid]"); if (!r) return; const id = r.dataset.aid;
-    if (!multi) { sh.close([id], { force: true }); return; }
+    const r = e.target.closest("[data-aid]"); if (!r) return; const id = r.dataset.aid; if (shown > 1) ambiguous = true;
+    if (!multi) { sh.close(Object.assign([id], { ambiguous }), { force: true }); return; }
     sel.has(id) ? sel.delete(id) : sel.add(id); r.setAttribute("aria-checked", String(sel.has(id))); btn.disabled = !sel.size; btn.textContent = label();
   });
   const sh = openSheet({ title, body, footer: multi ? btn : null });
-  btn.onclick = () => sh.close([...sel], { force: true });
+  btn.onclick = () => sh.close(Object.assign([...sel], { ambiguous }), { force: true });
   paint();
   return sh.done.then((r) => (Array.isArray(r) ? r : null));
 }
@@ -125,7 +127,7 @@ export function printDoc(doc) {
 export function toHtmlTable(doc) {
   const e = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   return `<div class="ph"><b>${e(doc.title)}</b><span>${(doc.top || []).map(([k, v]) => `${e(k)}: ${e(v)}`).join(" · ")}</span></div>
-    <table><thead><tr>${doc.headers.map((h) => `<th>${e(h)}</th>`).join("")}</tr></thead><tbody>${doc.rows.map((r) => `<tr>${r.map((c) => `<td>${e(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${doc.headers.length}">Nothing recorded yet.</td></tr>`}</tbody></table>
+    <table><thead><tr>${doc.headers.map((h) => `<th>${e(h)}</th>`).join("")}</tr></thead><tbody>${doc.rows.map((r, i) => `<tr${doc.refs?.[i] ? ` data-rec="${e(doc.refs[i])}" class="tap" tabindex="0" role="button"` : ""}>${r.map((c) => `<td>${e(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${doc.headers.length}">Nothing recorded yet.</td></tr>`}</tbody></table>
     <div class="pf">${e(doc.note || "")} Printed from Farm Ledger on ${new Date().toLocaleDateString("en-GB")}.</div>`;
 }
 export function csvDownload(doc) {

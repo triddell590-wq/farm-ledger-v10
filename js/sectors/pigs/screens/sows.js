@@ -9,6 +9,7 @@ import { liveSnap } from "../data.js";
 import { sowRow, n0, plural } from "../ui.js";
 import { cycles, breedingTiles } from "../model/week.js";
 import { inFilter, sowMatches, sortByNo, onFarm } from "../model/sows.js";
+import { matchScore, sowKeys } from "../../../core/rank.js";
 import { wireFlows } from "./live.js";
 
 const FILTERS = [["all", "All"], ["served", "Served"], ["inpig", "In pig"], ["farrowing", "Farrowing"], ["suckling", "Suckling"], ["empty", "Empty"], ["gilts", "Gilts"], ["cull", "Cull"]];
@@ -21,7 +22,7 @@ export default async function sows(ctx) {
   const list = () => {
     const snap = cur; const all = cycles(snap.c).filter((x) => x.sow.type !== "boar");
     const boars = snap.data.sows.filter((s) => s.type === "boar" && onFarm(s));
-    const rows = all.filter((x) => inFilter(x.c, x.sow, st.f) && sowMatches(x.sow, st.q)).sort((a, b) => sortByNo(a.sow, b.sow));
+    const rows = all.filter((x) => inFilter(x.c, x.sow, st.f) && sowMatches(x.sow, st.q)).sort((a, b) => (st.q ? matchScore(sowKeys(a.sow), st.q) - matchScore(sowKeys(b.sow), st.q) : 0) || sortByNo(a.sow, b.sow));
     const showBoars = st.f === "all" && boars.length && boars.filter((b) => sowMatches(b, st.q));
     return html`${rows.length ? html`<div class="list">${rows.slice(0, 300).map((x) => sowRow(snap, x.sow, x.c))}</div>` : html`<div class="card pad t-callout ink-2">${st.q ? `No sow matches “${st.q}”.` : "No sows in this group."}</div>`}
       ${showBoars && showBoars.length ? html`<div class="section">${groupLabel("Boars", boars.length)}<div class="list">${showBoars.map((b) => sowRow(snap, b))}</div></div>` : ""}`;

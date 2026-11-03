@@ -18,8 +18,8 @@ export function parlourText(snap) {
 
 export function openParlour(snap) {
   const w = snap.brd.withheld;
-  const node = el(html`<div class="parlour" role="dialog" aria-modal="true" aria-label="Parlour sheet">
-    <div class="top"><button type="button" class="text-btn" data-done>Done</button><span style="font-weight:700">Parlour sheet</span><button type="button" class="text-btn" data-share>Share</button></div>
+  const node = el(html`<div class="parlour" role="dialog" aria-modal="true" aria-label="${snap.s.robot ? "Withhold list" : "Parlour sheet"}">
+    <div class="top"><button type="button" class="text-btn" data-done>Done</button><span style="font-weight:700">${snap.s.robot ? "Withhold list" : "Parlour sheet"}</span><button type="button" class="text-btn" data-share>Share</button></div>
     <h2>Milk out of the tank</h2><p class="sub">${w.length} cow${w.length === 1 ? "" : "s"} · updated ${timePart(snap.now)} · sorted by cow number</p>
     <div class="rows">${w.length ? w.map((x) => html`<div class="prow"><span class="pno">${cowLabel(x.cow)}</span><div><div class="pq">${quartersText(x.w.quarters) || "All four"}${x.w.marks?.length ? html`<span style="font-weight:400"> · ${x.w.marks.join(", ")}</span>` : ""}</div><div class="pd">OK from ${x.label}</div>${x.cow.name ? html`<div class="pd" style="color:#56635A">${x.cow.name}</div>` : ""}</div></div>`) : html`<p class="empty-ok">✓ All cows' milk can go in the tank.</p>`}</div>
     <div style="display:flex;gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #E3E6E0"><button type="button" class="btn secondary" data-print style="background:#fff;color:#1B221D">Print</button>${snap.s.robot ? html`<button type="button" class="btn secondary" data-ams style="background:#fff;color:#1B221D">AMS divert list</button>` : ""}</div>
@@ -33,7 +33,7 @@ export function openParlour(snap) {
   node.querySelector("[data-done]").onclick = close;
   node.querySelector("[data-share]").onclick = async () => {
     const text = parlourText(snap); shared();
-    try { if (navigator.share) { await navigator.share({ title: "Parlour sheet", text }); return; } } catch (e) { if (e.name === "AbortError") return; }
+    try { if (navigator.share) { await navigator.share({ title: snap.s.robot ? "Withhold list" : "Parlour sheet", text }); return; } } catch (e) { if (e.name === "AbortError") return; }
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener"); toast("Opening WhatsApp with the list");
   };
   node.querySelector("[data-print]").onclick = () => { shared(); printDoc({ title: "Milk out of the tank — parlour sheet", top: [["Ledger", snap.ledger.name], ["Updated", nowStr().replace("T", " ")]], headers: ["Cow", "Name", "Quarters", "Marked with", "Milk OK from"], rows: w.map((x) => [cowLabel(x.cow), x.cow.name || "", quartersText(x.w.quarters) || "All four", (x.w.marks || []).join(", "), x.label]), note: "Keep withheld milk out of the tank until the time shown." }); };

@@ -17,8 +17,8 @@ import { evaluate, summary, SECTIONS } from "../model/checklist.js";
 import { buildRegister } from "../model/registers.js";
 import { RT_HEADER, RT_NOTE, RT_VERSION } from "../model/content.js";
 import { printDoc, toHtmlTable } from "../ui.js";
+import { readyScore, readyHero, readyLists, wireReady } from "../../../ui/ready-check.js";
 
-const MARK = { ok: ["ok", "check", "In place"], due: ["due", "clock", "Check"], gap: ["late", "alert", "Gap"], open: ["neutral", "clock", "Tick yourself"] };
 
 export default async function checklist(ctx) {
   const page = ctx.match.groups.page; const body = el(html`<div class="dairy-page"></div>`);
@@ -28,17 +28,26 @@ export default async function checklist(ctx) {
   return { el: body, title: page === "rt" ? "Red Tractor" : "Inspector is here", tab: "more", destroy: stop };
 }
 
+/** Red Tractor items as ready-check rows (review A #14): record-evidenced items score, the rest are a checklist. */
+export function rtRows(snap, signs) {
+  const sec = Object.fromEntries(SECTIONS);
+  return evaluate(snap.c, signs).map((r) => {
+    const signed = r.sign?.done ? `Ticked ${r.sign.date || ""}${r.sign.by ? " by " + r.sign.by : ""}${r.sign.note ? " · " + r.sign.note : ""}${r.sign.photos ? ` · ${r.sign.photos} photo${r.sign.photos > 1 ? "s" : ""}` : ""}` : "";
+    return r.auto
+      ? { id: r.id, text: `${r.id} · ${r.text}`, key: r.key, sec: sec[r.sec], auto: true, state: r.status, note: [r.ev?.text, signed].filter(Boolean).join(" · "), link: r.link, canTick: r.ev?.state === "due", upload: r.upload }
+      : { id: r.id, text: `${r.id} · ${r.text}`, key: r.key, sec: sec[r.sec], auto: false, state: "open", done: !!r.sign?.done, note: signed, upload: r.upload };
+  });
+}
+export const dairyHasData = (snap) => snap.data.animals.length > 0;
+
 function rt(snap) {
-  const signs = snap.meta.rtChecklist?.items || {}; const rows = evaluate(snap.c, signs); const sm = summary(rows);
+  const signs = snap.meta.rtChecklist?.items || {}; const rows = rtRows(snap, signs); const sc = readyScore(rows, dairyHasData(snap));
   const can = canWriteMeta(snap.role, "rtChecklist");
-  const node = el(html`<div>${backLink(`#/l/${snap.lid}/paperwork`, "Paperwork")}${largeTitle("Red Tractor ready?", `${sm.done} of ${sm.n} in place · ${sm.keyGaps} Key open`)}
+  const node = el(html`<div>${backLink(`#/l/${snap.lid}/paperwork`, "Paperwork")}${largeTitle("Red Tractor ready?", sc.hasData ? `${sc.ok} of ${sc.n} checked from your records · ${sc.selfDone} of ${sc.selfN} ticked` : "Add your cows and the app starts checking")}
     <div class="card pad"><p class="t-callout" style="margin:0"><b>${RT_HEADER}</b></p><p class="hint" style="margin:6px 0 0">${RT_NOTE}</p></div>
-    ${SECTIONS.map(([k, name]) => { const items = rows.filter((r) => r.sec === k); if (!items.length) return ""; const done = items.filter((r) => r.status === "ok").length;
-      return html`<div class="section" id="${k}">${groupLabel(name, `${done}/${items.length}`)}<div class="list">${items.map((r) => { const [lvl, ic, word] = MARK[r.status];
-        return html`<div class="row rt-item" data-id="${r.id}"><span class="rt-id">${r.id}</span><span class="main"><span class="primary">${r.text}${r.key ? html`<span class="key-tag">Key</span>` : ""}${r.auto ? html` <span class="auto-tag">auto</span>` : ""}</span>
-          ${r.ev ? html`<span class="secondary">${r.ev.text}</span>` : ""}${r.sign?.done ? html`<span class="secondary">Ticked ${r.sign.date || ""}${r.sign.by ? " by " + r.sign.by : ""}${r.sign.note ? " · " + r.sign.note : ""}${r.sign.photos ? ` · ${r.sign.photos} photo${r.sign.photos > 1 ? "s" : ""}` : ""}</span>` : ""}
-          <span class="row-actions">${r.link ? html`<a class="text-btn" href="${r.link}">Show me</a>` : ""}${r.upload ? html`<a class="text-btn" href="#/farm/documents">Documents</a>` : ""}${can && (!r.auto || r.ev?.state === "due") ? html`<button type="button" class="text-btn" data-tick>${r.sign?.done ? "Update" : "Tick"}</button>` : ""}</span></span>
-          <span class="pill ${lvl}">${raw(icon(ic))}${word}</span></div>`; })}</div></div>`; })}</div>`);
+    ${readyHero(sc)}
+    ${readyLists(rows, { can, actions: (r) => html`${r.upload ? html`<a class="text-btn" href="#/farm/documents">Documents</a>` : ""}${can && (!r.auto || r.canTick) ? html`<button type="button" class="text-btn" data-tick>${r.auto ? "Tick" : "Note or photo"}</button>` : ""}` })}</div>`);
+  wireReady(node, (id, on) => { const t = signs[id] || {}; setMeta(snap.lid, "rtChecklist", { version: `${RT_VERSION.name} ${RT_VERSION.version}`, effective: RT_VERSION.effective, items: { ...signs, [id]: on ? { ...t, done: true, date: snap.today, by: auth.user?.displayName || auth.user?.email || "" } : { ...t, done: false } } }); toast(on ? `${id} ticked` : `${id} unticked`); });
   node.querySelectorAll("[data-tick]").forEach((b) => (b.onclick = () => tickSheet(snap, b.closest("[data-id]").dataset.id, signs)));
   return node;
 }

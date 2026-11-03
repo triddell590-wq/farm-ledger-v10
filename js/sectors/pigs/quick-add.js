@@ -54,21 +54,21 @@ export const ORDER = {
   finishing: ["pigsIn", "death", "check", "feed", "pigsOut", "treat"],
   small: ["litter", "death", "feedBought", "sold", "treatAny", "note"],
 };
-export function quickAddIds(set, role) {
-  return [...ORDER[set], "visitor", "alarm"].filter((k) => k !== "money" || canWrite(role, "finance"));
+export function quickAddIds(set, role, s = {}) {
+  return [...ORDER[set], "visitor", ...(s.legalOnly ? [] : ["alarm"])].filter((k) => k !== "money" || canWrite(role, "finance"));
 }
 export default async function quickAdd(ctx) {
   const snap = await loadPigs(ctx.ledger);
   const money = canWrite(snap.role, "finance") ? [{ id: "money", label: "Money", icon: "money", run: () => openMoneySheet(snap.ledger) }] : [];
   if (!canWrite(snap.role, "deaths")) return quickAddSheet(ctx.ledger, money);
-  const set = tabSetFor(snap.s); const ids = quickAddIds(set, snap.role);
+  const set = tabSetFor(snap.s); const ids = quickAddIds(set, snap.role, snap.s);
   const treat = set === "small" ? "treatAny" : "treat";
   const FOCUS = {
     sows: ["farrowing", "served", "weaned", "treatSow", "death"], rooms: ["check", "death", treat, "feed", "readings"],
     batches: ["pigsIn", "pigsOut", "death", treat, "feed"], litters: ["litter", "death", "treatAny"], sales: ["sold", "feedBought"],
-    paperwork: ["visitor", "alarm", treat, "death"], money: ["money"],
+    paperwork: ["visitor", ...(snap.s.legalOnly ? [] : ["alarm"]), treat, "death"], money: ["money"],
   };
-  const all = [...new Set([...ids, "treatSow", "readings", treat])];
+  const all = [...new Set([...ids, "treatSow", "readings", treat])].filter((k) => !(snap.s.legalOnly && k === "alarm"));
   return quickAddSheet(ctx.ledger, [...all.map((id) => ({ id, label: FLOWS[id].label, icon: FLOWS[id].icon, run: () => FLOWS[id].run(snap) })), ...money], { focus: focusFor(FOCUS, ctx.where) || ids });
 }
 /** Run a flow by id with a fresh snapshot (buttons on screens, tests). */

@@ -1,3 +1,4 @@
+import { matchScore } from "../../../core/rank.js";
 // Cattle ear tags, breeds, colours and sex codes (NI). Pure functions, no DOM.
 // Tag maths kept exactly as v9.14 (Tom's tags pass it): UK/XI + lead digit + 6-digit herd +
 // 4-digit animal + check digit, where check = ("9" + herd + animal) mod 7 + 1.
@@ -25,15 +26,8 @@ export function tagParts(tag) {
   const s = String(tag || "").trim();
   return { head: "", tail: s };
 }
-/** Search: matches full tag, last digits, management number or name. */
-export function tagMatches(a, q) {
-  q = String(q || "").trim().toLowerCase(); if (!q) return true;
-  const digits = q.replace(/\D/g, "");
-  if (digits && digits.length >= 3 && String(a.tag || "").replace(/\D/g, "").endsWith(digits)) return true;
-  if (normTag(a.tag).includes(normTag(q))) return true;
-  if (a.mgmtNo && String(a.mgmtNo).toLowerCase().includes(q)) return true;
-  return !!(a.name && a.name.toLowerCase().includes(q));
-}
+/** Search: matches full tag, last digits, management number or name (ranking: core/rank.js). */
+export function tagMatches(a, q) { return matchScore({ no: a.mgmtNo, name: a.name, tag: a.tag }, q) != null; }
 /** Next tag in a tag book: same herd, animal number + 1, fresh check digit. */
 export function nextTag(tag) {
   const p = parseTag(tag); if (!p) return "";

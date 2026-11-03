@@ -81,7 +81,7 @@ function one(snap, tool) {
         return html`<div>${tiles([["Times normal", a ? `${n1(n / a)}×` : "—", on ? "Spike" : "Not a spike", on ? "late" : "ok"]])}${on ? html`<div class="ly-banner late" style="margin-top:8px">${raw(icon("alert"))}<span>A sudden rise can be the first sign of bird flu. Phone your vet now. If you suspect bird flu you must report it to DAERA.</span></div>` : ""}</div>`; },
       "Spike = today's dead ≥ multiplier × the 7-day average, and at least the minimum number of birds (both are your settings).");
   }
-  if (tool === "uniformity") return calc(snap, "Uniformity", `Target over ${s.uniformityTarget}%`, html`<div class="field ly-area"><label for="ly-w">Weights in grams, separated by spaces or commas</label><textarea id="ly-w" name="w" rows="5" placeholder="1950 2010 1880 …"></textarea></div>`,
+  if (tool === "uniformity") return calc(snap, "Uniformity", `Target over ${s.uniformityTarget}%`, html`<div class="field ly-area"><label for="ly-w">Weights in grams, separated by spaces or commas</label><textarea id="ly-w" name="w" rows="5" placeholder="e.g. 1950 2010 1880"></textarea></div>`,
     (v) => { const vals = String(v.w || "").split(/[\s,;]+/).map(Number).filter((y) => y > 0); if (vals.length < 2) return null; const u = uniformity(vals);
       return tiles([["Mean", `${n0(u.mean)} g`, `${u.n} birds`], ["CV", `${n1(u.cv)}%`], ["Uniformity", `${n1(u.uniformity)}%`, `target ${s.uniformityTarget}%`, u.uniformity >= +s.uniformityTarget ? "ok" : "due"]]); },
     "CV % = standard deviation ÷ mean × 100 · uniformity = % of birds within ±10% of the mean. To keep a sample on the flock, use Flock → Body weight.");

@@ -7,8 +7,10 @@ import { todayStr, daysBetween, addDays } from "../../../core/dates.js";
 import { regionRule } from "../../../content/region-rules.js";
 import { cowPickRow, entrySheet, chipsField } from "./common.js";
 import { addCow, updateCow, add } from "../actions.js";
+import { runAction } from "../../../services/records.js";
 import { parseTag, DAERA_BREEDS } from "../../beef/model/tags.js";
-import { ageMonths, isFemale, onFarm, cowLabel } from "../model/cows.js";
+import { ageMonths, isFemale, onFarm, cowLabel, cowWithName } from "../model/cows.js";
+import { confirmPicked } from "../../../ui/confirm-pick.js";
 import { bvdRuleState } from "../model/content.js";
 import { rulesFor } from "../model/duties.js";
 
@@ -53,11 +55,14 @@ export function offSheet(snap, { animalIds = [] } = {}) {
   body.querySelector("[data-cow]").appendChild(row.node);
   const breedingFemales = () => row.ids().map((id) => snap.ix.byId.get(id)).filter((a) => a && isFemale(a) && (ageMonths(a, snap.today) ?? 0) >= minAge);
   const es = entrySheet({ title: "Off the farm", body, label: "Save", missing: (v) => (!row.ids().length ? "Choose the animals" : v.why !== "Died" && snap.meta.settings?.restricted?.on ? "Holding restricted — no moves off" : v.why !== "Died" && v.breeding === "yes" && bvd.inForce && snap.meta.settings?.bvdAffected && breedingFemales().length ? "BVD rules: these females can't move for breeding" : null),
-    save(v, sh) {
+    async save(v, sh) {
       const ids = row.ids();
+      if (row.ambiguous() && !(await confirmPicked(v.why === "Died" ? "Record a death" : v.why === "Sold" || v.why === "Culled to factory" ? "Record a sale" : "Record leaving the farm", ids.map((id) => snap.ix.byId.get(id)).filter(Boolean).map((a) => ({ short: cowWithName(a), tag: a.tag }))))) return;
+      runAction(() => { // one entry: the death / movement records and the cows going off share an actionId
       if (v.why === "Died") for (const id of ids) { const a = snap.ix.byId.get(id); add(snap.lid, "deaths", { animalId: id, date: v.date, cause: v.cause, collector: v.collector, tse: a?.dob ? daysBetween(a.dob, v.date) / 30.4375 >= 48 : false }); }
       else add(snap.lid, "movements", { direction: "off", animalIds: ids, date: v.date, place: v.place, reason: v.why, breeding: v.breeding === "yes" });
       for (const id of ids) { const a = snap.ix.byId.get(id); if (a) updateCow(snap.lid, a, { offDate: v.date, offTo: v.why === "Died" ? "Dead" : v.place || v.why, offReason: v.why }); }
+      });
       sh.close(true, { force: true }); toast(`${ids.length} animal${ids.length > 1 ? "s" : ""} off the farm — NIFAIS job added to To do`);
     } });
   const standstill = () => { const sd = regionRule("marketStandstill", snap.s.region)?.days; if (!sd) return []; const v = es.form.values(); return row.ids().map((id) => snap.ix.byId.get(id)).filter((a) => a && a.onDate && !a.bornInHerd && daysBetween(a.onDate, v.date || snap.today) <= sd).map((a) => `${cowLabel(a)} came on ${a.onDate} — ${sd}-day standstill: no market until ${addDays(a.onDate, sd + 1)}.`); };

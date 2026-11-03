@@ -1,6 +1,7 @@
 // Dairy → More → Tools (design/12 §9). One screen each: inputs prefilled from the ledger, the
 // answer in big type with its formula and source. All offline, pure maths from the model.
 // Money tools (cheque check, MOPF) only for roles that can read finance (design/12 §15).
+import { plural as pl } from "../../../ui/format.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -144,7 +145,7 @@ const PAGES = {
     const node = el(html`<div class="dairy-page">${backLink(`#/l/${snap.lid}/tools`, "Tools")}${largeTitle("Cull ranking", "Highest score first — a list to think about, not a decision")}
       ${sectionOf("Weights", html`<form class="form-group" data-w novalidate>${Object.entries(WEIGHT_NAMES).map(([k, l]) => n(k, l, w[k]))}</form>${can ? html`<button type="button" class="btn secondary" data-save style="margin-top:8px">Save weights</button>` : ""}
         <p class="formula">Score = Σ(factor × weight) ÷ Σ weights, each factor 0–1: age = lactation ÷ 6 · SCC = mean of last 3 ÷ 400k · cases = this lactation ÷ 3 · days open = (open − 150) ÷ 100 · lameness = mobility ÷ 3 · low yield = shortfall vs herd average ÷ 40%.</p>`)}
-      ${sectionOf("Ranking", rows.length ? html`<div class="list">${rows.map((r) => cowRow(snap, r.a, { extra: html`<span class="secondary">Score ${r.score}${r.reasons.length ? " · " + r.reasons.join(", ") : ""}</span>` }))}</div>` : html`<p class="hint">No milking or dry cows yet.</p>`, rows.length ? `${rows.length} cows` : "")}</div>`);
+      ${sectionOf("Ranking", rows.length ? html`<div class="list">${rows.map((r) => cowRow(snap, r.a, { extra: html`<span class="secondary">Score ${r.score}${r.reasons.length ? " · " + r.reasons.join(", ") : ""}</span>` }))}</div>` : html`<p class="hint">No milking or dry cows yet.</p>`, rows.length ? `${pl(rows.length, "cow", "cows")}` : "")}</div>`);
     const b = node.querySelector("[data-save]"); if (b) b.onclick = () => { const f = new FormData(node.querySelector("[data-w]")); setMeta(snap.lid, "settings", { cullWeights: Object.fromEntries([...f].map(([k, x]) => [k, v0(x) ?? 0])) }); toast("Weights saved"); };
     return node;
   },
@@ -160,7 +161,7 @@ const PAGES = {
     const node = el(html`<div class="dairy-page">${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle(DISEASE_REPORT.label, "Bluetongue and other notifiable disease")}
       <div class="card pad"><p class="t-callout" style="margin:0">${DISEASE_REPORT.text}</p><p class="hint" style="margin:8px 0 0">BTV-3 vaccination: record it as a treatment ("BTV-3 vaccine"). ${BTV_LICENCE_NOTE}.</p></div>
       ${r?.on ? html`<div class="warn-card" style="margin-top:12px">${raw(icon("alert"))}<span><b>Holding marked restricted</b> since ${r.from}${r.note ? ` · ${r.note}` : ""}. No moves off until the results clear it.</span></div>` : ""}
-      ${can ? html`<div class="section"><form class="form-group" data-f novalidate>${textField({ name: "from", label: "Restricted from", type: "date", value: r?.from || snap.today })}${textField({ name: "note", label: "What was reported", value: r?.note || "", optional: true, placeholder: "Suspected bluetongue in 214, vet called" })}</form>
+      ${can ? html`<div class="section"><form class="form-group" data-f novalidate>${textField({ name: "from", label: "Restricted from", type: "date", value: r?.from || snap.today })}${textField({ name: "note", label: "What was reported", value: r?.note || "", optional: true, placeholder: "e.g. Suspected bluetongue in 214, vet called" })}</form>
         <div style="margin-top:8px;display:grid">${r?.on ? html`<button type="button" class="btn" data-clear>Results clear — lift it</button>` : html`<button type="button" class="btn danger" data-on>Mark the holding restricted</button>`}</div></div>` : html`<p class="hint" style="margin-top:12px">The owner or a manager marks the holding restricted.</p>`}</div>`);
     const val = () => Object.fromEntries(new FormData(node.querySelector("[data-f]")));
     const on = node.querySelector("[data-on]"); if (on) on.onclick = () => { setMeta(snap.lid, "settings", { restricted: { on: true, ...val() } }); toast("Holding marked restricted"); history.back(); };
