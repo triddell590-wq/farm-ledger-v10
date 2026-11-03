@@ -3,7 +3,7 @@
 import { addDays, daysBetween } from "./dates.js";
 import { preWeanMortality } from "./litters.js";
 
-export const BENCH_SOURCE = "AHDB indoor breeding herd costings (Agrosoft), porktools.ahdb.org.uk — as quoted by Research C, Oct 2026";
+export const BENCH_SOURCE = "AHDB indoor breeding herd costings (Agrosoft), porktools.ahdb.org.uk, Oct 2026";
 export const BENCH = {
   pwsy: [27.8, 31.7], bornAlive: [14.6, 15.5], pwm: [13.2, 11.4], lsy: [2.2, 2.31], farrowRate: [81.9, 86.1],
   sowMort: [7.7, 7.9], replacement: [53, 57],

@@ -9,6 +9,7 @@ import { largeTitle, emptyState } from "../../../screens/common.js";
 import { liveSnap } from "../data.js";
 import { cowRow } from "../ui.js";
 import { onFarm, groupOf, cowMatches, sortByNo } from "../model/cows.js";
+import { rankMatches, cowKeys } from "../../../core/rank.js";
 
 const GROUPS = [["milking", "Milking"], ["dry", "Dry"], ["heifer", "Heifers"], ["calf", "Calves"], ["cull", "To cull"], ["all", "All"]];
 const state = new Map(); // per ledger: { g, q }
@@ -33,7 +34,8 @@ function paint(body, snap, st) {
     <div data-list></div></div>`);
   const list = node.querySelector("[data-list]");
   const draw = () => {
-    const rows = herd.filter((a) => (st.q ? cowMatches(a, st.q) : inG(a, st.g))).sort(sortByNo);
+    let rows = herd.filter((a) => (st.q ? cowMatches(a, st.q) : inG(a, st.g))).sort(sortByNo);
+    if (st.q) rows = rankMatches(rows, st.q, cowKeys).map((x) => x.item); // exact cow number / tag block first
     if (!herd.length) {
       list.replaceChildren(el(emptyState({ sector: "dairy", title: "No cows yet", body: "Import your herd from a milk-recording or NIFAIS list, or add cows one at a time.", action: canWrite(snap.role, "animals") ? "Import herd" : null, href: `#/l/${snap.lid}/imports` })));
       if (canWrite(snap.role, "animals")) { const b = el(html`<button type="button" class="btn secondary" style="margin-top:8px">Add a cow</button>`); b.onclick = async () => (await import("../flows/cow-edit.js")).addCowSheet(snap); list.append(b); }

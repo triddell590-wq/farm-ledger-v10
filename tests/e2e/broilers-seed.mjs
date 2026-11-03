@@ -26,6 +26,8 @@ export async function seedBroilers(page, { variant = "growing" } = {}) {
     R.addRecord(lid, "finance", { kind: "prices", category: "Broiler contract profile", date: d(-200), note: "Contract profile and energy prices (not a money entry)",
       profile: { basis: "bird", rate: 0.095, bonusRows: [{ metric: "fcr", op: "<", value: 1.55, amount: 0.012, per: "bird", label: "FCR under 1.55" }, { metric: "mortality", op: ">", value: 4, amount: -0.008, per: "bird", label: "Mortality over 4" }, { metric: "rejects", op: ">", value: 1.5, amount: -0.005, per: "bird", label: "Rejections % over 1.5" }] },
       energyPrices: { lpg: 0.52, biomass: 0.21, elec: 0.24 } }, "broilers-contract");
+    // onboarding now makes starter houses from the setup numbers (review B #5); the seed brings its own
+    for (const h of await R.listRecords(lid, "houses")) await store.remove(`ledgers/${lid}/houses/${h.id}`);
     const h1 = nid(), h2 = nid();
     add("houses", { name: "House 1", usableM2: 1950, heating: "gas", establishmentNo: "UK5012345" }, h1);
     add("houses", { name: "House 2", usableM2: 1950, heating: "biomass", establishmentNo: "UK5012345" }, h2);

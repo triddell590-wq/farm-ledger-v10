@@ -9,6 +9,8 @@ import { todayStr } from "../core/dates.js";
 import { toast } from "./toast.js";
 import { moneyText } from "./format.js";
 import { photoStrip } from "./photo-strip.js";
+import { isThisRight } from "./sanity.js";
+import { checkMoney, checkDate } from "../core/sanity.js";
 
 export function openMoneySheet(ledger, existing = null, { onSaved } = {}) {
   const r = existing || { kind: "expense", date: todayStr(), category: "Feed", amount: "", note: "" };
@@ -16,10 +18,14 @@ export function openMoneySheet(ledger, existing = null, { onSaved } = {}) {
   const body = el(html`<form novalidate>
     ${segmented("kind", [{ value: "expense", label: "Money out" }, { value: "revenue", label: "Money in" }], r.kind)}
     <div class="form-group" style="margin-top:16px">
-      ${textField({ name: "amount", label: "Amount (£)", value: r.amount, inputmode: "decimal", placeholder: "0.00", autofocus: !existing })}
+      ${textField({ name: "amount", label: "Amount (£)", value: r.amount, inputmode: "decimal", placeholder: "e.g. 120.00", autofocus: !existing })}
       <div data-cat>${selectField({ name: "category", label: "Category", value: r.category, options: cats(r.kind) })}</div>
       ${textField({ name: "date", label: "Date", type: "date", value: r.date })}
       ${textField({ name: "note", label: "Note", value: r.note || "", optional: true })}
+    </div>
+    <div class="form-group" style="margin-top:12px" data-exp ${raw(r.kind === "revenue" ? "hidden" : "")}>
+      ${textField({ name: "supplier", label: "Supplier", value: r.supplier || "", optional: true, placeholder: "e.g. Thompsons Feeds" })}
+      <div class="field"><span class="label">VAT</span><span style="flex:1"></span>${segmented("vat", [{ value: "inc", label: "Inc VAT" }, { value: "ex", label: "Ex VAT" }, { value: "none", label: "No VAT" }], r.vat || "inc")}</div>
     </div>
     ${existing ? html`<button type="button" class="text-btn danger" data-del style="margin-top:12px">Remove this entry</button>` : ""}
   </form>`);
@@ -31,15 +37,18 @@ export function openMoneySheet(ledger, existing = null, { onSaved } = {}) {
   const f = wireForm(body); const start = JSON.stringify(f.values());
   const missing = () => { const v = f.values(); const a = parseFloat(String(v.amount).replace(/[£,]/g, "")); if (!(a > 0)) return "Add the amount to save"; if (!v.date) return "Add the date to save"; return null; };
   f.onChange((name) => {
-    if (name === "kind") { const k = f.values().kind; body.querySelector("[data-cat]").replaceChildren(el(selectField({ name: "category", label: "Category", value: k === "revenue" ? "Livestock Sales" : "Feed", options: cats(k) }))); }
+    if (name === "kind") { const k = f.values().kind; body.querySelector("[data-exp]").hidden = k === "revenue"; body.querySelector("[data-cat]").replaceChildren(el(selectField({ name: "category", label: "Category", value: k === "revenue" ? "Livestock Sales" : "Feed", options: cats(k) }))); }
     guardButton(btn, "Save", missing);
   });
   guardButton(btn, "Save", missing);
   const sh = openSheet({ title: existing ? "Money entry" : "Add money", body, footer: btn, isDirty: () => JSON.stringify(f.values()) !== start, discardTitle: "Discard this entry?" });
   sh.done.then(() => strip.destroy());
-  btn.onclick = () => {
+  btn.onclick = async () => {
     if (missing()) return;
-    const v = f.values(); const data = { kind: v.kind, category: v.category, amount: Math.round(parseFloat(String(v.amount).replace(/[£,]/g, "")) * 100) / 100, date: v.date, note: v.note };
+    const v = f.values();
+    if (!(await isThisRight([...checkMoney(v.amount), ...checkDate(v.date, todayStr(), { future: true, what: "The date" })]))) return; const data = { kind: v.kind, category: v.category, amount: Math.round(parseFloat(String(v.amount).replace(/[£,]/g, "")) * 100) / 100, date: v.date, note: v.note };
+    // supplier and VAT on money out (review A #36) — the VAT return period is asked in Settings
+    if (v.kind === "expense") { data.supplier = (v.supplier || "").trim(); data.vat = v.vat || "inc"; }
     if (existing) updateRecord(ledger.id, "finance", existing, data); else strip.commit(addRecord(ledger.id, "finance", data), label(data));
     sh.close(true, { force: true });
     toast(`${data.kind === "revenue" ? "Money in" : "Money out"} ${moneyText(data.amount, true)} saved`);

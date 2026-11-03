@@ -3,6 +3,8 @@
 // Max two deep; the lower sheet scales to .94. Dialog semantics, focus trap, Esc closes.
 import { reduceMotion } from "./dom.js";
 import { icon } from "./icons.js";
+import { clearToasts } from "./toast.js";
+import { wireTagChecks } from "./tag-check.js";
 
 const stack = [];
 let layer = null;
@@ -23,6 +25,7 @@ const isDialog = () => matchMedia("(min-width:640px)").matches;
  */
 export function openSheet(o = {}) {
   ensureLayer();
+  clearToasts(); // a toast never sits over a sheet's buttons
   if (stack.length >= 2) stack[stack.length - 1].close(undefined, { force: true });
   const size = o.size || "large";
   const scrim = document.createElement("div"); scrim.className = "sheet-scrim";
@@ -40,14 +43,42 @@ export function openSheet(o = {}) {
   }
   const body = document.createElement("div"); body.className = "sheet-body";
   if (o.body) body.appendChild(o.body);
+  wireTagChecks(body); // inline check-digit message under every ear-tag field (A #24)
   sh.appendChild(body);
   if (o.footer) { const f = document.createElement("div"); f.className = "sheet-foot"; f.appendChild(o.footer); sh.appendChild(f); }
   layer.append(scrim, sh);
 
+  // Dirty detection (review A #23): a sheet the person never touched closes without asking,
+  // whatever its own isDirty() says. The form's state is fingerprinted just before the first
+  // real interaction (so content that fills in after opening doesn't count as a change), and
+  // the sheet only asks when that state has actually changed since.
+  let snap = null, touched = false;
+  const fingerprint = () => {
+    const parts = [];
+    body.querySelectorAll("input,select,textarea").forEach((i) => parts.push(i.type === "checkbox" || i.type === "radio" ? i.checked : i.value));
+    body.querySelectorAll("[aria-checked],[aria-pressed],[aria-selected]").forEach((n) => parts.push(n.getAttribute("aria-checked") || n.getAttribute("aria-pressed") || n.getAttribute("aria-selected")));
+    parts.push(body.innerText || body.textContent || "");
+    const foot = sh.querySelector(".sheet-foot"); if (foot) foot.querySelectorAll("input,select,textarea").forEach((i) => parts.push(i.value));
+    return JSON.stringify(parts);
+  };
+  const isNav = (e) => e.target.closest && (e.target.closest("[data-sheet-cancel]") || e.target.closest(".grabber") || e.target.closest(".sheet-head"));
+  const touch = (e) => {
+    if (isNav(e)) return;
+    if (e.type === "keydown" && ["Escape", "Tab", "Shift"].includes(e.key)) return;
+    if (!touched && e.type !== "change" && e.type !== "input") snap = fingerprint();
+    touched = true;
+  };
+  ["pointerdown", "keydown", "beforeinput", "input", "change"].forEach((t) => sh.addEventListener(t, touch, true));
+  const reallyDirty = () => {
+    const draftPhotos = [...sh.querySelectorAll("[data-photo-strip]")].some((n) => n.photoDirty && n.photoDirty());
+    if (!touched) return false;
+    if (!((o.isDirty && o.isDirty()) || draftPhotos)) return false;
+    return snap == null || fingerprint() !== snap;
+  };
   let resolve; const done = new Promise((r) => (resolve = r));
   const prevFocus = document.activeElement;
   const below = stack[stack.length - 1];
-  const entry = { el: sh, body, close, done, scrim };
+  const entry = { el: sh, body, close, done, scrim, isDirty: () => reallyDirty() };
   stack.push(entry);
 
   // open animation
@@ -64,12 +95,11 @@ export function openSheet(o = {}) {
   async function close(result, { force = false } = {}) {
     if (entry.closing) return;
     // photos added to a new record but not saved yet count as changes too (ui/photo-strip.js)
-    const draftPhotos = [...sh.querySelectorAll("[data-photo-strip]")].some((n) => n.photoDirty && n.photoDirty());
-    if (!force && ((o.isDirty && o.isDirty()) || draftPhotos)) {
+    if (!force && reallyDirty()) {
       const ok = await confirmSheet({ title: o.discardTitle || "Discard changes?", confirm: "Discard", cancel: "Keep editing", danger: true });
       if (!ok) return;
     }
-    entry.closing = true;
+    entry.closing = true; sh.classList.add("closing");
     const i = stack.indexOf(entry); if (i >= 0) stack.splice(i, 1);
     const cur = getComputedStyle(sh).transform;
     const a = sh.animate([{ transform: cur === "none" ? to.transform : cur, opacity: 1 }, reduceMotion() || dialog ? { transform: to.transform, opacity: 0 } : { transform: "translateY(100%)", opacity: 1 }], { duration: dur(240), easing: EASE_IN, fill: "forwards" });

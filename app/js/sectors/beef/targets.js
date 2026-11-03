@@ -2,6 +2,7 @@
 // processor profile, gestation, DLWG targets, weigh interval, fodder and LU rates, calving
 // season, herd-register mode (on-farm / NIFAIS Online), pedigree, calf checks, tag book,
 // TB date, housing, restrictions. Owner and manager edit; everyone else reads.
+import { sourceText } from "../../ui/format.js";
 import { nifaisOnlineText, usesNifaisRegister, bvdFemaleRule } from "./model/region.js";
 import { ON_FARM } from "./model/rules.js";
 import { html } from "../../core/html.js";
@@ -27,7 +28,7 @@ export function registerModes(s) {
 function bvdRuleRow(s, today) {
   const r = bvdFemaleRule(s, today); if (!r) return "";
   const state = r.inForce ? `In force${r.fromText ? ` from ${r.fromText}` : ""}` : `${r.status === "delayed" ? "Delayed" : "Announced"}${r.fromText ? ` for ${r.fromText}` : ""} — not in force yet`;
-  return html`<div class="card pad" style="margin-top:12px" data-bvd-rule><p style="margin:0"><b>BVD breeding-female rule</b> · ${state}</p><p class="hint" style="margin:4px 0 0">Females ${r.minAgeMonths} months and over in a BVD-affected herd can't move for breeding for ${r.restrictWeeks} weeks.</p><p class="source">${r.source} · checked ${r.checkedOn}</p></div>`;
+  return html`<div class="card pad" style="margin-top:12px" data-bvd-rule><p style="margin:0"><b>BVD breeding-female rule</b> · ${state}</p><p class="hint" style="margin:4px 0 0">Females ${r.minAgeMonths} months and over in a BVD-affected herd can't move for breeding for ${r.restrictWeeks} weeks.</p><p class="source">${sourceText(r.source, r.checkedOn)}</p></div>`;
 }
 
 export default async function targets(ctx) {
@@ -37,7 +38,7 @@ export default async function targets(ctx) {
   <form novalidate>
     ${groupLabel("Paperwork")}<p class="form-label">My herd register is</p>${radioGroup("registerMode", registerModes(s), usesNifaisRegister(s) ? "nifais" : "farm")}
     <p class="hint">It changes your reminder deadlines and the line printed on the herd register. Keep records 10 years either way.</p>
-    <div class="form-group" style="margin-top:12px">${textField({ name: "nextTag", label: "Next tag in the tag book", value: s.nextTag || "", placeholder: "XI 9 012345 0023 1" })}${textField({ name: "tbNextDue", label: "Next TB test (if the vet set one)", type: "date", value: s.tbNextDue || "" })}</div>
+    <div class="form-group" style="margin-top:12px">${textField({ name: "nextTag", label: "Next tag in the tag book", value: s.nextTag || "", placeholder: "e.g. XI 9 012345 0023 1" })}${textField({ name: "tbNextDue", label: "Next TB test (if the vet set one)", type: "date", value: s.tbNextDue || "" })}</div>
     <div id="status"></div>${groupLabel("Herd status")}<div class="form-group">${selectField({ name: "tbStatus", label: "TB", value: ms.tbStatus || "", options: [{ value: "", label: "Not restricted (OTF)" }, { value: "restricted", label: "Restricted" }] })}${checkRow("bvdRestricted", "Herd restricted for BVD", !!ms.bvdRestricted)}${textField({ name: "johnes", label: "Johne's", value: ms.johnes || "", placeholder: "e.g. Voluntary · last screen 2025", optional: true })}</div>
     ${bvdRuleRow(s, snap.today)}
     ${groupLabel("Season")}<div class="form-group">${selectField({ name: "calvingSeason", label: "Calving season", value: s.calvingSeason, options: ["Spring", "Autumn", "All year"].map((v) => ({ value: v, label: v })) })}${textField({ name: "housingDate", label: "Housing planned", type: "date", value: ms.housingDate || "" })}${n("shedSpaces", "Shed spaces", ms.shedSpaces)}</div>

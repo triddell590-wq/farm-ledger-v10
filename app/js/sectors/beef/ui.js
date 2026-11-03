@@ -5,7 +5,8 @@ import { el } from "../../ui/dom.js";
 import { icon } from "../../ui/icons.js";
 import { openSheet } from "../../ui/sheet.js";
 import { daysBetween, ddmmyy } from "../../core/dates.js";
-import { tagParts, tagMatches, normTag } from "./model/tags.js";
+import { tagParts, normTag } from "./model/tags.js";
+import { rankMatches, cattleKeys, isExact } from "../../core/rank.js";
 import { onFarm, describe, withdrawal, classOf, shortName, CLASS_NAMES } from "./model/animals.js";
 import { birthsToRegister, dueInfo } from "./model/breeding.js";
 import { finishingFacts } from "./model/finishing.js";
@@ -41,13 +42,13 @@ export function urgentPill(snap, a) {
   if (cls === "cow") { const d = dueInfo(snap.data, snap.s, ix, a); const dd = d.date || d.from; if (dd && daysBetween(today, dd) <= 7 && daysBetween(today, dd) >= -14) return ["due", daysBetween(today, dd) < 0 ? `${-daysBetween(today, dd)} d over` : `Due ${listDate(dd).slice(0, 3)}`]; }
   return null;
 }
-export function animalRow(snap, a, { selectable = false, selected = false, href = true, extra = "" } = {}) {
+export function animalRow(snap, a, { selectable = false, selected = false, href = true, extra = "", best = false } = {}) {
   const p = urgentPill(snap, a); const name = shortName(a);
   const inner = html`${selectable ? html`<span class="checkbox" aria-hidden="true">${raw(icon("check"))}</span>` : ""}
     <span class="tile">${raw(icon("beef"))}${classOf(snap.ix, a, snap.today) === "bull" ? html`<span class="tile-word">Bull</span>` : ""}</span>
     <span class="main"><span class="primary">${name ? html`<b>${name}</b> <span class="ink-2 nowrap">${tagParts(a.tag).tail}</span>` : tagHtml(a.tag)}</span>
       <span class="secondary">${describe(snap.ix, a, snap.today)}${onFarm(a) ? "" : ` · ${a.offTo === "Dead" ? "died" : "left"} ${ddmmyy(a.offDate || a.dateOff)}`}</span>
-      ${a.temperament ? html`<span class="secondary late-ink">⚠ Handle with care</span>` : ""}${p ? html`<span class="row-pill">${pill(p[0], p[1])}</span>` : ""}${extra}</span>
+      ${a.temperament ? html`<span class="secondary late-ink">⚠ Handle with care</span>` : ""}${p ? html`<span class="row-pill">${pill(p[0], p[1])}</span>` : ""}${best ? html`<span class="row-pill"><span class="pill ok best-match">Exact match</span></span>` : ""}${extra}</span>
     ${selectable ? "" : html`<span class="chev">${raw(icon("chevron"))}</span>`}`;
   if (selectable) return html`<button type="button" class="row animal-row" role="checkbox" aria-checked="${!!selected}" data-aid="${a.id}">${inner}</button>`;
   return html`<a class="row animal-row" ${raw(href ? `href="#/l/${snap.lid}/animal/${a.id}"` : "")} data-aid="${a.id}">${inner}</a>`;
@@ -77,10 +78,11 @@ export function pickAnimals(snap, { title = "Choose cattle", multi = true, filte
     ${multi && groups.length ? html`<div class="chips scroll-chips" data-groups>${groups.map((g) => html`<button type="button" class="chip" data-g="${g.id}">${g.name}</button>`)}</div>` : ""}
     <div class="list" data-list></div></div>`);
   const btn = el(html`<button type="button" class="btn">Choose</button>`);
+  let shown = 0, ambiguous = false;
   const paint = () => {
     const q = body.querySelector("[data-q]").value;
-    const rows = all.filter((a) => tagMatches(a, q)).slice(0, 200);
-    body.querySelector("[data-list]").replaceChildren(el(html`<div style="display:contents">${rows.length ? rows.map((a) => animalRow(snap, a, { selectable: true, selected: sel.has(a.id) })) : html`<p class="hint" style="padding:16px">No cattle match “${q}”.</p>`}</div>`));
+    const ranked = rankMatches(all, q, cattleKeys).slice(0, 200); shown = q.trim() ? ranked.length : 0;
+    body.querySelector("[data-list]").replaceChildren(el(html`<div style="display:contents">${ranked.length ? ranked.map(({ item: a, score }, i) => animalRow(snap, a, { selectable: true, selected: sel.has(a.id), best: q.trim() && i === 0 && isExact(score) && !(ranked[1] && ranked[1].score === score) })) : html`<p class="hint" style="padding:16px">No cattle match “${q}”.</p>`}</div>`));
     btn.disabled = !sel.size; btn.textContent = sel.size ? (confirm ? confirm(sel.size) : multi ? `Choose ${sel.size}` : "Choose") : "Pick at least one";
   };
   body.querySelector("[data-q]").addEventListener("input", paint);
@@ -88,13 +90,13 @@ export function pickAnimals(snap, { title = "Choose cattle", multi = true, filte
     const g = e.target.closest("[data-g]");
     if (g) { const ids = all.filter((a) => a.groupId === g.dataset.g).map((a) => a.id); const on = ids.every((i) => sel.has(i)); ids.forEach((i) => (on ? sel.delete(i) : sel.add(i))); g.setAttribute("aria-pressed", String(!on)); paint(); return; }
     const r = e.target.closest("[data-aid]"); if (!r) return;
-    const id = r.dataset.aid;
-    if (!multi) { sel.clear(); sel.add(id); sh.close([id], { force: true }); return; }
+    const id = r.dataset.aid; if (shown > 1) ambiguous = true;
+    if (!multi) { sel.clear(); sel.add(id); sh.close(Object.assign([id], { ambiguous }), { force: true }); return; }
     sel.has(id) ? sel.delete(id) : sel.add(id); r.setAttribute("aria-checked", String(sel.has(id)));
     btn.disabled = !sel.size; btn.textContent = sel.size ? (confirm ? confirm(sel.size) : `Choose ${sel.size}`) : "Pick at least one";
   });
   const sh = openSheet({ title, body, footer: multi ? btn : null });
-  btn.onclick = () => sh.close([...sel], { force: true });
+  btn.onclick = () => sh.close(Object.assign([...sel], { ambiguous }), { force: true });
   paint();
   return sh.done.then((r) => (Array.isArray(r) ? r : null));
 }
@@ -113,7 +115,7 @@ export function printDoc(doc) {
 export function toHtmlTable(doc) {
   const e = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   return `<div class="ph"><b>${e(doc.title)}</b><span>${(doc.top || []).map(([k, v]) => `${e(k)}: ${e(v)}`).join(" · ")}</span></div>
-    <table><thead><tr>${doc.headers.map((h) => `<th>${e(h)}</th>`).join("")}</tr></thead><tbody>${doc.rows.map((r) => `<tr>${r.map((c) => `<td>${e(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${doc.headers.length}">Nothing recorded yet.</td></tr>`}</tbody></table>
+    <table><thead><tr>${doc.headers.map((h) => `<th>${e(h)}</th>`).join("")}</tr></thead><tbody>${doc.rows.map((r, i) => `<tr${doc.refs?.[i] ? ` data-rec="${e(doc.refs[i])}" class="tap" tabindex="0" role="button"` : ""}>${r.map((c) => `<td>${e(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${doc.headers.length}">Nothing recorded yet.</td></tr>`}</tbody></table>
     <div class="pf">${e(doc.note || "")} Printed from Farm Ledger on ${new Date().toLocaleDateString("en-GB")}.</div>`;
 }
 export { CLASS_NAMES, normTag };

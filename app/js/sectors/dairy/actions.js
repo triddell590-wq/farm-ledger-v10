@@ -1,12 +1,13 @@
 // Every Dairy write goes through here (screens never call records.js directly for dairy data),
 // so the linked records a treatment or calving creates stay consistent.
-import { addRecord, updateRecord, softDelete, setMeta } from "../../services/records.js";
+import { addRecord, updateRecord, softDelete, setMeta, asAction } from "../../services/records.js";
 import { auth } from "../../core/auth.js";
 import { addDays, todayStr } from "../../core/dates.js";
 import { withdrawalFor, nowStr, datePart, timePart, quartersText, at, addHours } from "./model/milking.js";
 import { caseFacts } from "./model/mastitis.js";
 import { cowLabel, calvedDate, isDry, listOf, lactation } from "./model/cows.js";
 import { fertilityOf } from "./model/fertility.js";
+import { linkedFor } from "../../services/linked.js";
 
 export const me = () => auth.user?.displayName || auth.user?.email || "";
 const clean = (o) => { const r = {}; for (const [k, v] of Object.entries(o)) if (v !== undefined) r[k] = v; return r; };
@@ -17,7 +18,7 @@ const clean = (o) => { const r = {}; for (const [k, v] of Object.entries(o)) if 
  * Writes: medicines (+ quarters), milkWithhold per cow, mastitis case per cow, handover line.
  * Returns { medId, notes[] } — notes are follow-up messages (3rd case, treatment failure).
  */
-export function saveTreatment(snap, v) {
+function saveTreatment_(snap, v) {
   const { lid, s, ix } = snap; const notes = [];
   const wd = withdrawalFor(s, v);
   const meatOkFrom = +v.wdMeatDays ? addDays(datePart(wd.lastDoseAt), +v.wdMeatDays) : null;
@@ -50,6 +51,47 @@ export function saveTreatment(snap, v) {
   return { medId, notes, wd };
 }
 
+/**
+ * Fix a saved treatment (review B #1): the medicine record is changed (old version kept in its
+ * history) and its withhold, mastitis case and handover line follow — cows taken off the entry
+ * lose theirs, cows added get them. v as for saveTreatment.
+ */
+export function editTreatment(snap, old, v) {
+  const { lid, s, ix } = snap;
+  const wd = withdrawalFor(s, v);
+  const meatOkFrom = +v.wdMeatDays ? addDays(datePart(wd.lastDoseAt), +v.wdMeatDays) : null;
+  const tags = v.animalIds.map((id) => ix.byId.get(id)?.tag).filter(Boolean);
+  const productName = v.product?.name || v.productName || old.productName || "";
+  updateRecord(lid, "medicines", old, clean({
+    date: v.date, time: v.time, animalIds: v.animalIds, animalTags: tags, reason: v.reason, quarters: v.quarters || [], severity: v.severity || null,
+    productId: v.product?.id ?? old.productId ?? null, productName, batch: v.batch || "", expiry: v.expiry || "", dose: v.dose || "",
+    doses: +v.doses || 1, intervalH: +v.intervalH || 0, givenBy: v.givenBy || me(), marks: v.marks || [], wdMilkHours: +v.wdMilkHours || 0, wdMeatDays: +v.wdMeatDays || 0,
+    milkOkFrom: wd.okFrom, lastDoseAt: wd.lastDoseAt, withdrawalEndDateMeat: meatOkFrom, meatOkFrom,
+  }));
+  const { items } = linkedFor(snap.data, "medicines", old);
+  const link = old.actionId ? { actionId: old.actionId } : {};
+  const of = (coll) => items.filter((x) => x.coll === coll).map((x) => x.rec);
+  const withholds = of("milkWithhold"), cases = of("mastitis");
+  for (const id of v.animalIds) {
+    const a = ix.byId.get(id); if (!a) continue;
+    const w = withholds.find((x) => x.animalId === id);
+    const wData = clean({ animalId: id, medId: old.id, date: v.date, time: v.time, quarters: v.quarters || [], productName, wdMilkHours: +v.wdMilkHours, lastDoseAt: wd.lastDoseAt, firstWithheldAt: at(v.date, v.time || "12:00"), okFrom: wd.okFrom, marks: v.marks || [] });
+    let withholdId = w?.id || null;
+    if (wd.okFrom) { if (w) updateRecord(lid, "milkWithhold", w, wData); else withholdId = addRecord(lid, "milkWithhold", { ...wData, ...link, byName: me() }); }
+    else if (w) { softDelete(lid, "milkWithhold", w.id); withholdId = null; }
+    const c = cases.find((x) => x.animalId === id);
+    if (v.reason === "Mastitis") {
+      const cData = clean({ animalId: id, date: v.date, time: v.time, quarters: v.quarters, grade: v.severity || null, medId: old.id, withholdId, productName, okFrom: wd.okFrom });
+      if (c) updateRecord(lid, "mastitis", c, cData); else addRecord(lid, "mastitis", { ...cData, ...link, lactation: lactation(ix, a), treated: true });
+    } else if (c) softDelete(lid, "mastitis", c.id);
+  }
+  for (const w of withholds) if (!v.animalIds.includes(w.animalId)) softDelete(lid, "milkWithhold", w.id);
+  for (const c of cases) if (!v.animalIds.includes(c.animalId)) softDelete(lid, "mastitis", c.id);
+  const who = v.animalIds.map((id) => ix.byId.get(id)).filter(Boolean).map(cowLabel).join(", ");
+  for (const h of of("handover")) if (h.auto) updateRecord(lid, "handover", h, { text: `${who} treated${v.quarters?.length ? " " + quartersText(v.quarters) : ""} (${productName || v.reason})${v.marks?.length ? ", " + v.marks.join(", ").toLowerCase() : ""}` });
+  return { wd };
+}
+
 export const releaseWithhold = (lid, w) => updateRecord(lid, "milkWithhold", w, { releasedAt: nowStr(), releasedBy: auth.user?.uid || null, releasedByName: me() }, { history: false });
 export const undoRelease = (lid, w) => updateRecord(lid, "milkWithhold", { ...w, releasedAt: "x" }, { releasedAt: null, releasedBy: null, releasedByName: null }, { history: false });
 
@@ -62,7 +104,7 @@ export const recordPd = (lid, v) => addRecord(lid, "pds", clean({ animalId: v.an
 export const addStraw = (lid, v) => addRecord(lid, "straws", clean({ bull: v.bull, code: v.code || "", breed: v.breed || "", sexed: !!v.sexed, count: +v.count || 0 }));
 
 /** Calving (design/12 §6.6): the calving record, each calf as an animal, the cow's new lactation. */
-export function recordCalving(snap, v) {
+function recordCalving_(snap, v) {
   const { lid } = snap; const calves = [];
   for (const k of v.calves) {
     if (k.alive === false) { calves.push({ sex: k.sex, alive: false }); continue; }
@@ -74,7 +116,7 @@ export function recordCalving(snap, v) {
 }
 
 /** Dry off (design/12 §6.4). Antibiotic DCT needs the vet's reason (EU 2019/6 Art. 107). */
-export function recordDryOff(snap, v) {
+function recordDryOff_(snap, v) {
   const { lid } = snap;
   let medId = null;
   if (v.treatment !== "None" && (v.product || v.productName)) {
@@ -108,3 +150,7 @@ export function tickGenerated(lid, snap, t, done) {
 export const add = (lid, coll, v) => addRecord(lid, coll, clean({ ...v, byName: v.byName || me() }));
 export const update = (lid, coll, old, ch) => updateRecord(lid, coll, old, ch);
 export { softDelete, setMeta, addHours };
+// Each of these is one action: the records it adds share an actionId (services/linked.js).
+export const saveTreatment = asAction(saveTreatment_);
+export const recordCalving = asAction(recordCalving_);
+export const recordDryOff = asAction(recordDryOff_);

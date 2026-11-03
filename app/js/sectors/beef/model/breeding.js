@@ -174,3 +174,18 @@ export function scYearReport(data, ix, startYear) {
   }
   return rows.sort((a, b) => a.date.localeCompare(b.date));
 }
+
+/**
+ * The one "calving season" used on Today and Breeding (review A #12), named on screen.
+ * Spring: 1 Jan – 31 Jul; Autumn: 1 Aug – 31 Jan; All year: the last 12 months.
+ */
+export function calvingSeason(s, today) {
+  const y = +today.slice(0, 4); const m = +today.slice(5, 7); const kind = s?.calvingSeason || "Spring";
+  if (kind === "Autumn") { const start = m >= 8 ? y : y - 1; return { name: `Autumn ${start}`, from: `${start}-08-01`, to: `${start + 1}-01-31` }; }
+  if (kind === "All year") return { name: "the last 12 months", from: addDays(today, -365), to: today };
+  return { name: `Spring ${y}`, from: `${y}-01-01`, to: `${y}-07-31` };
+}
+/** Cows (dams) with a calving inside the season. */
+export function calvedInSeason(ix, season) {
+  return [...ix.calvings.entries()].filter(([, l]) => l.some((c) => c.date >= season.from && c.date <= season.to)).map(([id]) => id);
+}

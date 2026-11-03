@@ -1,11 +1,16 @@
 // Dairy → Milking, the home (design/12 §3): the withhold board first (always, when not empty),
 // then today's fertility tiles, tank, milk quality, fresh cows, handover note and To do today.
+import { newsworthy } from "../../../content/region-rules.js";
+import { session } from "../../../services/session.js";
+import { wireRecordTaps, recChev } from "../../../ui/record-sheet.js";
 import { feedLine } from "./feed.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
+import { startHome } from "../../../ui/start-card.js";
 import { icon } from "../../../ui/icons.js";
 import { toast } from "../../../ui/toast.js";
 import { taskList } from "../../../ui/tasks.js";
+import { nowCount, homeDedupe, alertLevel } from "../../../services/today-rules.js";
 import { todaysTasks } from "../../../services/tasks.js";
 import { canWrite } from "../../../core/policy.js";
 import { addDays } from "../../../core/dates.js";
@@ -40,13 +45,14 @@ export default async function milking(ctx) {
 
 function boardHtml(snap, write) {
   const { withheld, release, dryPending } = snap.brd;
-  const row = (x, rel) => html`<div class="wh-row" data-wid="${x.w.id}"><span class="wh-no">${cowLabel(x.cow)}</span><div style="flex:1;min-width:0">
+  // tapping a row opens the treatment behind it (fix the cow, quarter, product, time or delete it)
+  const row = (x, rel) => html`<div class="wh-row tap" data-wid="${x.w.id}" data-rec="${x.w.medId ? `medicines:${x.w.medId}` : `milkWithhold:${x.w.id}`}" role="button" tabindex="0" aria-label="${cowLabel(x.cow)} — open the treatment"><span class="wh-no">${cowLabel(x.cow)}</span><div style="flex:1;min-width:0">
       <div class="ok">${rel ? "Withdrawal over — release?" : `OK from ${x.label}`}</div>
       <div class="meta">${[quartersText(x.w.quarters) || "All four", x.cow.name, (x.w.marks || []).join(", ")].filter(Boolean).join(" · ")}</div></div>
-      ${rel && write ? html`<button type="button" class="btn secondary" data-release="${x.w.id}">Release</button>` : ""}</div>`;
+      ${rel && write ? html`<button type="button" class="btn secondary" data-release="${x.w.id}">Release</button>` : raw(recChev())}</div>`;
   return html`${withheld.length ? html`<div class="wh" role="region" aria-label="Milk out of the tank"><div class="hd">${raw(dIcon("stop", 22))}<span>Milk out of the tank — ${withheld.length} cow${withheld.length > 1 ? "s" : ""}</span></div>
       ${withheld.map((x) => row(x, false))}
-      <div class="wh-acts"><button type="button" class="btn" data-parlour style="flex:1;height:48px">Parlour sheet</button><button type="button" class="btn secondary" data-share style="flex:1">${raw(icon("share"))}Share</button></div></div>`
+      <div class="wh-acts"><button type="button" class="btn" data-parlour style="flex:1;height:48px">${snap.s.robot ? "Withhold list" : "Parlour sheet"}</button><button type="button" class="btn secondary" data-share style="flex:1">${raw(icon("share"))}Share</button></div></div>`
     : html`<div class="ok-line">${raw(icon("check"))}<span>All cows' milk can go in the tank.</span></div>`}
     ${release.length ? html`<div class="wh due" style="margin-top:12px"><div class="hd">${raw(icon("clock"))}<span>Ready to go back in the tank</span></div>${release.map((x) => row(x, true))}</div>` : ""}
     ${dryPending.length ? html`<p class="hint" style="margin:8px 4px 0">${dryPending.length} dry cow${dryPending.length > 1 ? "s" : ""} treated (${dryPending.map((x) => cowLabel(x.cow)).join(", ")}) — back on this board when ${dryPending.length > 1 ? "they calve" : "she calves"}.</p>` : ""}`;
@@ -65,6 +71,13 @@ function bannerLine(snap) {
 }
 
 async function paint(body, snap) {
+  if (!snap.data.animals.length) { // empty herd: one start card, no zero tiles (B #6)
+    const w = canWrite(snap.role, "animals");
+    body.replaceChildren(el(startHome({ type: "dairy", title: "Milking", actions: w ? [{ id: "import", label: "Import your herd list (NIFAIS / milk recording CSV)", href: `#/l/${snap.lid}/imports` }, { id: "add", label: "Add one cow" }] : [] })));
+    const add = body.querySelector('[data-start="add"]');
+    if (add) add.onclick = () => import("../flows/cow-edit.js").then((m) => m.addCowSheet(snap));
+    return;
+  }
   const { lid, today, s } = snap; const L = (h) => `#/l/${lid}/${h}`; const write = canWrite(snap.role, "milkWithhold");
   const g = actionLists(s, snap.ix, snap.data, today, 0);
   const dryWk = actionLists(s, snap.ix, snap.data, today, 7);
@@ -74,20 +87,21 @@ async function paint(body, snap) {
   const q = snap.data.milkQuality; const scc = rolling(q, "scc"); const tbc = rolling(q, "tbc");
   const sccSt = qualityStatus("scc", scc?.value, s); const tbcSt = qualityStatus("tbc", tbc?.value, s);
   const notes = [...snap.data.handover].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 2);
-  const all = dairyAlerts(snap.c).filter((a) => a.key !== "withheld" && !a.key.startsWith("release:") && a.level !== "info");
-  const alerts = all.filter((a) => a.level === "late").slice(0, 3); const coming = all.filter((a) => a.level !== "late").slice(0, 3); // late ones stay under the board; the rest sit after the handover note
-  const banner = bannerLine(snap); const disease = diseaseBanner(s.region);
+  const all0 = dairyAlerts(snap.c).filter((a) => a.key !== "withheld" && !a.key.startsWith("release:") && a.level !== "info");
+  const banner = bannerLine(snap); const disease = diseaseBanner(s.region).filter((b) => newsworthy(b, today));
   const gen = todayTasks(snap.c).filter((t) => !t.key.startsWith("release:")).map((t) => ({ id: t.key, title: t.title, due: t.due, sub: t.sub, href: t.href, legal: t.legal, generated: true, done: false, ledger: snap.ledger, tick: (d) => tickGenerated(lid, snap, t, d) }));
   const stored = (await todaysTasks([snap.ledger])).filter((t) => !t.sourceRef || t.done);
-  const tasks = [...gen, ...stored].sort((a, b) => (a.done - b.done) || String(a.due).localeCompare(String(b.due)));
+  const dd = homeDedupe(all0, [...gen, ...stored]); const tasks = dd.tasks;
+  const all = dd.alerts.map((a) => ({ ...a, level: alertLevel(a, today) })).filter((a) => a.level !== "info");
+  const alerts = all.filter((a) => a.level === "late").slice(0, 3); const coming = all.filter((a) => a.level !== "late").slice(0, 3); // late ones stay under the board; the rest sit after the handover note
   const scrollY = window.scrollY;
   const tile = (label, n, href, delta = "") => numTile({ label, value: num(n), href, delta, tone: "" });
   const node = el(html`<div>
     ${largeTitle("Milking", contextLine(snap))}
-    ${banner ? html`<div class="banner-line">${raw(icon("birth"))}<span>${banner}</span></div>` : ""}
-    ${disease.map((d) => html`<div class="banner-line" style="background:var(--info-soft);color:var(--info-ink)">${raw(icon("info"))}<span>${d.text}</span></div>`)}
-    ${snap.meta.settings?.restricted?.on ? html`<a class="banner-line" href="${L("tools/disease")}" style="background:var(--late-soft);color:var(--late-ink)">${raw(icon("alert"))}<span>Holding restricted since ${snap.meta.settings.restricted.from} — no moves off until the results clear it.</span></a>` : ""}
     <div class="section" data-board>${boardHtml(snap, write)}</div>
+    ${snap.meta.settings?.restricted?.on ? html`<a class="banner-line" href="${L("tools/disease")}" style="background:var(--late-soft);color:var(--late-ink)">${raw(icon("alert"))}<span>Holding restricted since ${snap.meta.settings.restricted.from} — no moves off until the results clear it.</span></a>` : ""}
+    ${disease.map((d) => html`<div class="banner-line" style="background:var(--info-soft);color:var(--info-ink)">${raw(icon("info"))}<span>${d.text}</span></div>`)}
+    ${banner ? html`<div class="banner-line">${raw(icon("birth"))}<span>${banner}</span></div>` : ""}
     ${alerts.length ? html`<div class="section">${alerts.map((a) => alertCard(a, false))}</div>` : ""}
     ${sectionOf("Today", html`<div class="tiles3">
       ${tile("Heats due", g.heats.length, L("fertility"))}${tile("To serve", g.serve.length, L("fertility"))}${tile("PD due", g.pd.length, L("fertility"))}
@@ -104,12 +118,13 @@ async function paint(body, snap) {
     <div class="section" id="fresh">${groupLabel("Fresh cows (0–21 days in milk)", fresh.length || "")}${fresh.length ? html`<div class="list">${fresh.map((a) => { const chk = listOf(snap.ix.fresh, a).find((f) => f.date === today); return html`<button type="button" class="row cow-row" data-fresh="${a.id}"><span class="cow-no">${cowLabel(a)}</span><span class="main"><span class="primary">${dim(snap.ix, a, today)} days in milk</span><span class="secondary">${chk ? `Checked today${chk.events?.length ? " · " + chk.events.join(", ") : " · all OK"}` : "Temperature · appetite · cleansing · ketones · BCS"}</span></span>${chk ? html`<span class="pill ${chk.events?.length ? "due" : "ok"}">${raw(icon(chk.events?.length ? "alert" : "check"))}${chk.events?.length ? "Watch" : "Done"}</span>` : html`<span class="pill neutral">Check</span>`}</button>`; })}</div>` : html`<div class="card pad t-callout ink-2">No cows calved in the last 3 weeks.</div>`}</div>
     <div class="section"><div class="minihead"><h2 class="group-label"><span>Handover note</span></h2>${canWrite(snap.role, "handover") ? html`<button type="button" class="text-btn" data-note>Add</button>` : ""}</div>
       ${notes.length ? notes.map((n) => html`<div class="note-card"><q>${n.text}</q><div class="by">${n.byName || ""}, ${datePart(n.at) === today ? timePart(n.at) : dayLabel(datePart(n.at)) + " " + timePart(n.at)}${canWrite(snap.role, "handover") ? html` · <button type="button" class="text-btn" data-reply="${n.id}" style="min-height:28px;padding:0">Reply</button>` : ""}</div>${(n.replies || []).map((r) => html`<div class="reply">${r.text} <span class="ink-2">— ${r.byName}, ${timePart(r.at)}</span></div>`)}</div>`) : html`<div class="card pad t-callout ink-2">No handover notes yet. Leave one for the next milker.</div>`}</div>
-    ${coming.length ? html`<div class="section">${groupLabel("Coming up")}${coming.map((a) => alertCard(a, false))}</div>` : ""}
-    <div class="section" data-tasks>${groupLabel("To do today", tasks.filter((t) => !t.done).length || "")}</div>
+    ${coming.length ? html`<div class="section">${groupLabel("Keep an eye on")}${coming.map((a) => alertCard(a, false))}</div>` : ""}
+    <div class="section" data-tasks>${groupLabel("To do today", nowCount(tasks, today) || "")}</div>
   </div>`);
   const tb = node.querySelector("[data-tasks]");
-  tb.append(tasks.length ? taskList(tasks, { max: 12, onChange: () => {} }) : el(html`<div class="card pad t-callout ink-2">Nothing else to do today.</div>`));
+  tb.append(tasks.length ? taskList(tasks, { max: 12, onChange: () => {}, today }) : el(html`<div class="card pad t-callout ink-2">Nothing else to do today.</div>`));
   body.replaceChildren(node);
+  wireRecordTaps(node, () => session.ledger(lid));
   if (scrollY) window.scrollTo(0, scrollY);
   const on = (sel, fn) => node.querySelectorAll(sel).forEach((b) => (b.onclick = (e) => { e.preventDefault(); fn(b); }));
   on("[data-parlour]", () => openParlour(snap));

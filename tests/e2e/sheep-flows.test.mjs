@@ -25,9 +25,11 @@ async function pickMob(name) {
   await p.locator(".sheet").last().locator("[data-mob]", { hasText: new RegExp("^\\s*" + name) }).first().click(); await H.settle(p, 500);
 }
 
-test("Flock home opens on the tupping board with the bluetongue banner; no errors", async () => {
+test("Flock home opens on the tupping board; the quiet bluetongue notice is on the disease screen; no errors", async () => {
   await H.go(p, `/l/${lid}/flock`);
   assert.match(await p.locator("body").textContent(), /day 18 of tupping/);
+  assert.doesNotMatch(await p.locator(".screen").last().textContent(), /Bluetongue/);
+  await H.go(p, `/l/${lid}/paperwork/disease`);
   assert.match(await p.locator("body").textContent(), /Bluetongue/);
   assert.deepEqual(p.errors, []);
 });

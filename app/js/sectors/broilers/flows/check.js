@@ -1,6 +1,7 @@
 // AM / PM check (design/15 §4 — the most-used entry; the mockup flow). Two inspections a day,
 // each a legal record (Sch. 5 para 8). Saving writes the para 10 house record: dead with cause,
 // culled with cause, remaining. The summary bar updates as you tap.
+import { checkCapacity } from "../../../core/sanity.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -69,6 +70,7 @@ export function checkSheet(snap, { house, crop, slot, date }) {
   const outOld = old ? (+old.dead || 0) + Object.values(old.culls || {}).reduce((t, x) => t + (+x || 0), 0) : 0;
   const label = `Save ${SLOT[slot]} check ${house.name}`;
   const es = entrySheet({ title: `${house.name} · ${SLOT[slot]} check · Day ${day}`, body, label, size: "large",
+    checks: (v) => checkCapacity(outNow(v), aliveAm, { what: "birds out", where: house.name }).concat(aliveAm && outNow(v) > Math.max(100, aliveAm * 0.03) ? [`${n0(outNow(v))} out in one check is over 3% of the ${n0(aliveAm)} birds. Check the number — and call the vet if it's right.`] : []),
     save(v, sh) {
       const culls = {}; for (const [k] of CULL_REASONS) culls[k] = +v[`cull_${k}`] || 0;
       const id = saveCheck(snap, crop, { slot, date, time: v.time, dead: v.dead, culls, causeNote: v.causeNote, tempC: v.tempC, rh: v.rh, nh3: v.nh3 || (v.nh3 === 0 && !ctrl ? undefined : v.nh3), co2: v.co2 || undefined, outsideC: v.outsideC, waterMeter: v.waterMeter,

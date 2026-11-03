@@ -9,6 +9,7 @@ import { readInvite, acceptInvite } from "../services/invites.js";
 import { go } from "../core/router.js";
 import { toast } from "../ui/toast.js";
 import { sectorName } from "../sectors/registry.js";
+import { friendlyName } from "../sectors/meta.js";
 import { makeScreen, sectorTile } from "./common.js";
 import { logoSvg } from "./welcome.js";
 import { joinBlurb, ROLE_DISPLAY } from "./roles.js";
@@ -33,7 +34,7 @@ export default async function invite({ params }) {
   else if (auth.user && (inv.state === "mine" || session.ledger(inv.ledgerId))) { setTimeout(() => go(`/l/${inv.ledgerId}`, { replace: true })); }
   else {
     out.replaceChildren(el(html`<div data-sector="${inv.type}">${sectorTile(inv.type, "lg")}
-      <h1 class="t-title" style="margin-top:20px">${by} invited you to<br>${inv.farmName ? `${inv.farmName} – ` : ""}${inv.ledgerName || sectorName(inv.type)}</h1>
+      <h1 class="t-title" style="margin-top:20px">${by} invited you to<br>${inv.farmName ? `${inv.farmName} – ` : ""}${friendlyName({ type: inv.type, name: inv.ledgerName })}</h1>
       <p class="t-body ink-2" style="margin-top:12px">${joinBlurb(inv.role, ANIMALS[inv.type])}</p>
       <div class="btn-col" style="margin-top:28px"><button type="button" class="btn" data-join>Join as ${ROLE_DISPLAY[inv.role]}</button><a class="btn secondary" href="#/">Not now</a></div></div>`));
     if (auth.user) out.querySelector("[data-join]").onclick = () => join(code, false);

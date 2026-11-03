@@ -108,6 +108,10 @@ export function funnel(data, cy, today) {
     { key: "sold", label: "Sold / kept", n: sold || kept ? sold + kept : null },
   ];
   const LOSS = { born: "lost scan → birth", at48: "in first 48 h", out: "in the pens", weaned: "turnout → weaning", sold: "after weaning" };
+  // a funnel never widens (review B #26): a later count above an earlier one (lambs bought in,
+  // a count made before every death was entered) is shown at the earlier figure, with the real count kept
+  let top = null;
+  for (const st of steps) { if (st.key === "ewes" || st.key === "scanned" || st.n == null) continue; if (top != null && st.n > top) { st.counted = st.n; st.n = top; } top = st.n; }
   let prev = null;
   for (const st of steps) {
     st.pct = ewes && st.n != null && st.key !== "ewes" ? Math.round((st.n / ewes) * 100) : null;

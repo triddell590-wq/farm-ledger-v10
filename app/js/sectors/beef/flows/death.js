@@ -1,5 +1,6 @@
 // Death (design/10 §6.7): cause, found at inspection, disposal, docket. 48 months or older:
 // phone the TSE sampling site within 24 hours. NIFAIS job (7 days, or 3 with NIFAIS as register).
+import { checkDate } from "../../../core/sanity.js";
 import { html } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { textField, selectField, checkRow, fieldError } from "../../../ui/form.js";
@@ -7,7 +8,8 @@ import { toast } from "../../../ui/toast.js";
 import { todayStr, addDays, shortDate } from "../../../core/dates.js";
 import { cattleRow, entrySheet, opt, nowHM } from "./common.js";
 import { recordDeath } from "../actions.js";
-import { ageMonths, onFarm } from "../model/animals.js";
+import { ageMonths, onFarm, shortName } from "../model/animals.js";
+import { confirmPicked } from "../../../ui/confirm-pick.js";
 import { nifaisDays } from "../model/duties.js";
 import { photoStrip } from "../../../ui/photo-strip.js";
 
@@ -30,9 +32,10 @@ export default function deathSheet(snap, { animalId } = {}) {
   body.appendChild(strip.node);
   const missing = (v) => (!who.ids().length ? "Choose the animal to save" : !v.cause ? "Choose the cause to save" : !v.disposal ? "Choose where the carcass went" : null);
   const { form, refresh } = entrySheet({
-    title: "Record a death", body, label: "Save death", missing, dirty: () => !!who.ids().length || strip.dirty(),
-    save(v, sh) {
+    title: "Record a death", body, label: "Save death", missing, checks: (v) => checkDate(v.date, snap.today, { what: "The date of death" }), dirty: () => !!who.ids().length || strip.dirty(),
+    async save(v, sh) {
       const a = snap.ix.byId.get(who.ids()[0]);
+      if (who.ambiguous() && !(await confirmPicked("Record a death", [{ short: shortName(a), tag: a.tag }]))) return;
       const deathId = recordDeath(snap.lid, snap, { animalId: a.id, date: v.date, cause: v.cause, causeText: v.causeText, foundAtInspection: !!v.found, disposal: v.disposal, docketNo: v.docketNo });
       strip.commit(deathId, `Death · ${a.tag}`);
       sh.close(true, { force: true });

@@ -14,6 +14,8 @@ import { evaluate, summary } from "../model/checklist.js";
 import { RT_VERSION } from "../model/content.js";
 import { DOCS } from "../model/registers.js";
 import { datePart } from "../model/time.js";
+import { readyScore, readyLine } from "../../../ui/ready-check.js";
+import { brRtRows, broilersHasData } from "./checklist.js";
 
 const RANK = { late: 0, positive: 0, due: 1, open: 2, waiting: 3, future: 4, ok: 5 };
 
@@ -24,6 +26,7 @@ export default async function paperwork(ctx) {
 function paint(snap) {
   const { ix, s, today, lid } = snap; const L = (h) => `#/l/${lid}/${h}`;
   const sm = summary(evaluate(snap.c, snap.meta.checklist || {}));
+  const rd = readyScore(brRtRows(snap), broilersHasData(snap)); // A #14: records-only score, hidden until a crop
   const crops = ix.houses.map((h) => currentCrop(ix, h.id)).filter((c) => c && c.placedDate <= today);
   const rows = [];
   if (crops.length) {
@@ -36,13 +39,14 @@ function paint(snap) {
       const by = fciSendBy(ev.rec?.catchAt || `${ev.date}T02:00`, s, ev.rec?.arrivalAt);
       rows.push({ t: "Food Chain Information", sub: `${ev.kind === "clear" ? "Clear-out" : "Thin"} ${dm(ev.date)} · ${sent ? "sent" : `send by ${when(by)}`}`, lv: sent ? "ok" : snap.now > by ? "late" : datePart(by) <= today ? "due" : "neutral", p: sent ? "Sent" : snap.now > by ? "Late" : ev.rec ? "Due" : "Plan the catch first", href: ev.rec ? L(`fci/${ev.c.id}/${ev.rec.id}`) : L(`density/${ev.c.id}`) });
     }
-    const dn = crops.filter((c) => +ix.houseById.get(c.houseId)?.usableM2).map((c) => { const mx = Math.max(plannedMax(ix, c, s, +ix.houseById.get(c.houseId).usableM2, today), +c.targetDensity || 0); return { c, mx, n: densityNeeds(ix, c, s, mx) }; }).sort((a, b) => b.mx - a.mx)[0];
-    if (dn) rows.push({ t: "Density", sub: `Planned ${n1(dn.mx)} kg/m² · ${dn.n.tier === "none" ? "no DAERA notice needed" : dn.n.notifyOk ? `DAERA told ${dm(dn.c.notifiedDaera)}` : `tell DAERA by ${dm(dn.n.notifyBy)}`}`, lv: dn.n.tier === "none" || (dn.n.notifyOk && (!dn.n.needsApproval || dn.n.approvalRef)) ? "ok" : "late", p: dn.n.tier === "none" || dn.n.notifyOk ? "OK" : "Notice", href: L(`density/${dn.c.id}`) });
+    // density per house, named, so Paperwork and Growth agree on which house a figure is for (B #35)
+    const dns = crops.filter((c) => +ix.houseById.get(c.houseId)?.usableM2).map((c) => { const mx = Math.max(plannedMax(ix, c, s, +ix.houseById.get(c.houseId).usableM2, today), +c.targetDensity || 0); return { c, mx, n: densityNeeds(ix, c, s, mx) }; });
+    for (const dn of dns) rows.push({ t: `Density · ${ix.houseById.get(dn.c.houseId)?.name || "house"}`, sub: `Planned ${n1(dn.mx)} kg/m² · ${dn.n.tier === "none" ? "no DAERA notice needed" : dn.n.notifyOk ? `DAERA told ${dm(dn.c.notifiedDaera)}` : `tell DAERA by ${dm(dn.n.notifyBy)}`}`, lv: dn.n.tier === "none" || (dn.n.notifyOk && (!dn.n.needsApproval || dn.n.approvalRef)) ? "ok" : "late", p: dn.n.tier === "none" || dn.n.notifyOk ? "OK" : "Notice", href: L(`density/${dn.c.id}`) });
   }
   const add = canWrite(snap.role, "alarmTests");
   return html`<div>
     ${largeTitle("Paperwork", cropNo(ix) ? `Crop ${cropNo(ix)}` : "")}
-    <div class="list"><a class="row" href="${L("rt")}"><span class="tile">${raw(icon("records"))}</span><span class="main"><span class="primary">Inspection ready? ${sm.ok} of ${sm.total}</span><span class="secondary">Based on ${RT_VERSION.name} v${RT_VERSION.version}, 1 Feb 2025. Not endorsed by Red Tractor.</span></span>${sm.gaps ? pill("due", `${sm.gaps} gap${sm.gaps > 1 ? "s" : ""}`) : ""}<span class="chev">${raw(icon("chevron"))}</span></a></div>
+    <div class="list"><a class="row" href="${L("rt")}"><span class="tile">${raw(icon("records"))}</span><span class="main"><span class="primary">Inspection ready? ${readyLine(rd).value}${rd.hasData ? ` · ${rd.ok} of ${rd.n} from your records` : ""}</span><span class="secondary">Based on ${RT_VERSION.name} v${RT_VERSION.version}, 1 Feb 2025. Not endorsed by Red Tractor.</span></span>${sm.gaps ? pill("due", `${sm.gaps} gap${sm.gaps > 1 ? "s" : ""}`) : ""}<span class="chev">${raw(icon("chevron"))}</span></a></div>
     <a class="btn br-mt" href="${L("inspect")}">${raw(icon("shield"))}Inspector is here</a>
     ${rows.length ? html`<div class="section">${groupLabel("This crop")}<div class="list">${rows.map((r) => html`<a class="row no-lead" href="${r.href}"><span class="main"><span class="primary">${r.t}</span><span class="secondary">${r.sub}</span></span>${pill(r.lv, r.p, r.lv === "neutral" ? "" : undefined)}<span class="chev">${raw(icon("chevron"))}</span></a>`)}</div></div>` : ""}
     <div class="section">${groupLabel("Registers")}<div class="list">${DOCS.filter(([k]) => !["house", "density", "birdreg"].includes(k)).map(([k, t, sub]) => html`<a class="row no-lead" href="${L(`paperwork/${k}`)}"><span class="main"><span class="primary">${t}</span><span class="secondary">${sub}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>`)}

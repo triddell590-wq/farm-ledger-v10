@@ -25,14 +25,26 @@ function loadScript(src) {
   return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("load " + src)); document.head.appendChild(s); });
 }
 
+const DEMO = qs.get("demo") === "1"; // "Look around a demo farm": memory only, nothing saved, never Firebase
+
 async function pickBackends() {
   const forced = qs.get("backend");
-  const live = forced === "firestore" || (!forced && LIVE_HOSTS.includes(location.hostname));
+  const live = !DEMO && (forced === "firestore" || (!forced && LIVE_HOSTS.includes(location.hostname)));
   if (live) {
     for (const f of ["firebase-app-compat.js", "firebase-auth-compat.js", "firebase-firestore-compat.js"]) await loadScript("vendor/" + f);
     const [{ createFirestoreBackend }, { createFirebaseAuth }] = await Promise.all([import("./core/store-firestore.js"), import("./core/auth-firebase.js")]);
     const b = createFirestoreBackend(FIREBASE_CONFIG);
     useBackend(b); useAuthBackend(createFirebaseAuth()); useSyncBackend(b);
+    return b;
+  }
+  if (DEMO) {
+    const b = createMemoryBackend(); // no persistKey: the demo farm lives only in this page
+    const a = createMemoryAuth(b);
+    useBackend(b); useAuthBackend(a); useSyncBackend(b);
+    window.__fl = { store: b, auth: a, router, session, appStore: store, demo: true };
+    const { startDemo, mountDemoBanner } = await import("./demo/index.js");
+    mountDemoBanner();
+    await startDemo(a);
     return b;
   }
   if (qs.get("fresh") === "1") { try { localStorage.removeItem("fl10-demo-db"); localStorage.removeItem("fl10-demo-auth"); } catch (e) { /* blocked */ } }
@@ -57,12 +69,12 @@ async function boot() {
   router.onScreenChange((s) => { updateShell(s); if (s.area !== "auth" && s.remember !== false) session.rememberPlace(router.currentPath()); });
   on("store:error", (d) => {
     const code = d && d.error && d.error.code;
-    if (code === "permission-denied") toast("That couldn't be saved — you don't have permission for it on this ledger.");
+    if (code === "permission-denied") toast("That couldn't be saved — you don't have permission for that here.");
   });
   on("router:error", () => toast("That screen didn't open. Try again."));
   // Tom's Morning Board: feed it from any Beef ledger he owns that carries a board token.
   const feeds = new Map();
-  on("session:ledgers", (ls) => { for (const l of ls || []) if (l.type === "beef" && l.role === "owner" && !feeds.has(l.id)) feeds.set(l.id, startBoardFeed(store, l.id, BUILD)); });
+  on("session:ledgers", (ls) => { if (DEMO) return; for (const l of ls || []) if (l.type === "beef" && l.role === "owner" && !feeds.has(l.id)) feeds.set(l.id, startBoardFeed(store, l.id, BUILD)); });
   on("auth:change", (u) => { if (!u) { feeds.forEach((f) => f.stop()); feeds.clear(); } });
   // First auth answer (from the phone's saved session — works offline).
   await new Promise((res) => { let first = true; auth.onChange(async (u) => { if (u) await session.load(); else session.reset(); if (first) { first = false; res(); } }); });

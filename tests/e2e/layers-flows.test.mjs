@@ -37,6 +37,9 @@ test("daily sheet: House 2 — live lay %, causes, save → card ticks, producer
   await sheet().locator("input[name='c:Peritonitis']").fill("3"); await sheet().locator("input[name='c:Peritonitis']").dispatchEvent("input");
   await sheet().locator(".sheet-foot .btn").click(); await H.settle(p, 600);
   assert.match(await sheet().locator("[data-cv]").textContent(), /Peritonitis 3/);
+  // the daily checks start unticked; the farmer says they're done (review B #8)
+  assert.equal(await sheet().locator("[data-chips=checks] .chip[aria-checked=true]").count(), 0);
+  await sheet().locator("[data-allchecked]").click(); await H.settle(p, 200);
   await save().click(); await H.settle(p, 900);
   const today = await T();
   const day = (await recs("days")).find((d) => d.houseId === HS("House 2") && d.date === today);

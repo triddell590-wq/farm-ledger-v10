@@ -8,7 +8,7 @@ import { META } from "../sectors/meta.js";
 import { longDate } from "../ui/format.js";
 import { makeScreen, largeTitle, groupLabel, farmTabs, sectorTile, emptyState } from "./common.js";
 import { refreshItems, myLedgers, localState, support } from "../services/notify.js";
-import { groupByLedger, badgeCount } from "../services/notify-core.js";
+import { groupByLedger } from "../services/notify-core.js";
 
 const LEVEL_ICON = { late: "alert", due: "clock", info: "info" };
 const LEVEL_WORD = { late: "Late", due: "Due", info: "" };
@@ -30,15 +30,15 @@ function itemRow(i) {
 }
 
 export default async function notifyCentre() {
-  const body = el(html`<div>${largeTitle("Needs attention", longDate())}<div data-hint></div><div data-list><div class="card pad t-callout ink-2">Checking your ledgers…</div></div></div>`);
+  const body = el(html`<div>${largeTitle("Needs attention", longDate())}<div data-hint></div><div data-list><div class="card pad t-callout ink-2">Checking your farm…</div></div></div>`);
   const st = localState(); const sup = support();
   if (!st.on && sup.state !== "unsupported" && sup.state !== "denied") body.querySelector("[data-hint]").append(el(html`<a class="info-card" href="#/settings/notifications" style="margin-bottom:16px;text-decoration:none">${raw(icon("bell"))}<span><b>Get these on your phone</b> — a morning summary and a note when a legal job goes late. <span class="text-btn">Turn on ›</span></span></a>`));
   const list = body.querySelector("[data-list]");
   const paint = (items) => {
     const ledgers = myLedgers();
     const groups = groupByLedger(items, ledgers);
-    if (!groups.length) { list.replaceChildren(el(emptyState({ iconName: "check", title: "Nothing needs doing", body: "Nothing is late or due today across your ledgers." }))); return; }
-    const n = badgeCount(items);
+    if (!groups.length) { list.replaceChildren(el(emptyState({ iconName: "check", title: "Nothing needs doing", body: "Nothing is late or due today." }))); return; }
+    const n = items.filter((i) => i.level !== "info").length;
     list.replaceChildren(el(html`<div>
       <p class="t-callout ink-2" data-count style="margin:-8px 0 8px">${n ? `${n} late or due` : "Nothing late or due"} · ${groups.length} ${groups.length === 1 ? "ledger" : "ledgers"}</p>
       ${groups.map((g) => {
@@ -46,10 +46,10 @@ export default async function notifyCentre() {
         return html`<section class="section nc-group" data-ledger="${g.ledger.id}" data-sector="${g.ledger.type}">
           <a class="nc-head" href="#/l/${g.ledger.id}">${sectorTile(g.ledger.type)}<span class="main"><span class="primary">${g.ledger.name || META[g.ledger.type]?.short}</span><span class="secondary">${session.farms().length > 1 ? `${g.ledger.farmName || ""} · ` : ""}${urgent.length} late or due</span></span><span class="chev">${raw(icon("chevron"))}</span></a>
           <div class="nc-items">${urgent.map(itemRow)}</div>
-          ${info.length ? html`<details class="nc-info"><summary>${info.length} for your information</summary><div class="nc-items">${info.map(itemRow)}</div></details>` : ""}
+          ${info.length ? html`<details class="nc-info"><summary>Coming up and for your information (${info.length})</summary><div class="nc-items">${info.map(itemRow)}</div></details>` : ""}
         </section>`;
       })}</div>`));
   };
-  refreshItems({ force: true }).then(paint).catch(() => list.replaceChildren(el(html`<div class="card pad t-callout ink-2">Couldn't check your ledgers just now. Pull down or open this again.</div>`)));
+  refreshItems({ force: true }).then(paint).catch(() => list.replaceChildren(el(html`<div class="card pad t-callout ink-2">Couldn't check just now. Pull down or open this again.</div>`)));
   return makeScreen({ body, title: "Needs attention", area: "farm", tab: "today", depth: 1, chrome: { tabs: farmTabs(), tab: "today" } });
 }

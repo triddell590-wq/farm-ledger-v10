@@ -1,5 +1,6 @@
 // Pigs alerts (design/13 §11). Late legal alerts first, then scheme, then the rest.
 // ASF and notifiable disease are never auto-generated: More → "Report a disease suspicion".
+import { binTitle } from "./duties.js";
 import { addDays, daysBetween } from "./dates.js";
 import { roomFacts, binFacts, pct } from "./facts.js";
 import { cycles, breedingTiles } from "./week.js";
@@ -16,7 +17,7 @@ const RANK = { late: 0, due: 1, info: 2 };
 
 export function pigAlerts(c) {
   const a = []; const T = c.today; const rf = roomFacts(c);
-  for (const h of houses(c.data.rooms.filter((r) => r.mechVent !== false && !r.deleted))) {
+  if (!c.s.legalOnly) for (const h of houses(c.data.rooms.filter((r) => r.mechVent !== false && !r.deleted))) {
     const s = alarmState(live(c.data.alarmTests), h, T);
     if (s.level === "late") a.push({ level: "late", legal: true, title: `Alarm test overdue — ${h}`, body: s.last ? `Last tested ${dayName(s.last.date)} ${dm(s.last.date)}, ${s.days} days ago. The law asks for every 7 days.` : "No test recorded. The law asks for every 7 days.", href: L(c, `alarm/${encodeURIComponent(h)}`), action: "Test" });
     else if (s.failed) a.push({ level: "late", legal: true, title: `Alarm didn't sound — ${h}`, body: `Last test ${dm(s.last.date)}: ${s.last.action || "fix it and test again"}.`, href: L(c, `alarm/${encodeURIComponent(h)}`), action: "Test again" });
@@ -42,10 +43,10 @@ export function pigAlerts(c) {
     if (x.space?.level === "late") a.push({ level: "late", legal: true, title: `${x.room.name} is over the legal space by ${x.f.onFarm - x.space.allowed} pigs`, body: `At ${Math.round(x.f.est)} kg each pig needs the Schedule 8 minimum floor area.`, href: L(c, "tools/space") });
   }
   for (const b of live(c.data.batches)) { const f = c.bf?.get(b.id); if (f?.withdrawalEnd && f.withdrawalEnd > T && live(c.data.tasks).some((t) => t.pig?.kind === "ship" && !t.done && t.pig.batchId === b.id && t.due < f.withdrawalEnd)) a.push({ level: "late", legal: true, title: `B${b.no} can't go for slaughter before ${dayName(f.withdrawalEnd)} ${dm(f.withdrawalEnd)} — withdrawal`, href: L(c, `batch/${b.id}`) }); }
-  const q = qvrState(live(c.data.vetVisits), T); if (q.last && q.level !== "ok") a.push({ level: q.level, title: `Book your quarterly vet visit — ${q.weeks} weeks since the last`, body: `20-week limit: by ${dm(q.nextBy)}.`, href: L(c, "qvr") });
-  const e = embDue(T, live(c.data.embUploads)); if (!e.done && (e.level === "due" || e.level === "late")) a.push({ level: e.level, title: `Upload ${e.label.split(" ")[0]} antibiotic use to eMB-Pigs by ${dm(e.due)}`, href: L(c, "emb") });
-  for (const b of binFacts(c).filter((y) => y.level === "due")) a.push({ level: "due", title: `Order feed: ${b.bin.name} empty in ~${Math.max(0, Math.floor(b.daysLeft))} days`, href: L(c, "tools/bins") });
-  for (const k of ["vermin", "water"]) { const st = checkState(live(c.data.siteChecks), k, T); if (st.level === "late" && !(k === "water" && c.s.mainsWater)) a.push({ level: "due", title: k === "vermin" ? "Quarterly vermin survey overdue" : "Yearly water test overdue", href: L(c, `reg/${k}`) }); }
+  const q = c.s.legalOnly ? {} : qvrState(live(c.data.vetVisits), T); if (q.last && q.level !== "ok") a.push({ level: q.level, title: `Book your quarterly vet visit — ${q.weeks} weeks since the last`, body: `20-week limit: by ${dm(q.nextBy)}.`, href: L(c, "qvr") });
+  const e = c.s.legalOnly ? { done: true } : embDue(T, live(c.data.embUploads)); if (!e.done && (e.level === "due" || e.level === "late")) a.push({ level: e.level, title: `Upload ${e.label.split(" ")[0]} antibiotic use to eMB-Pigs by ${dm(e.due)}`, href: L(c, "emb") });
+  for (const b of binFacts(c).filter((y) => y.level === "due")) a.push({ level: Math.floor(b.daysLeft) <= 0 ? "late" : "due", title: binTitle(b), href: L(c, "tools/bins") });
+  for (const k of c.s.legalOnly ? [] : ["vermin", "water"]) { const st = checkState(live(c.data.siteChecks), k, T); if (st.level === "late" && !(k === "water" && c.s.mainsWater)) a.push({ level: "due", title: k === "vermin" ? "Quarterly vermin survey overdue" : "Yearly water test overdue", href: L(c, `reg/${k}`) }); }
   const inv = inventoryDue(T); if (inv.level === "due" && T >= addDays(inv.date, -7) && !live(c.data.inventories).some((x) => x.date === inv.date)) a.push({ level: "due", legal: true, title: `Count your pigs on 1 June for the DAERA inventory`, href: L(c, "inventory") });
   return a.sort((x, y) => RANK[x.level] - RANK[y.level] || (y.legal ? 1 : 0) - (x.legal ? 1 : 0));
 }

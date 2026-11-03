@@ -6,11 +6,12 @@
 // return at once and any failure is announced on the bus as "store:error".
 import { store } from "../core/store.js";
 import { auth } from "../core/auth.js";
+import { currentAction, configureActions } from "./action-context.js";
 
 const HISTORY_MAX = 10;
 const cpath = (lid, coll) => `ledgers/${lid}/${coll}`;
 const uid = () => auth.user.uid;
-const STAMP_KEYS = ["id", "history", "createdAt", "createdBy", "updatedAt", "updatedBy"];
+const STAMP_KEYS = ["id", "history", "createdAt", "createdBy", "updatedAt", "updatedBy", "actionEffects"];
 
 /** Add a record. Returns its id immediately; the save carries on in the background. */
 export function addRecord(lid, coll, data, id) {
@@ -18,12 +19,16 @@ export function addRecord(lid, coll, data, id) {
   const rec = { ...data, createdAt: now, createdBy: uid(), updatedAt: now, updatedBy: uid() };
   delete rec.id;
   id = id || store.newId();
+  const act = currentAction();
+  if (act && !rec.actionId) { rec.actionId = act.id; act.created.push({ lid, coll, id }); }
   store.bg(store.set(`${cpath(lid, coll)}/${id}`, rec), `add ${coll}`);
   return id;
 }
 
 /** Edit a record. `old` is the record as currently shown (needed for history). */
 export function updateRecord(lid, coll, old, changes, { history = true } = {}) {
+  const act = currentAction();
+  if (act && old && old.id) noteEffect(act, lid, coll, old, changes);
   const patch = { ...changes, updatedAt: new Date(), updatedBy: uid() };
   for (const k of ["id", "createdAt", "createdBy", "history"]) delete patch[k];
   if (history) {
@@ -32,6 +37,35 @@ export function updateRecord(lid, coll, old, changes, { history = true } = {}) {
   }
   return store.bg(store.update(`${cpath(lid, coll)}/${old.id}`, patch), `update ${coll}`);
 }
+
+// ---- actions: one entry = one action (services/action-context.js, services/linked.js) ----
+const plain = (v) => (v === undefined || v === store.DELETE ? null : v);
+/** An existing record changed by an action: keep what was set and what was there before. */
+function noteEffect(act, lid, coll, old, changes) {
+  if (act.created.some((c) => c.coll === coll && c.id === old.id)) return; // its own new record
+  const set = {}, before = {}, unset = [];
+  for (const [k, v] of Object.entries(changes)) {
+    if (["id", "history", "createdAt", "createdBy", "updatedAt", "updatedBy", "actionId", "actionEffects"].includes(k)) continue;
+    set[k] = plain(v);
+    if (old[k] === undefined) unset.push(k); else before[k] = plain(old[k]);
+  }
+  if (!Object.keys(set).length) return;
+  const e = act.effects.find((x) => x.coll === coll && x.id === old.id && x.lid === lid);
+  if (e) { for (const k of Object.keys(set)) { e.set[k] = set[k]; if (!(k in e.before) && !e.unset.includes(k)) { if (k in before) e.before[k] = before[k]; else e.unset.push(k); } } return; }
+  act.effects.push({ lid, coll, id: old.id, set, before, unset });
+}
+configureActions({
+  makeId: () => store.newId(),
+  // effects are kept on the action's main record (the last one it added) so a later delete
+  // can put the changed records back, and a restore can apply them again
+  finish(act) {
+    const main = act.created[act.created.length - 1];
+    const effects = act.effects.filter((e) => e.lid === main?.lid);
+    if (!main || !effects.length) return;
+    store.bg(store.update(`${cpath(main.lid, main.coll)}/${main.id}`, { actionEffects: effects.map(({ coll, id, set, before, unset }) => ({ coll, id, set, before, unset })) }), `link ${main.coll}`);
+  },
+});
+export { runAction, asAction } from "./action-context.js";
 
 export const softDelete = (lid, coll, id) =>
   store.bg(store.update(`${cpath(lid, coll)}/${id}`, { deleted: true, deletedAt: new Date(), deletedBy: uid(), updatedAt: new Date(), updatedBy: uid() }), `delete ${coll}`);

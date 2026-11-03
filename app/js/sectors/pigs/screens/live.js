@@ -2,6 +2,8 @@
 // position and wires buttons that start an entry flow:
 //   <button data-flow="death" data-arg='{"roomId":"…"}'> runs FLOWS.death(snap, arg)
 // Push screens get the design/13 §20 bottom padding so nothing sits under the + or the tab bar.
+import { wireRecordTaps } from "../../../ui/record-sheet.js";
+import { session } from "../../../services/session.js";
 import { html } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { liveSnap } from "../data.js";
@@ -22,6 +24,7 @@ export const flowArg = (o) => JSON.stringify(o);
 export async function liveScreen(ctx, { title, tab = null, depth = 1, paint, after }) {
   const body = el(html`<div class="pg-page${depth ? " push" : ""}"></div>`); let cur = null;
   wireFlows(body, () => cur);
+  wireRecordTaps(body, () => session.ledger(ctx.ledger.id)); // rows with data-rec open their record
   const draw = async (snap) => {
     cur = snap; const y = window.scrollY;
     const out = await paint(snap); const node = out instanceof Node ? out : el(out);

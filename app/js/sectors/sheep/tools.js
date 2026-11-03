@@ -43,7 +43,7 @@ export const TOOLS = {
     out(v, snap) {
       if (!v.mark) return ans("—", "Add the date the ewes were marked.");
       const w = lambingFromMark(v.mark, +v.g || 147); const rc = raddleCycles(snap.cy, snap.s, snap.today);
-      return html`${ans(`${short(w.from)} – ${short(w.to)}`, `Peak around ${listDate(w.peak)}. Start = mark + ${(+v.g || 147) - 5} days, end = + ${(+v.g || 147) + 5}. Prolific breeds about 3 days sooner.`, "Research C §1 (gestation 147 days, editable in Targets)")}
+      return html`${ans(`${short(w.from)} – ${short(w.to)}`, `Peak around ${listDate(w.peak)}. Start = mark + ${(+v.g || 147) - 5} days, end = + ${(+v.g || 147) + 5}. Prolific breeds about 3 days sooner.`, "Gestation 147 days (change it in Targets)")}
         <p class="form-label" style="margin-top:12px">This year's colours</p>${rc.cycles.map((c) => html`<p style="margin:4px 0">${colourChip(c.colour)} · marked ${short(c.from)}–${short(c.to)} → lambing ${short(c.lambFrom)} – ${short(c.lambTo)}</p>`)}`;
     },
   },
@@ -66,7 +66,7 @@ export const TOOLS = {
   growth: {
     inputs: () => html`${n("kg", "Average weight (kg)")}${n("age", "Age (days)", "56")}${n("birth", "Birth weight (kg)", "4.5")}`,
     out(v, snap) { const g = growth(+v.kg, +v.age, +v.birth || 4.5); if (g == null || !+v.kg) return ans("—", "Add the lambs' weight and age.");
-      return ans(`${g} g/day`, g < snap.s.growthWeanBelow ? `Below ${snap.s.growthWeanBelow} g/day — consider weaning these lambs.` : g < snap.s.growthTarget ? `Below the ${snap.s.growthTarget} g/day target.` : `On target (${snap.s.growthTarget} g/day).`, "Research C §5: (weight − birth weight) ÷ age"); },
+      return ans(`${g} g/day`, g < snap.s.growthWeanBelow ? `Below ${snap.s.growthWeanBelow} g/day — consider weaning these lambs.` : g < snap.s.growthTarget ? `Below the ${snap.s.growthTarget} g/day target.` : `On target (${snap.s.growthTarget} g/day).`, "Growth = (weight − birth weight) ÷ age in days"); },
   },
   draft: {
     inputs: (snap) => html`${n("kg", "Liveweight (kg)", snap.s.draftKg)}${n("ko", "Kill-out %", snap.s.koPct)}${canRead(snap.role, "finance") ? n("p", "Price (pence a kg dead)", "", true) : ""}`,
@@ -79,7 +79,7 @@ export const TOOLS = {
   },
   grass: {
     inputs: (snap) => { const acres = snap.fields.reduce((t, f) => t + (+f.acres || 0), 0); return html`${n("ewes", "Ewes", snap.totals.ewes)}${n("ha", "Hectares grazed", acres ? Math.round(acres * 0.4047 * 10) / 10 : "")}`; },
-    out(v) { const r = ewesPerHa(+v.ewes, +v.ha); return r == null ? ans("—", "Add the area grazed.") : ans(`${r} ewes/ha`, "Northern Ireland lowland flocks typically run about 8.3 ewes a hectare.", "Research C (Farm Business Survey typical)"); },
+    out(v) { const r = ewesPerHa(+v.ewes, +v.ha); return r == null ? ans("—", "Add the area grazed.") : ans(`${r} ewes/ha`, "Northern Ireland lowland flocks typically run about 8.3 ewes a hectare.", "Farm Business Survey NI typical figure"); },
   },
   fym: {
     inputs: (snap) => html`${n("ewes", "Ewes housed", snap.totals.ewes)}${n("weeks", "Weeks housed", "10")}${n("cap", "Storage (m³)", "", true)}`,

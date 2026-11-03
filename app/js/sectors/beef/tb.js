@@ -9,7 +9,7 @@ import { toast } from "../../ui/toast.js";
 import { confirmSheet } from "../../ui/sheet.js";
 import { canWrite, canWriteMeta } from "../../core/policy.js";
 import { addDays, daysBetween, shortDate } from "../../core/dates.js";
-import { listDate, num } from "../../ui/format.js";
+import { listDate, num, listDateY } from "../../ui/format.js";
 import { backLink, largeTitle, groupLabel, emptyState } from "../../screens/common.js";
 import { liveSnap } from "./data.js";
 import { entrySheet, opt } from "./flows/common.js";
@@ -39,7 +39,7 @@ function card(snap) {
   const open = tests.find((t) => t.stage === "planned" || t.stage === "presented");
   const vet = snap.contacts.find((c) => c.kind === "Vet");
   const node = el(html`<div>${backLink(`#/l/${snap.lid}/paperwork`, "Paperwork")}${largeTitle("TB", snap.meta.settings?.tbStatus === "restricted" ? "Herd restricted" : last?.herdStatus || (last ? "OTF" : "No tests recorded"))}
-    ${next ? html`<div class="num-tile hero"><span class="label">Next herd test</span><span class="value ${left < 0 ? "late" : left <= 14 ? "due" : ""}">${left < 0 ? `${-left} d overdue` : `in ${left} d`}</span><span class="sub">${listDate(next)} ${next.slice(0, 4)} · reminders 30, 14 and 3 days before</span>
+    ${next ? html`<div class="num-tile hero"><span class="label">Next herd test</span><span class="value ${left < 0 ? "late" : left <= 14 ? "due" : ""}">${left < 0 ? `${-left} d overdue` : `in ${left} d`}</span><span class="sub">${listDateY(next)} · reminders 30, 14 and 3 days before</span>
       ${vet?.phone ? html`<a class="btn secondary" style="margin-top:12px" href="tel:${vet.phone}">${raw(icon("message"))}Book the vet: ${vet.name}</a>` : ""}</div>` : ""}
     ${open ? html`<div class="section"><a class="btn" href="#/l/${snap.lid}/tb/${open.id}/${open.stage === "planned" ? "day" : "read"}">${open.stage === "planned" ? `Start test day (${listDate(open.date)})` : `Record the reading (${listDate(open.readingDate)})`}</a></div>` : ""}
     ${!tests.length ? emptyState({ sector: "beef", title: "No TB tests recorded", body: "Add your last test date and we'll remind you 30, 14 and 3 days before the next.", action: can ? "Add last TB test" : null, actAttr: "data-last" })

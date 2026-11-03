@@ -15,6 +15,8 @@ import { storeStatus } from "../model/eggs.js";
 import { aiState, spaceCheck } from "../model/house.js";
 import { birdCountDay } from "../model/content.js";
 import { aliveAt } from "../model/flock.js";
+import { readyScore, readyLine } from "../../../ui/ready-check.js";
+import { layersHasData } from "./checklist.js";
 
 export default async function paperwork(ctx) {
   return liveScreen(ctx, { title: "Paperwork", tab: "more", paint });
@@ -23,6 +25,7 @@ export default async function paperwork(ctx) {
 function paint(snap) {
   const L = (h) => `#/l/${snap.lid}/${h}`; const c = snap.c; const T = snap.today;
   const rows = evaluate(c, LION_ITEMS, snap.meta.lion || {}); const done = rows.filter((r) => r.ok).length;
+  const rd = readyScore(rows.map((r) => ({ auto: r.auto, state: r.auto ? (r.ok === true ? "ok" : r.ok === false ? "gap" : "due") : "open", done: r.ok === true })), layersHasData(snap)); // A #14
   const au = audits(snap.meta.lion || {}, T);
   const live = sortedHouses(c).map((h) => ({ h, f: flockIn(c, h.id) })).filter((x) => x.f);
   const salLate = live.filter(({ f }) => { const s = salmonella(c, f); return !s.exempt && s.level === "late"; }).length;
@@ -39,7 +42,7 @@ function paint(snap) {
   const passOk = live.every(({ f }) => f.rearer && f.hatchDate);
   const R = (href, title, right = "", tone = "", ic = "", sub = "") => html`<a class="row${ic ? "" : " no-lead"}" href="${href}">${ic ? html`<span class="tile">${raw(icon(ic))}</span>` : ""}<span class="main"><span class="primary">${title}</span>${sub ? html`<span class="secondary">${sub}</span>` : ""}</span>${right ? html`<span class="ly-r ${tone ? "ly-ink-" + tone : ""}">${right}</span>` : ""}<span class="chev">${raw(icon("chevron"))}</span></a>`;
   return html`<div>${backLink(L("more"), "More")}${largeTitle("Paperwork and Lion", [snap.s.producerCode, "DAERA Egg Marketing · Salmonella NCP"].filter(Boolean).join(" · "))}
-    <div class="list">${R(L("lion"), "Inspection ready? (Lion)", `${done} of ${rows.length}`, done === rows.length ? "ok" : "due", "check", au.internalLate ? `Internal audit due ${d2(au.internalDue)}` : au.independentDue ? `Independent audit by ${d2(au.independentDue)}` : "Record your last audits")}
+    <div class="list">${R(L("lion"), "Inspection ready? (Lion)", readyLine(rd).value, rd.gaps.length ? "due" : rd.hasData ? "ok" : "", "check", au.internalLate ? `Internal audit due ${d2(au.internalDue)}` : au.independentDue ? `Independent audit by ${d2(au.independentDue)}` : "Record your last audits")}
       ${snap.s.rspca ? R(L("rspca"), "RSPCA Assured (optional)", `${evaluate(c, RSPCA_ITEMS, snap.meta.lion || {}).filter((r) => r.ok).length} of ${RSPCA_ITEMS.length}`, "", "check", "Edition to be confirmed") : ""}</div>
     <a class="btn" style="margin-top:12px" href="${L("inspect")}">${raw(icon("shield"))}Inspector is here</a>
     <p class="ly-note">${LION_HEADER}</p>

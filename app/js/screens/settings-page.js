@@ -12,10 +12,11 @@ import { getAppearance, setAppearance } from "../services/appearance.js";
 import { textField, segmented, radioGroup, checkRow, wireForm, guardButton, fieldError } from "../ui/form.js";
 import { canEditLedger, REGIONS, REGION_NAMES, ACTIVE_REGIONS } from "../core/policy.js";
 import { toast } from "../ui/toast.js";
+import { go } from "../core/router.js";
 import { openReset } from "./auth-sheets.js";
 import { openSyncSheet, syncLabel } from "./sync-sheet.js";
 import { backendName } from "../core/store.js";
-import { META } from "../sectors/meta.js";
+import { META, ADD_LEDGER } from "../sectors/meta.js";
 import { makeScreen, largeTitle, backLink, groupLabel, farmTabs, sectorTile } from "./common.js";
 import { ROLE_DISPLAY } from "./roles.js";
 
@@ -25,7 +26,7 @@ const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } ca
 export const getUnits = () => ({ ...read(LS_UNITS, { area: "acres" }), ...(session.profile?.prefs?.units ? { area: session.profile.prefs.units === "hectares" ? "ha" : "acres" } : {}) });
 export const getTax = () => read(LS_TAX, { yearStart: "apr", vat: "quarterly" });
 
-const TITLES = { profile: "Your details", farm: "Farm details", appearance: "Appearance", units: "Units", tax: "Tax year and VAT", reminders: "Reminders", storage: "Storage on phone", ledgers: "Ledgers" };
+const TITLES = { profile: "Your details", farm: "Farm details", appearance: "Appearance", units: "Units", tax: "Tax year and VAT", reminders: "Reminders", storage: "Storage on phone", ledgers: "Herds, flocks and poultry" };
 
 export default async function settingsPage({ params }) {
   const page = params.page;
@@ -92,21 +93,22 @@ const PAGES = {
       <p class="hint">Used for the money reports you send your accountant.</p></div>`));
     const f = wireForm(out); f.onChange(() => { write(LS_TAX, f.values()); toast("Saved"); });
   },
-  async reminders(out) {
-    out.append(el(html`<div class="info-card">${raw(icon("bell"))}<span>Reminders now live under Notifications: a morning summary, late legal jobs and what to hear about. <a class="text-btn" href="#/settings/notifications">Open Notifications ›</a></span></div>`));
+  async reminders(out) { // reminder times live with notifications, and can be set even when push is blocked (A #30)
+    setTimeout(() => go("/settings/notifications", { replace: true }));
+    out.append(el(html`<p class="hint">Opening Notifications…</p>`));
   },
   async storage(out) {
     const s = syncLabel();
     out.append(el(html`<div><div class="list"><div class="row no-lead"><span class="main"><span class="primary">Sync</span></span><span class="ink-2">${s.label}</span></div><div class="row no-lead" data-size><span class="main"><span class="primary">Space used on this phone</span></span><span class="ink-2">Working it out…</span></div></div>
-      <p class="hint">${backendName() === "memory" ? "Demo mode: records are kept in this browser only." : "A full copy of your ledgers is kept on this phone so the app works with no signal."}</p>
+      <p class="hint">${backendName() === "memory" ? "Demo mode: records are kept in this browser only." : "A full copy of your farm's records is kept on this phone so the app works with no signal."}</p>
       <div class="section"><button type="button" class="btn secondary" data-sync>${raw(icon("refresh"))}Sync details</button></div></div>`));
     out.querySelector("[data-sync]").onclick = () => openSyncSheet();
     try { const e = await navigator.storage.estimate(); out.querySelector("[data-size] .ink-2").textContent = `${Math.max(1, Math.round((e.usage || 0) / 1048576))} MB`; } catch (e) { out.querySelector("[data-size] .ink-2").textContent = "Unknown"; }
   },
   async ledgers(out) {
     const farm = session.farm(); const ls = session.sectorLedgers();
-    out.append(el(html`<div><div class="list">${ls.map((l) => html`<a class="row" href="#/l/${l.id}/more/settings" data-sector="${l.type}">${sectorTile(l.type)}<span class="main"><span class="primary">${l.name}</span><span class="secondary">${META[l.type].short} · ${ROLE_DISPLAY[l.role]}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>`)}</div>
-      ${farm?.space && canEditLedger(farm.space.role) ? html`<div class="section"><a class="btn secondary" href="#/add-ledger">${raw(icon("plus"))}Add a ledger</a></div>` : ""}</div>`));
+    out.append(el(html`<div><div class="list">${ls.map((l) => html`<a class="row" href="#/l/${l.id}/more/settings" data-sector="${l.type}">${sectorTile(l.type)}<span class="main"><span class="primary">${l.name}</span><span class="secondary">${ROLE_DISPLAY[l.role]}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>`)}</div>
+      ${farm?.space && canEditLedger(farm.space.role) ? html`<div class="section"><a class="btn secondary" href="#/add-ledger">${raw(icon("plus"))}${ADD_LEDGER}</a></div>` : ""}</div>`));
   },
 };
 export { groupLabel };

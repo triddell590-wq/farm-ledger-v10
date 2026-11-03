@@ -1,5 +1,7 @@
 // One mob (design/11 §5.1): count over time, events, individuals, field history, health
 // (doses with wormer group colour, FEC, lame checks with the 2% line), split / merge.
+import { session } from "../../services/session.js";
+import { wireRecordTaps } from "../../ui/record-sheet.js";
 import { html, raw } from "../../core/html.js";
 import { icon } from "../../ui/icons.js";
 import { canWrite } from "../../core/policy.js";
@@ -44,7 +46,7 @@ export default async function mob(ctx) {
         ${A("offMove", "Move off farm", "truck")}<button type="button" class="btn secondary" data-mobact="addSheep">${raw(icon("tag", { size: 20 }))} Add a sheep</button></div>` : ""}
       ${pts.length > 1 ? html`<div class="section">${groupLabel("Count over time")}<div class="card pad">${lineChart(pts)}</div></div>` : ""}
       <div class="section">${groupLabel("Health", ds.length || "")}
-        ${ds.length ? html`<div class="list">${ds.slice(0, 12).map((d) => html`<div class="row no-lead"><span class="main"><span class="primary">${d.productName} · ${d.reason}</span><span class="secondary">${short(d.date)} · ${d.numberTreated} treated${d.wormerGroup ? html` · ${groupChip(d.wormerGroup)}` : ""}${d.withdrawalUntil ? ` · clear ${short(d.withdrawalUntil)}` : ""}</span></span></div>`)}</div>` : html`<div class="card pad t-callout ink-2">No doses recorded for this mob.</div>`}
+        ${ds.length ? html`<div class="list">${ds.slice(0, 12).map((d) => html`<div class="row no-lead${d.id ? " tap" : ""}" ${raw(d.id ? `data-rec="medicines:${d.id}" role="button" tabindex="0"` : "")}><span class="main"><span class="primary">${d.productName} · ${d.reason}</span><span class="secondary">${short(d.date)} · ${d.numberTreated} treated${d.wormerGroup ? html` · ${groupChip(d.wormerGroup)}` : ""}${d.withdrawalUntil ? ` · clear ${short(d.withdrawalUntil)}` : ""}</span></span></div>`)}</div>` : html`<div class="card pad t-callout ink-2">No doses recorded for this mob.</div>`}
         ${fecs.length ? html`<p class="form-label">Worm egg counts</p>${kvRows(fecs.slice(0, 6).map((e) => [short(e.date), `${e.counts?.strongyle ?? "–"} epg`, fecVerdict(e.counts?.strongyle, snap.s.fecThreshold)?.dose ? "late" : "ok", [e.lab, e.counts?.nematodirus != null ? `Nematodirus ${e.counts.nematodirus}` : null, e.postDoseOf ? "drench check" : null].filter(Boolean).join(" · ")]))}` : ""}
         ${lames.length ? html`<p class="form-label">Lame checks · target under ${snap.s.lameTarget}%</p><div class="card pad">${lineChart(lames.slice().reverse().map((e) => ({ x: e.date, y: lamePct(+e.counts.lame, +e.counts.outOf) })), { target: snap.s.lameTarget, unit: "%" })}${kvRows(lames.slice(0, 5).map((e) => [short(e.date), `${lamePct(+e.counts.lame, +e.counts.outOf)}%`, lamePct(+e.counts.lame, +e.counts.outOf) > snap.s.lameTarget ? "late" : "ok", `${e.counts.lame} of ${e.counts.outOf}`]))}</div>` : ""}</div>
       ${inds.length ? html`<div class="section">${groupLabel("Individual sheep", inds.length)}<div class="list">${inds.map((x) => html`<a class="row no-lead" href="#/l/${snap.lid}/sheep/${x.id}"><span class="main"><span class="primary">${x.tag || x.eid}</span><span class="secondary">${[x.breed, x.birthYear].filter(Boolean).join(" · ")}</span></span>${(x.cullFlags || []).length ? pill("due", "Cull") : ""}<span class="chev">${raw(icon("chevron"))}</span></a>`)}</div></div>` : ""}
@@ -53,6 +55,7 @@ export default async function mob(ctx) {
     </div>`;
   }, after: (node, snap) => {
     const m = snap.data.mobs.find((x) => x.id === id); if (!m) return;
+    if (!node.__recTaps) { node.__recTaps = true; wireRecordTaps(node, () => session.ledger(snap.lid)); } // a dose line opens its record
     node.querySelector("[data-acts]")?.addEventListener("click", async (e) => {
       const fb = e.target.closest("[data-flow]"); if (fb) { e.stopPropagation(); const { FLOWS } = await import("./quick-add.js"); FLOWS[fb.dataset.flow].run(snap, { mob: m }); return; }
       const b = e.target.closest("[data-mobact]"); if (!b) return; const E = await import("./flows/mob-edit.js");

@@ -16,6 +16,7 @@ import { registerDoc } from "../model/registers.js";
 import { qvrState } from "../model/paperwork.js";
 import { signChecklist } from "../actions.js";
 import { evidenceButton, wireEvidenceButtons } from "../../../ui/photo-strip.js";
+import { readyScore, readyHero, readyLists, wireReady } from "../../../ui/ready-check.js";
 
 const TILES = [["pm1", "Movement book (PM1)", "truck"], ["pm2", "Holding register (PM2)", "records"], ["medicines", "Medicines", "syringe"], ["mortality", "Mortality", "alert"], ["tailbites", "Tail biting", "pigs"], ["enrichment", "Enrichment", "check"], ["alarms", "Alarm tests", "bell"], ["visitors", "Visitors", "people"], ["wash", "Wash and disinfection", "water"], ["feed", "Feed deliveries", "feed"]];
 const PACK = ["pm1", "herd", "medicines", "mortality", "tailbites", "enrichment", "alarms", "visitors", "wash", "feed", "vermin", "water"];
@@ -26,20 +27,31 @@ export default async function checklist(ctx) {
     const back = backLink(`#/l/${snap.lid}/${snap.s.breeding && !snap.s.smallHerd ? "pigs-paperwork" : "paperwork"}`, "Paperwork");
     return page === "rt" ? rtHtml(snap, back) : inspectHtml(snap, back);
   }, after: (node, snap) => {
+    wireReady(node, (id, on) => { signChecklist(snap, id, on); toast(on ? `${id} ticked` : `${id} unticked`); });
     node.querySelectorAll("[data-sign]").forEach((b) => (b.onclick = () => { const id = b.dataset.sign; const on = b.getAttribute("aria-checked") !== "true"; signChecklist(snap, id, on); toast(on ? `${id} ticked` : `${id} unticked`); }));
     const p = node.querySelector("[data-pack]"); if (p) p.onclick = () => printPack(snap);
     wireEvidenceButtons(node, { lid: snap.lid, role: snap.role, list: "rtChecklist", labelOf: (id) => `Red Tractor Pigs ${id}` });
   } });
 }
 
+/** Red Tractor Pigs items as ready-check rows (review A #14). */
+export function pigRtRows(snap) {
+  const sec = Object.fromEntries(SECTIONS);
+  return evaluate(snap.c, snap.meta.rtChecklist || {}).map((r) => {
+    const signed = r.sign?.done ? `Ticked ${d2(r.sign.date)}${r.sign.by ? " · " + r.sign.by : ""}` : "";
+    return r.ev
+      ? { id: r.id, text: `${r.id} · ${r.text}`, key: r.key, sec: sec[r.sec], auto: true, state: r.status === "ok" ? "ok" : r.status === "gap" ? "gap" : "due", note: [r.ev.text, r.ev.state === "due" ? signed : ""].filter(Boolean).join(" · "), link: r.link, canTick: r.ev.state === "due", signed: !!r.sign?.done }
+      : { id: r.id, text: `${r.id} · ${r.text}`, key: r.key, sec: sec[r.sec], auto: false, state: "open", done: !!r.sign?.done, note: signed, link: r.link };
+  });
+}
+export const pigsHasData = (snap) => (snap.data.sows || []).length + (snap.data.batches || []).length + (snap.data.moves || []).length > 0;
+
 function rtHtml(snap, back) {
-  const rows = evaluate(snap.c, snap.meta.rtChecklist || {}); const sm = summary(rows); const can = canWriteMeta(snap.role, "rtChecklist");
-  return html`<div>${back}${largeTitle("Red Tractor Pigs", `${sm.done} of ${sm.n} ready${sm.keyGaps ? ` · ${sm.keyGaps} key standard${sm.keyGaps > 1 ? "s" : ""} open` : ""}`)}
+  const rows = pigRtRows(snap); const sc = readyScore(rows, pigsHasData(snap)); const can = canWriteMeta(snap.role, "rtChecklist");
+  return html`<div>${back}${largeTitle("Red Tractor Pigs", sc.hasData ? `${sc.ok} of ${sc.n} checked from your records · ${sc.selfDone} of ${sc.selfN} ticked` : "Add your pigs and the app starts checking")}
     <div class="info-card">${raw(icon("info"))}<span>${HEADER} ${HEADER_NOTE}</span></div>
-    ${SECTIONS.map(([k, name]) => { const items = rows.filter((r) => r.sec === k); if (!items.length) return ""; return html`<div class="section">${groupLabel(name, `${items.filter((r) => r.status === "ok").length}/${items.length}`)}<div class="list">${items.map((r) => html`<div class="row no-lead pg-rt">
-      ${r.ev && r.ev.state !== "due" ? html`<span class="tile ${r.status === "ok" ? "ok" : r.status === "gap" ? "late" : "due"}">${raw(icon(r.status === "ok" ? "check" : "alert"))}</span>` : html`<button type="button" class="checkbox" role="checkbox" aria-checked="${r.status === "ok"}" aria-label="Tick ${r.id}" data-sign="${r.id}" ${raw(can ? "" : "disabled")} style="border:0;flex:none;margin-right:12px">${raw(icon("check"))}</button>`}
-      <span class="main"><span class="primary">${r.key ? html`<b class="pg-key">Key</b> ` : ""}${r.id} · ${r.text}</span><span class="secondary">${r.ev ? r.ev.text : r.sign?.done ? `Ticked ${d2(r.sign.date)}${r.sign.by ? " · " + r.sign.by : ""}` : "Tick when it's in place"}${r.ev && r.ev.state === "due" && r.sign?.done ? ` · ticked ${d2(r.sign.date)}` : ""}</span><span class="row-actions">${evidenceButton(r.id)}</span></span>
-      ${r.link ? html`<a class="text-btn" href="${r.link}">Open</a>` : ""}</div>`)}</div></div>`; })}</div>`;
+    ${readyHero(sc)}
+    ${readyLists(rows, { can, actions: (r) => html`${!r.auto && r.link ? html`<a class="text-btn" href="${r.link}">Open</a>` : ""}${r.auto && r.canTick && can ? html`<button type="button" class="text-btn" data-sign="${r.id}" aria-checked="${!!r.signed}">${r.signed ? "Untick" : "Tick"}</button>` : ""}${evidenceButton(r.id)}` })}</div>`;
 }
 
 function inspectHtml(snap, back) {

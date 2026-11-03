@@ -3,7 +3,7 @@
 // Money rule (01-platform §15): £ values live ONLY in `finance` (owner, manager, accountant):
 // settlements, the contract profile and energy unit prices. Everything else carries counts,
 // weights, times and the finance id at most.
-import { addRecord, updateRecord, softDelete, setMeta } from "../../services/records.js";
+import { addRecord, updateRecord, softDelete, setMeta, asAction } from "../../services/records.js";
 import { auth } from "../../core/auth.js";
 import { addDays } from "./model/time.js";
 import { cropResults, paymentEstimate, settlementCheck } from "./model/results.js";
@@ -24,7 +24,7 @@ export function saveHouse(snap, v, old = null) {
   return addRecord(snap.lid, "houses", d);
 }
 /** Chicks placed (day 0). Closes the house's turnaround and starts the brooding record. */
-export function startCrop(snap, house, v) {
+function startCrop_(snap, house, v) {
   const s = snap.s;
   const crop = clean({
     houseId: house.id, no: num(v.no) ?? nextCropNo(snap.ix, house.id), placedDate: v.placedDate, placedTime: v.placedTime, placed: num(v.placed),
@@ -43,7 +43,7 @@ export const updateCrop = (snap, crop, patch) => updateRecord(snap.lid, "crops",
 
 // ---- AM / PM check (Schedule 5 para 10 house record) ----
 /** v: { slot, date, time, dead, culls{legs,runt,ascites,injury,other}, causeNote, tempC, rh, nh3, co2, outsideC, waterMeter, feedKg, litter{front,middle,back}, checks[], source } */
-export function saveCheck(snap, crop, v) {
+function saveCheck_(snap, crop, v) {
   const culls = {}; for (const k of ["legs", "runt", "ascites", "injury", "other"]) culls[k] = +v.culls?.[k] || 0;
   const d = clean({ cropId: crop.id, houseId: crop.houseId, date: v.date || snap.today, slot: v.slot, time: v.time, day: cropDay(crop, v.date || snap.today), dead: +v.dead || 0, culls, causeNote: v.causeNote,
     tempC: num(v.tempC), rh: num(v.rh), nh3: num(v.nh3), co2: num(v.co2), outsideC: num(v.outsideC), waterMeter: num(v.waterMeter), feedKg: num(v.feedKg),
@@ -70,7 +70,7 @@ export function planThin(snap, crop, v) {
   return id;
 }
 /** Thin or clear-out done (§7). A clear-out closes the crop, stores its results and opens the turnaround. */
-export function saveThin(snap, crop, v, old = null) {
+function saveThin_(snap, crop, v, old = null) {
   const d = clean({ cropId: crop.id, houseId: crop.houseId, kind: v.kind, catchAt: v.catchAt, arrivalAt: v.arrivalAt, birds: num(v.birds), avgKg: num(v.avgKg), processor: v.processor, destination: v.destination, feedOffAt: v.feedOffAt,
     crew: clean({ name: v.crewName, glaa: v.crewGlaa }), salmId: v.salmId, fciId: v.fciId, status: v.status || "done", diseaseText: v.diseaseText, byName: me() });
   let id;
@@ -87,7 +87,7 @@ function closeCrop(snap, crop, thin, old) {
   updateRecord(snap.lid, "crops", crop, { clearedDate: date, stage: "turnaround", results: clean({ epef: r.epef, fcr: r.fcr, liveability: r.liveability, avgKg: r.avgKg, ageDays: r.ageDays, mort7: r.mort7, sold: r.sold, kg: r.kg }) });
   if (!openTurnaround(snap.ix, crop.houseId)) addRecord(snap.lid, "turnarounds", { houseId: crop.houseId, cropId: crop.id, clearedDate: date, steps: [], byName: me() });
 }
-export function saveDocket(snap, crop, thin, v) {
+function saveDocket_(snap, crop, thin, v) {
   updateRecord(snap.lid, "thins", thin, { docket: clean({ received: num(v.received), kg: num(v.kg), doa: num(v.doa), rejPct: num(v.rejPct), footpad: num(v.footpad), hockPct: num(v.hockPct), text: v.text }) });
   if (crop.clearedDate) { // refresh the stored results with the processor's figures
     const thins = (snap.data.thins || []).map((t) => (t.id === thin.id ? { ...t, docket: { received: num(v.received), kg: num(v.kg), doa: num(v.doa), rejPct: num(v.rejPct), footpad: num(v.footpad), hockPct: num(v.hockPct) } } : t)).filter((t) => t.cropId === crop.id);
@@ -98,7 +98,7 @@ export function saveDocket(snap, crop, thin, v) {
 }
 
 // ---- paperwork chain ----
-export function saveFci(snap, crop, thin, doc, { sentTo, method } = {}) {
+function saveFci_(snap, crop, thin, doc, { sentTo, method } = {}) {
   const old = (snap.data.fci || []).find((f) => f.thinId === thin.id);
   const d = clean({ cropId: crop.id, houseId: crop.houseId, thinId: thin.id, kind: thin.kind, sendBy: doc.sendBy, sentAt: `${snap.today}T${new Date().toTimeString().slice(0, 5)}`, sentTo: sentTo || snap.s.fciEmail, method, doc, byName: me() });
   if (old) { updateRecord(snap.lid, "fci", old, d); return old.id; }
@@ -178,3 +178,9 @@ export function tickGenerated(lid, snap, t, done) {
 }
 export const undoAdd = (lid, coll, id) => softDelete(lid, coll, id);
 export { currentCrop, addDays };
+// Each of these is one action: the records it adds share an actionId (services/linked.js).
+export const startCrop = asAction(startCrop_);
+export const saveCheck = asAction(saveCheck_);
+export const saveThin = asAction(saveThin_);
+export const saveDocket = asAction(saveDocket_);
+export const saveFci = asAction(saveFci_);

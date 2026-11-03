@@ -45,7 +45,7 @@ export function openSyncSheet() {
     offline: "No signal. Your entries are saved on this phone and will sync by themselves when you're back online.",
     waiting: "You've been offline for over a day. Your work is safe on this phone and will sync when you get a signal.",
     syncing: "Sending your latest entries now.",
-    error: "Some entries couldn't be saved online. This usually means your access to a ledger was changed.",
+    error: "Some entries couldn't be saved online. This usually means your access was changed.",
   }[s.state];
   const body = el(html`<div>
     <p class="sheet-title-sm">${s.label}</p>

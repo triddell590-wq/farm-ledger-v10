@@ -1,5 +1,7 @@
 // Small entry sheets: move to a field, death, dead lamb, rams in/out, weaning count, cull check,
 // vet operations, feed deliveries, lost tags (design/11 §6.4, §6.7, §6.9, §9).
+import { checkDate, checkCapacity } from "../../../core/sanity.js";
+import { countsAt } from "../model/mobs.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -40,6 +42,7 @@ export function deathSheet(snap, { mob = null, sheep = null } = {}) {
   const strip = photoStrip({ lid: snap.lid, role: snap.role, parent: { coll: "deaths", label: "Death" }, title: "Photos", hint: "Docket, carcass, tag" });
   body.appendChild(strip.node);
   const { form } = entrySheet({ title: "Death", body, label: "Save death", missing: (v) => (!mp.mob() ? "Choose the mob to save" : !v.age ? "Choose the age" : !(+v.number > 0) ? "Add how many" : null),
+    checks: (v) => [...checkDate(v.date, snap.today, { what: "The date of death" }), ...(mp.mob() ? checkCapacity(v.number, countsAt(snap.data, v.date || snap.today).get(mp.mob().id), { what: "sheep", where: mp.mob().name }) : [])],
     save: (v, sh) => { const deathId = A.death(snap.lid, { date: v.date, mobId: mp.mob().id, mobName: mp.mob().name, number: +v.number, tag: v.tag, sheepId: sheep?.id, cause: v.cause, found: v.found, over18m: v.age === "over", tagged: true, disposal: v.disposal, docket: v.docket }); strip.commit(deathId, `Death · ${mp.mob().name}${v.tag ? " · " + v.tag : ""}`); if (sheep) A.updateSheep(snap.lid, sheep, { status: "died", offDate: v.date }); sh.close(true, { force: true }); toast(v.age === "over" ? "Death saved. Phone the TSE sampling site within 24 hours." : "Death saved"); } });
   form.onChange(() => { body.querySelector("[data-tse]").innerHTML = form.values().age === "over" ? `<div class="field-error" role="alert">${icon("alert")}<span>Phone the TSE sampling site within 24 hours.</span></div>` : ""; });
 }

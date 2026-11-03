@@ -1,3 +1,4 @@
+import { matchScore } from "../../../core/rank.js";
 // The dairy herd worked out from its records. Pure: no DOM, no store.
 // Animal record (cattle engine shape shared with Beef: tag, dob, sex, breed, damId/damTag,
 // sireText, onDate, offDate, offTo, bornInHerd, reg{}) plus dairy fields: cowNo, name,
@@ -85,15 +86,8 @@ export function cowName(a) { return a.name || ""; }
 export function cowWithName(a) { return [cowLabel(a), a.name].filter(Boolean).join(" "); }
 export function ordinal(n) { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
 
-/** Search: cow number, name, last digits of the tag. */
-export function cowMatches(a, q) {
-  q = String(q || "").trim().toLowerCase(); if (!q) return true;
-  if (String(a.cowNo || "").toLowerCase() === q || String(a.cowNo || "").toLowerCase().startsWith(q)) return true;
-  if (a.name && a.name.toLowerCase().includes(q)) return true;
-  const d = q.replace(/\D/g, "");
-  if (d.length >= 3 && String(a.tag || "").replace(/\D/g, "").endsWith(d)) return true;
-  return normTag(a.tag).includes(normTag(q));
-}
+/** Search: cow number, name, last digits of the tag (ranking: core/rank.js). */
+export function cowMatches(a, q) { return matchScore({ no: a.cowNo, name: a.name, tag: a.tag }, q) != null; }
 export function sortByNo(a, b) {
   const x = parseFloat(a.cowNo), y = parseFloat(b.cowNo);
   if (!Number.isNaN(x) && !Number.isNaN(y) && x !== y) return x - y;

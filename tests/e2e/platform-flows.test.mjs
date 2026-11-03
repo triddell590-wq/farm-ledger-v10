@@ -9,13 +9,16 @@ after(async () => { await env.close(); });
 
 const hash = (p) => p.evaluate(() => location.hash);
 
-test("sign up -> check email -> onboarding -> Overview with one card per ledger, rail in sector order", async () => {
+test("sign up -> check email -> onboarding -> Overview with one card per ledger, picker in sector order", async () => {
   const p = await H.phone(env);
   await H.signUp(p);
   assert.equal(await hash(p), "#/verify");
   await H.onboard(p, { types: ["layers", "beef", "sheep"] });
-  const rail = await p.locator(".rail .rail-pill").allTextContents();
-  assert.deepEqual(rail.map((t) => t.trim()), ["Farm", "Beef", "Sheep", "Layers"]);
+  const rail = await p.locator(".rail .rail-pill").allTextContents(); // wide-screen sidebar (hidden on phones)
+  assert.deepEqual(rail.map((t) => t.trim()), ["Farm", "Beef herd", "Sheep flock", "Laying hens"]);
+  await p.locator("[data-picker]").click(); await H.settle(p, 500);
+  assert.deepEqual((await p.locator(".lp [data-lp] .primary").allTextContents()).map((t) => t.trim()), ["Beef herd", "Sheep flock", "Laying hens"]);
+  await p.keyboard.press("Escape"); await H.settle(p, 400);
   assert.equal(await p.locator("[data-ledger-card]").count(), 3);
   assert.equal(await p.locator("#stage h1").first().textContent(), "Drumlin Farm");
   assert.deepEqual(p.errors, []);
@@ -41,7 +44,7 @@ test("required fields: Save says what is missing; onboarding needs a farm name a
   await p.getByLabel("Farm name").fill("X"); await p.locator("[data-next]").click(); await H.settle(p, 600);
   assert.equal((await p.locator("[data-next]").textContent()).trim(), "Pick at least one");
   await p.locator(".type-tile[data-type=pigs]").click();
-  assert.equal((await p.locator("[data-next]").textContent()).trim(), "Continue with 1 ledger");
+  assert.equal((await p.locator("[data-next]").textContent()).trim(), "Continue with Pigs");
   assert.equal(await p.locator(".type-tile[data-type=pigs]").getAttribute("aria-checked"), "true");
   await p.ctx.close();
 });
@@ -69,7 +72,7 @@ test("invite a worker; they join from the link and cannot see money", async () =
   await p.getByLabel("Their name").fill("Seán");
   await p.locator(".sheet-foot .btn").click(); await H.settle(p, 900);
   const msg = await p.locator("[data-msg]").textContent();
-  assert.match(msg, /has invited Seán to help with the Beef records on Drumlin Farm in Farm Ledger\. Tap to join: http.*#\/invite\/[A-Z0-9]{26} \. The link works once and runs out on/);
+  assert.match(msg, /has invited Seán to help with the Beef( herd)? records on Drumlin Farm in Farm Ledger\. Tap to join: http.*#\/invite\/[A-Z0-9]{26} \. The link works once and runs out on/);
   const code = /#\/invite\/([A-Z0-9]{26})/.exec(msg)[1];
   await p.keyboard.press("Escape"); await H.settle(p, 400);
   assert.match(await p.locator("[data-inv]").textContent(), /Seán · Worker on Beef/);
@@ -107,7 +110,7 @@ test("offline: pill says Saved on phone, entries still save, back online says Sy
   await p.getByLabel("Job", { exact: true }).fill("Dose ewes"); await p.locator(".sheet-foot .btn").click(); await H.settle(p, 600);
   assert.match(await p.locator(".toast").textContent(), /Job saved/);
   await H.go(p, "/farm/today");
-  assert.match(await p.locator(".task").first().textContent(), /Dose ewes/);
+  assert.match((await p.locator(".task").allTextContents()).join(" | "), /Dose ewes/);
   await p.ctx.setOffline(false); await H.settle(p, 300);
   assert.equal((await p.locator(".sync .lbl").textContent()).trim(), "Synced");
   await p.ctx.close();

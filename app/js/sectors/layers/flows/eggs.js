@@ -1,5 +1,6 @@
 // Egg entries (design/14 §6): packer collection, the weekly packer statement (reconciler), egg
 // store temperature, farm-gate stock and sales. £ only for money roles, only into finance.
+import { checkMoney } from "../../../core/sanity.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -103,7 +104,7 @@ export function farmGateSheet(snap, { kind = "sale" } = {}) {
   const body = el(html`<form novalidate>${chipsField("kind", "What", [["stock", "Eggs into farm-gate stock"], ["sale", "Eggs sold"]], kind)}
     <div class="form-group" style="margin-top:12px">${dateField("date", "Date", snap.today)}${dateField("layDate", "Laid on", snap.today)}${numField("eggs", "Eggs", "", { step: 1 })}${money ? numField("amount", "Takings", "", { unit: "£", optional: true }) : ""}</div>
     ${lawNote(RULES.ungraded.NI.text)}</form>`);
-  entrySheet({ title: "Farm gate", body, label: "Save", missing: (v) => (!+v.eggs ? "Add the number of eggs" : null),
+  entrySheet({ title: "Farm gate", body, label: "Save", missing: (v) => (!+v.eggs ? "Add the number of eggs" : null), checks: (v) => checkMoney(v.amount, "The takings"),
     save(v, sh) { saveFarmGate(snap, v); sh.close(true, { force: true }); toast(v.kind === "sale" ? `${v.eggs} eggs sold` : `${v.eggs} eggs into farm-gate stock`); } });
 }
 export { lineAmount };

@@ -54,7 +54,6 @@ const SCREENS = [
   ["54-tool-finish", "tools/finish"],
   ["55-tool-meal", "tools/meal"],
   ["56-tool-slurry", "tools/slurry"],
-  ["57-tool-scale", "tools/scale"],
   ["58-register-calvings", "paperwork/calvings"],
   ["59-register-deaths", "paperwork/deaths"],
 ];

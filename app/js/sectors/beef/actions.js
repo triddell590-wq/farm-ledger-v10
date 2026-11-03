@@ -1,7 +1,8 @@
 // Every Beef write in one place (screens call these; unit tests call them against the memory
 // store under the rules model). Writes return at once (offline-first); ids come back so the
 // UI can offer Undo. Records keep v9's field names where v9 had them (see model/animals.js).
-import { addRecord, updateRecord, setMeta, softDelete, restore } from "../../services/records.js";
+import { cattleCount } from "../../ui/format.js";
+import { addRecord, updateRecord, setMeta, softDelete, restore, asAction } from "../../services/records.js";
 import { addDays, daysBetween, todayStr } from "../../core/dates.js";
 import { store } from "../../core/store.js";
 import { nextTag, normTag, parseTag, tagParts } from "./model/tags.js";
@@ -17,7 +18,7 @@ export function addAnimal(lid, a) { return addRecord(lid, "animals", clean({ sta
 export const updateAnimal = (lid, old, changes) => updateRecord(lid, "animals", old, changes);
 
 /** Record a calving: calf animals, the calving event, next tag in the tag book. */
-export function recordCalving(lid, snap, { damId, date, time = "", ease = 1, sireText = "", sireBreed = "", calves }) {
+function recordCalving_(lid, snap, { damId, date, time = "", ease = 1, sireText = "", sireBreed = "", calves }) {
   const dam = snap.ix.byId.get(damId);
   const ids = []; const out = [];
   for (const c of calves) {
@@ -43,7 +44,7 @@ export function recordCalving(lid, snap, { damId, date, time = "", ease = 1, sir
  * Treatment: one medicines record per animal (DAERA "use" layout, v9 field names) so the
  * register prints line by line; all share courseId. doses: [{ animalId, dose, weightKg }].
  */
-export function recordTreatment(lid, snap, t) {
+function recordTreatment_(lid, snap, t) {
   const courseDays = Math.max(1, +t.courseDays || 1);
   const lastDate = addDays(t.date, courseDays - 1);
   const wdMeat = t.wdMeatDays === "" || t.wdMeatDays == null ? null : +t.wdMeatDays;
@@ -73,7 +74,7 @@ export function recordWeights(lid, entries, { date = todayStr(), sessionId = sto
 /** Animals leaving by sale (design/10 §6.4): animal off, movement off, sale record, finance line.
  * £ goes ONLY into the finance entry (design/01 §15): the sale record keeps weights, grade, lot,
  * buyer and BCRS checks, and points at the finance entry (financeId). */
-export function recordSale(lid, snap, { kind, date, buyer = "", buyerAddress = "", animalIds, lines = [], haulage = "", fci = false, note = "" }) {
+function recordSale_(lid, snap, { kind, date, buyer = "", buyerAddress = "", animalIds, lines = [], haulage = "", fci = false, note = "" }) {
   const offTo = [buyer, buyerAddress].filter(Boolean).join(", ") || { mart: "Mart", factory: "Factory", private: "Private sale", export: "Export" }[kind];
   const saleLines = []; const moneyLines = []; let total = 0;
   for (const id of animalIds) {
@@ -93,14 +94,37 @@ export function recordSale(lid, snap, { kind, date, buyer = "", buyerAddress = "
   const saleId = store.newId();
   const moveId = addRecord(lid, "movements", { kind: "off", date, animalIds, to: offTo, nifaisNotified: kind === "factory" ? date : null, haulage, fci });
   let financeId = null;
-  if (total > 0 && canWrite(snap.role, "finance")) financeId = addRecord(lid, "finance", { kind: "revenue", category: "Livestock Sales", amount: Math.round(total * 100) / 100, date, note: `${saleLines.length} cattle · ${offTo}${note ? " · " + note : ""}`, lines: moneyLines, source: "sale", saleId });
-  addRecord(lid, "sales", clean({ kind, date, buyer, buyerAddress, lines: saleLines, financeId, moveId, haulage, fci }), saleId);
-  return { saleId, moveId, financeId, total };
+  if (total > 0 && canWrite(snap.role, "finance")) financeId = addRecord(lid, "finance", { kind: "revenue", category: "Livestock Sales", amount: Math.round(total * 100) / 100, date, note: `${cattleCount(saleLines.length)} · ${offTo}${note ? " · " + note : ""}`, lines: moneyLines, source: "sale", saleId });
+  // A factory sale saved before the kill sheet comes (review A #3): keep it, mark it, and make a job.
+  const awaitingKillSheet = kind === "factory" && moneyLines.some((l) => !l.deadKg && !l.price) ? true : undefined;
+  addRecord(lid, "sales", clean({ kind, date, buyer, buyerAddress, lines: saleLines, financeId, moveId, haulage, fci, awaitingKillSheet }), saleId);
+  return { saleId, moveId, financeId, total, awaitingKillSheet: !!awaitingKillSheet };
+}
+
+/**
+ * The kill sheet arrives for a factory sale (A #3): weights and grades go on the sale lines, the
+ * £ goes into a finance entry (or the existing one), and the sale stops waiting.
+ * lines: [{ animalId, deadKg, grade, pricePerKg, price }]
+ */
+export function addKillSheet(lid, snap, sale, lines) {
+  const by = new Map(lines.map((l) => [l.animalId, l]));
+  const saleLines = (sale.lines || []).map((l) => { const n = by.get(l.animalId) || {}; return clean({ ...l, deadKg: +n.deadKg || l.deadKg || null, grade: n.grade || l.grade || "" }); });
+  const moneyLines = saleLines.map((l) => { const n = by.get(l.animalId) || {}; const price = +n.price || (+n.deadKg && +n.pricePerKg ? +n.deadKg * +n.pricePerKg : 0); return clean({ animalId: l.animalId, tag: l.tag, desc: l.desc, deadKg: l.deadKg || null, grade: l.grade || "", pricePerKg: +n.pricePerKg || null, price: price ? Math.round(price * 100) / 100 : null }); });
+  const total = Math.round(moneyLines.reduce((t, l) => t + (l.price || 0), 0) * 100) / 100;
+  let financeId = sale.financeId || null;
+  if (total > 0 && canWrite(snap.role, "finance")) {
+    const old = financeId && snap.data.finance.find((f) => f.id === financeId);
+    const data = { kind: "revenue", category: "Livestock Sales", amount: total, date: sale.date, lines: moneyLines, source: "sale", saleId: sale.id, note: `${cattleCount(saleLines.length)} · ${sale.buyer || "Factory"} · kill sheet` };
+    if (old) updateRecord(lid, "finance", old, data); else financeId = addRecord(lid, "finance", sale.actionId ? { ...data, actionId: sale.actionId } : data);
+  }
+  const still = saleLines.some((l) => !l.deadKg) && !(total > 0);
+  updateRecord(lid, "sales", sale, { lines: saleLines, financeId, awaitingKillSheet: still ? true : false });
+  return { total, financeId, still };
 }
 
 /** Animals arriving (design/10 §6.5). animals: [{ tag, dob, sex, breed, colour, kg, price, bvd }]
  * Prices go only into the finance entry (lines per animal); never on the animal or purchase. */
-export function recordPurchase(lid, snap, { date, fromName = "", fromAddress = "", herdNo = "", lot = "", statementNo = "", animals, prevMoves = 0, notified = false, total = null }) {
+function recordPurchase_(lid, snap, { date, fromName = "", fromAddress = "", herdNo = "", lot = "", statementNo = "", animals, prevMoves = 0, notified = false, total = null }) {
   const pid = store.newId(); const fromText = [fromName, fromAddress].filter(Boolean).join(", "); const ids = [];
   for (const x of animals) {
     ids.push(addRecord(lid, "animals", clean({ tag: (parseTag(x.tag)?.formatted) || x.tag, dob: x.dob || "", sex: x.sex || "", breed: x.breed || "", colour: x.colour || "", onDate: date, fromText, fromHerdNo: herdNo, lot: x.lot || lot,
@@ -109,7 +133,7 @@ export function recordPurchase(lid, snap, { date, fromName = "", fromAddress = "
   }
   const cost = total != null && total !== "" ? +total : animals.reduce((s, x) => s + (+x.price || 0), 0);
   const untested = animals.filter((x) => !x.bvd || /BVDU|untested/i.test(x.bvd)).length;
-  addRecord(lid, "purchases", clean({ kind: "livestock", date, supplier: fromName, fromText, statementNo, productName: `${animals.length} cattle`, animalTags: animals.map((x) => x.tag), animals: animals.map((x) => ({ tag: x.tag, lot: x.lot || lot, weight: x.kg || "" })),
+  addRecord(lid, "purchases", clean({ kind: "livestock", date, supplier: fromName, fromText, statementNo, productName: cattleCount(animals.length), animalTags: animals.map((x) => x.tag), animals: animals.map((x) => ({ tag: x.tag, lot: x.lot || lot, weight: x.kg || "" })),
     notified: !!notified, notifiedAt: notified ? new Date().toISOString() : null, isolationUntil: addDays(date, 28), untestedBvd: untested }), pid);
   addRecord(lid, "movements", { kind: "on", date, animalIds: ids, from: fromText, lot, nifaisNotified: notified ? date : null });
   let financeId = null;
@@ -125,7 +149,7 @@ export function setMarketPrices(lid, snap, changes) {
   return addRecord(lid, "finance", { kind: "prices", source: "beef", ...changes }, MARKET_ID);
 }
 
-export function recordDeath(lid, snap, { animalId, date, cause, causeText = "", foundAtInspection = false, disposal, docketNo = "" }) {
+function recordDeath_(lid, snap, { animalId, date, cause, causeText = "", foundAtInspection = false, disposal, docketNo = "" }) {
   const a = snap.ix.byId.get(animalId);
   const tse = (ageMonths(a, date) ?? 0) >= 48;
   updateRecord(lid, "animals", a, { offDate: date, offTo: "Dead", disposal, offReason: "died", status: "gone" });
@@ -134,7 +158,7 @@ export function recordDeath(lid, snap, { animalId, date, cause, causeText = "", 
 }
 
 /** Internal move to a group / shed / field (no NIFAIS). housing=true sets the housed date. */
-export function recordMove(lid, snap, { animalIds, groupId, date, housing = false, note = "" }) {
+function recordMove_(lid, snap, { animalIds, groupId, date, housing = false, note = "" }) {
   const g = snap.ix.groups.get(groupId);
   for (const id of animalIds) { const a = snap.ix.byId.get(id); if (a && a.groupId !== groupId) updateRecord(lid, "animals", a, { groupId, ...(housing ? { housedOn: date } : {}) }); }
   return addRecord(lid, "movements", { kind: housing ? "housing" : "internal", date, animalIds, to: g ? g.name : "", groupId, note });
@@ -164,6 +188,7 @@ export function tickGenerated(lid, snap, t, done, by = {}) {
   if (a.type === "reg") { const an = snap.ix.byId.get(a.animalId); return updateRecord(lid, "animals", an, { reg: { ...(an.reg || {}), [a.step]: done ? (t.when || today) : null } }); }
   if (a.type === "notified") { const rec = snap.data[a.coll].find((r) => r.id === a.id); return rec && updateRecord(lid, a.coll, rec, { nifaisNotified: done ? today : null }); }
   if (a.type === "tse") { const rec = snap.data.deaths.find((r) => r.id === a.id); return rec && updateRecord(lid, "deaths", rec, { tseDone: done ? today : false }); }
+  if (a.type === "killsheet" && done) { if (globalThis.location) globalThis.location.hash = `#/l/${lid}/sale/${a.id}`; return null; } // ticking opens the kill sheet instead
   if (a.type === "retagDone") { const an = snap.ix.byId.get(a.animalId); return done ? recordRetag(lid, an, { date: today, which: an.retagWhich, newTag: an.retagNew, fitted: true }) : null; }
   const existing = snap.data.tasks.find((x) => x.sourceRef === t.key);
   const stamp = done ? { done: true, doneAt: new Date(), doneBy: by.uid || null, doneByName: by.name || null } : { done: false, doneAt: null, doneBy: null, doneByName: null };
@@ -175,3 +200,10 @@ export function tickGenerated(lid, snap, t, done, by = {}) {
 export const createTbTest = (lid, t) => addRecord(lid, "tbTests", clean({ stage: "planned", presented: {}, results: {}, ...t }));
 export const updateTbTest = (lid, old, ch) => updateRecord(lid, "tbTests", old, ch, { history: false });
 export { softDelete, restore, setMeta };
+// Each of these is one action: the records it adds share an actionId (services/linked.js).
+export const recordCalving = asAction(recordCalving_);
+export const recordTreatment = asAction(recordTreatment_);
+export const recordSale = asAction(recordSale_);
+export const recordPurchase = asAction(recordPurchase_);
+export const recordDeath = asAction(recordDeath_);
+export const recordMove = asAction(recordMove_);

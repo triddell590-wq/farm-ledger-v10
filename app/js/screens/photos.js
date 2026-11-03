@@ -22,7 +22,7 @@ export default async function photosScreen({ params }) {
   const out = body.querySelector("[data-out]");
   let unsub = () => {}; let viewer = null;
   if (!ledger || moneyFilterFor(ledger.role) === "none") {
-    out.append(el(emptyState({ iconName: "lock", title: "No photos to show", body: farmMode ? "Only the farm's owner and managers see the farm's photos." : "You can't open this ledger." })));
+    out.append(el(emptyState({ iconName: "lock", title: "No photos to show", body: farmMode ? "Only the farm's owner and managers see the farm's photos." : "You can't open this." })));
   } else {
     const role = ledger.role;
     const note = role === "accountant" ? "You see photos on money records only." : role === "worker" || role === "viewer" ? "Photos on money records are only shown to money roles." : "";

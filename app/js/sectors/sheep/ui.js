@@ -11,6 +11,7 @@ import { swatch } from "./model/settings.js";
 import { WORMER_GROUPS } from "./model/health.js";
 import { STAGES, STAGE_SHORT } from "./model/year.js";
 import { activeMobs, mobField, CLASSES } from "./model/mobs.js";
+import { isThisRight } from "../../ui/sanity.js";
 
 let cssDone = false;
 export function ensureCss() {
@@ -71,7 +72,7 @@ export function bigStepper({ value = 0, min = 0, max = 99999, jumps = [5, 10], l
 /**
  * Entry sheet with an honest Save button. missing(values) -> reason|null; save(values, sheet).
  */
-export function entrySheet({ title, body, label, missing, save, dirty, size }) {
+export function entrySheet({ title, body, label, checks, missing, save, dirty, size }) {
   const btn = el(html`<button type="button" class="btn">${label}</button>`);
   const f = wireForm(body);
   const lab = typeof label === "function" ? label : () => label;
@@ -79,7 +80,7 @@ export function entrySheet({ title, body, label, missing, save, dirty, size }) {
   f.onChange(refresh); body.addEventListener("click", () => setTimeout(refresh, 0)); body.addEventListener("input", () => setTimeout(refresh, 0)); refresh();
   const start = JSON.stringify(f.values());
   const sh = openSheet({ title, body, footer: btn, size, isDirty: dirty || (() => JSON.stringify(f.values()) !== start), discardTitle: `Discard this ${title.toLowerCase()}?` });
-  btn.onclick = async () => { const v = f.values(); if (missing(v)) return; btn.disabled = true; try { await save(v, sh); } finally { btn.disabled = false; } };
+  btn.onclick = async () => { const v = f.values(); if (missing(v)) return; if (checks && !(await isThisRight(() => checks(v)))) return; btn.disabled = true; try { await save(v, sh); } finally { btn.disabled = false; } };
   return { sheet: sh, form: f, refresh, btn };
 }
 export const opt = (list) => list.map((x) => (Array.isArray(x) ? { value: x[0], label: x[1] ?? x[0] } : { value: x, label: x }));

@@ -9,11 +9,12 @@ import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
 import { taskList } from "../../../ui/tasks.js";
+import { nowCount, homeDedupe, alertLevel } from "../../../services/today-rules.js";
 import { todaysTasks } from "../../../services/tasks.js";
 import { canWrite } from "../../../core/policy.js";
 import { largeTitle, groupLabel, emptyState } from "../../../screens/common.js";
 import { alertCard } from "../../../screens/overview-today.js";
-import { bannerItems } from "../../../content/region-rules.js";
+import { homeBanners } from "../../../content/region-rules.js";
 import { liveScreen, flowArg } from "./live.js";
 import { cropBar, n0, pc, dm, when, hm, okCard, plural } from "../ui.js";
 import { houseState, cropEvents, clearDayOf, aliveStart, aliveEnd, deathsOn, cumMortPct, waterChangePct, cropNo, listOf } from "../model/crop.js";
@@ -43,9 +44,9 @@ async function taskSection(snap, node) {
   const gen = todayTasks(snap.c).filter((t) => t.kind !== "check").map((t) => ({ id: t.key, title: t.title, due: t.due, sub: t.sub, href: t.href, legal: t.legal, generated: true, done: false, ledger: snap.ledger, tick: (d) => tickGenerated(snap.lid, snap, t, d) }));
   const checks = todayTasks(snap.c).filter((t) => t.kind === "check").map((t) => ({ id: t.key, title: t.title, due: t.due, sub: t.sub, href: t.href, legal: true, generated: true, done: false, ledger: snap.ledger, tick: () => {} }));
   const stored = (await todaysTasks([snap.ledger])).filter((t) => !t.sourceRef || t.done);
-  const tasks = [...checks, ...gen, ...stored].sort((a, b) => (a.done - b.done) || (b.legal ? 1 : 0) - (a.legal ? 1 : 0) || String(a.due).localeCompare(String(b.due)));
-  tb.replaceChildren(el(groupLabel("To do today", tasks.filter((t) => !t.done).length || "")));
-  const list = tasks.length ? taskList(tasks, { max: 10, onChange: () => {} }) : el(okCard("Nothing else to do today."));
+  const tasks = homeDedupe(broilerAlerts(snap.c).filter((a) => a.level === "late" && a.kind !== "mortality" && !a.key.startsWith("check:")).slice(0, 3), [...checks, ...gen, ...stored]).tasks; // late alerts stay at the top
+  tb.replaceChildren(el(groupLabel("To do today", nowCount(tasks, snap.today) || "")));
+  const list = tasks.length ? taskList(tasks, { max: 10, onChange: () => {}, today: snap.today }) : el(okCard("Nothing else to do today."));
   // AM / PM rows open the check sheet rather than being ticked off
   list.querySelectorAll(".task").forEach((r) => { const t = checks.find((x) => x.id === r.dataset.task); if (t) { const b = r.querySelector(".tick"); b.disabled = true; b.setAttribute("aria-label", `${t.title} — open the check`); } });
   tb.append(list);
@@ -58,7 +59,7 @@ function paint(snap) {
   const alerts = broilerAlerts(snap.c);
   const mort = alerts.filter((a) => a.kind === "mortality");
   const late = alerts.filter((a) => a.level === "late" && a.kind !== "mortality" && !a.key.startsWith("check:")).slice(0, 3);
-  const banners = bannerItems(snap.ledger.region || "NI", ["broilers"]);
+  const banners = homeBanners(snap.ledger.region || "NI", ["broilers"], today);
   const up = comingUp(snap.c, 3);
   return html`<div>
     ${largeTitle(title, contextLine(snap))}${viewPills(snap.lid, [["crop", "This crop"], ["brooding", "Brooding set-up"], ["turnaround", "Turnaround"]], "crop", "Crop views")}

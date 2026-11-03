@@ -2,12 +2,22 @@
 // Every £ lives in finance records (owner, manager, accountant only); kill sheets, feed deliveries
 // and moves link to them by id but never hold prices themselves.
 const sum = (a, f) => a.reduce((t, x) => t + (+f(x) || 0), 0);
-export const AHDB_COP = { ppk: 201, label: "AHDB GB full cost of production, Q2 2026 (Research A)" };
+export const AHDB_COP = { ppk: 201, label: "AHDB GB full cost of production, Q2 2026" };
 export const SPP_NOTE = "Standard Pig Price: enter the figure from your processor or AHDB — the app never fetches it without a source.";
 const VARIABLE = new Set(["Feed", "Vet & medicine", "Medicine", "Bedding", "Animal Purchase"]);
 const INTEGRATOR_OWNS = new Set(["Feed", "Animal Purchase"]);
 /** Rows that are the farmer's own money when pigs and feed belong to the integrator. */
 export const ownMoneyRow = (r) => (r.kind === "revenue" ? r.source === "contract" : !INTEGRATOR_OWNS.has(r.category));
+
+// Cost lines a full cost of production includes (AHDB). Shown as "missing" when none is recorded,
+// so a feed-only figure isn't set against a full-cost benchmark unexplained (review B #23).
+export const FULL_COST_LINES = [["Feed", ["Feed"]], ["Vet and medicine", ["Vet & medicine", "Medicine"]], ["Labour", ["Wages"]], ["Power and fuel", ["Diesel", "Power", "Electricity"]], ["Bedding", ["Bedding"]], ["Repairs", ["Machinery Maintenance", "Repairs"]], ["Rent, rates and insurance", ["Rent & rates", "Insurance"]]];
+export function missingCostLines(rows) {
+  const have = new Set(rows.filter((r) => r.kind === "expense" && +r.amount > 0).map((r) => r.category));
+  return FULL_COST_LINES.filter(([, cats]) => !cats.some((c) => have.has(c))).map(([label]) => label);
+}
+/** Cost per pig for a small herd (review B #24): costs ÷ pigs sold or finished, never ÷ every pig on the farm. */
+export function costPerPigSold(costs, pigsOut) { return pigsOut > 0 ? costs / pigsOut : null; }
 
 /** Period figures from finance rows (already filtered to the period). */
 export function moneyFigures(rows, { contract = null } = {}) {

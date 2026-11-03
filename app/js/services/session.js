@@ -5,6 +5,11 @@ import { emit } from "../core/bus.js";
 import { listMine, groupByFarm } from "./ledgers.js";
 import { ensureProfile } from "./profile.js";
 import { SECTORS } from "../core/policy.js";
+import { friendlyName } from "../sectors/meta.js";
+
+// Old default names ("Beef", "Poultry – Layers") show as the farmer words ("Beef herd", "Laying
+// hens") everywhere; names people typed are kept as they are (review A #42).
+const named = (list) => (list || []).map((l) => (l.type === "farm" ? l : { ...l, name: friendlyName(l) }));
 
 const S = { user: null, profile: null, ledgers: null, farmId: null, loading: null };
 const LS_FARM = "fl10-farm"; const LS_PLACE = "fl10-place";
@@ -33,14 +38,14 @@ export const session = {
     if (S.loading && !force) return S.loading;
     S.loading = (async () => {
       try { S.profile = await ensureProfile(); } catch (e) { console.warn("profile", e); }
-      try { S.ledgers = await listMine(); } catch (e) { console.warn("ledgers", e); S.ledgers = S.ledgers || []; }
+      try { S.ledgers = named(await listMine()); } catch (e) { console.warn("ledgers", e); S.ledgers = S.ledgers || []; }
       emit("session:ledgers", S.ledgers);
     })();
     try { await S.loading; } finally { S.loading = null; }
   },
   reset() { S.ledgers = null; S.profile = null; S.farmId = null; },
   /** Server-side use (build/notify/send.mjs): set one person's ledgers so sector loaders find their farm space. */
-  useLedgers(list) { S.ledgers = list || []; S.farmId = null; },
+  useLedgers(list) { S.ledgers = named(list); S.farmId = null; },
   setProfileLocal(p) { S.profile = { ...(S.profile || {}), ...p }; },
   rememberPlace(path) { try { localStorage.setItem(LS_PLACE, JSON.stringify({ path, at: Date.now() })); } catch (e) { /* blocked */ } },
   lastPlace(maxAge) { try { const p = JSON.parse(localStorage.getItem(LS_PLACE) || "null"); return p && Date.now() - p.at < maxAge ? p.path : null; } catch (e) { return null; } },

@@ -6,11 +6,12 @@ import { html, raw } from "../../../core/html.js";
 import { el, reduceMotion } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
 import { taskList } from "../../../ui/tasks.js";
+import { nowCount, homeDedupe } from "../../../services/today-rules.js";
 import { todaysTasks } from "../../../services/tasks.js";
 import { canWrite } from "../../../core/policy.js";
 import { largeTitle, groupLabel, emptyState } from "../../../screens/common.js";
 import { alertCard } from "../../../screens/overview-today.js";
-import { bannerItems } from "../../../content/region-rules.js";
+import { homeBanners } from "../../../content/region-rules.js";
 import { liveSnap } from "../data.js";
 import { wireFlows, flowArg } from "./live.js";
 import { miniCurve, dm, d2, n0, n1, okCard } from "../ui.js";
@@ -51,8 +52,10 @@ function aiBanner(snap) {
       <div class="a-body">Day ${ai.daysHoused} housed · ${freeRangeText(snap.c.region)}.${ai.near ? " An outbreak is within 10 km — keep the unit locked down." : ""}</div>
       ${bioDone ? html`<div class="a-body">✓ Biosecurity check done today</div>` : canWrite(snap.role, "biosecurity") ? html`<div class="a-actions"><span>Biosecurity check today</span><button type="button" class="btn small" data-flow="log" data-arg="${flowArg({ kind: "biosecurity" })}">Do it</button></div>` : ""}</div></div>`;
   }
-  const items = bannerItems(snap.ledger.region || "NI", ["layers"]);
-  return html`<div class="alert info" role="status"><span class="a-icon">${raw(icon("info"))}</span><div style="flex:1;min-width:0"><div class="a-title">No housing order in Northern Ireland</div><div class="a-body">${AI_STATUS.liftedLine}</div>${items.length ? html`<div class="a-body ly-src">${items.map((b) => b.text).join(" ")} Checked ${d2(b0(items).checkedOn)}.</div>` : ""}</div></div>`;
+  // nothing in force: say so only if it changed this week (lifted), once, in one line (B #19)
+  const items = homeBanners(snap.ledger.region || "NI", ["layers"], snap.today);
+  if (!items.length) return "";
+  return html`<div class="alert info" role="status"><span class="a-icon">${raw(icon("info"))}</span><div style="flex:1;min-width:0"><div class="a-title">No housing order in Northern Ireland</div><div class="a-body">${AI_STATUS.liftedLine}</div></div></div>`;
 }
 const b0 = (a) => a[0] || {};
 
@@ -107,7 +110,7 @@ async function paint(body, snap) {
   const classB = alerts.filter((a) => a.key.startsWith("classb:"));
   const node = el(html`<div>
     <div>${largeTitle("Houses", contextLine(snap))}</div>
-    <div class="section">${aiBanner(snap)}</div>
+    ${(() => { const b = aiBanner(snap); return b ? html`<div class="section">${b}</div>` : ""; })()}
     ${cards.filter((k) => k.sp).map((k) => html`<div class="section">${spikeCard(snap, k)}</div>`)}
     ${classB.length || lateOther.length ? html`<div class="section">${[...classB, ...lateOther].map((a) => alertCard(a, false))}</div>` : ""}
     <div class="section ${compact ? "ly-compact" : ""}">${cards.map((k) => card(snap, k, { compact }))}</div>
@@ -116,10 +119,10 @@ async function paint(body, snap) {
   </div>`);
   const gen = todayTasks(snap.c).map((t) => ({ id: t.key, title: t.title, due: t.due, sub: t.sub, href: t.href, legal: t.legal, generated: true, done: false, ledger: snap.ledger, tick: (d) => tickGenerated(lid, snap, t, d) }));
   const stored = (await todaysTasks([snap.ledger])).filter((t) => !t.sourceRef || t.done);
-  const tasks = [...gen, ...stored].sort((a, b) => (a.done - b.done) || (b.legal ? 1 : 0) - (a.legal ? 1 : 0) || String(a.due).localeCompare(String(b.due)));
+  const tasks = homeDedupe([...classB, ...lateOther], [...gen, ...stored]).tasks; // late alerts stay at the top
   const tb = node.querySelector("[data-tasks]");
-  tb.append(el(groupLabel("To do today", tasks.filter((t) => !t.done).length || "")));
-  tb.append(tasks.length ? taskList(tasks, { max: 12, onChange: () => {} }) : el(okCard("Nothing else to do today.")));
+  tb.append(el(groupLabel("To do today", nowCount(tasks, snap.today) || "")));
+  tb.append(tasks.length ? taskList(tasks, { max: 12, onChange: () => {}, today: snap.today }) : el(okCard("Nothing else to do today.")));
   const before = new Map([...body.querySelectorAll("[data-house]")].map((n) => [n.dataset.house, n.querySelector("[data-lay]")?.textContent]));
   body.replaceChildren(node); if (y0) window.scrollTo(0, y0);
   // a house whose lay figure just changed (sheet saved) flashes once

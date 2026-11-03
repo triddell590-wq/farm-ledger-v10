@@ -1,0 +1,30 @@
+/* Record summary, edit and delete sheets, and More → Fix a mistake (ui/record-sheet.js,
+   screens/records-browser.js). Loaded on demand. */
+.rec-sheet{padding:0 4px}
+.rec-kind{display:flex;align-items:center;gap:8px;margin:0;font-size:15px;line-height:20px;font-weight:700;color:var(--ink-2);text-transform:none}
+.rec-legal{height:24px;font-size:12px}
+.rec-title{margin:4px 0 0;font-size:24px;line-height:30px;font-weight:700;overflow-wrap:anywhere}
+.rec-when{margin:2px 0 0;font-size:17px;line-height:22px;color:var(--ink-2)}
+.rec-kv{margin:16px 0 0;background:var(--surface);border-radius:var(--r-lg);padding:14px 16px;font-size:16px;line-height:22px;gap:10px 16px}
+.rec-kv dd{overflow-wrap:anywhere;min-width:0}
+.rec-sub{margin:20px 4px 6px;font-size:15px;line-height:20px;font-weight:700;color:var(--ink-2)}
+.rec-linked .row{min-height:48px}
+.rec-linked .primary{font-weight:600}
+.rec-audit{margin:16px 4px 4px;font-size:14px;line-height:19px;color:var(--ink-3)}
+.rec-actions{gap:10px}
+.rec-actions .btn svg{width:20px;height:20px;margin-right:6px}
+.btn.secondary.danger-ink{color:var(--late-ink)}
+.rec-confirm .rec-lines{margin:0 4px 12px;padding:0 0 0 20px;font-size:16px;line-height:22px}
+.rec-confirm .rec-lines li{margin:4px 0}
+.rec-also-h{margin:4px 4px 4px;font-size:15px;line-height:20px;font-weight:700;color:var(--ink-2)}
+.rec-warn{margin:8px 0}
+.rec-warn .a-title{font-size:16px;line-height:22px}
+.rec-edit-what{margin:0 4px 12px;font-size:17px;line-height:22px;font-weight:700}
+/* records list: whole row is the tap target, text button to bring things back */
+.rb-row{width:100%;text-align:left}
+.rb-row .primary{font-weight:600;overflow-wrap:anywhere}
+.rb-row .rb-kind{font-weight:700}
+.rb-bring{flex:none;min-height:44px;padding:0 14px;border-radius:var(--r-full);border:0;background:var(--accent-soft);color:var(--accent-ink);font:inherit;font-size:15px;font-weight:700}
+.rb-search input{text-align:left}
+.timeline [data-rec],[data-rec].tap{cursor:pointer}
+.timeline [data-rec]:active,[data-rec].tap:active{background:var(--surface-2)}

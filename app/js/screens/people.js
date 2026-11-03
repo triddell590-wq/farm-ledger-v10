@@ -37,7 +37,7 @@ export function openWaitingSheet(i, ledger, after) {
   };
 }
 
-function memberSheet(ledger, m, after) {
+export function memberSheet(ledger, m, after) {
   const isOwner = ledger.role === "owner";
   const b = el(html`<div>
     <div style="display:flex;gap:12px;align-items:center;margin:4px 4px 16px">${avatar(m.displayName || m.email)}<div><div class="t-headline">${m.displayName || m.email}</div><div class="t-callout ink-2">${m.email || ""}</div></div></div>
@@ -66,11 +66,11 @@ function handOverSheet(ledger, members, after) {
   const b = el(html`<form novalidate>
     <p class="t-callout ink-2" style="margin:0 4px 16px">They become the owner of ${ledger.name}. You stay on as a Manager. Used when the farm passes on, or a partner takes over.</p>
     <h2 class="group-label">Hand over to</h2>${radioGroup("to", others.map((m) => ({ value: m.uid, label: m.displayName || m.email, help: ROLE_DISPLAY[m.role] })), null)}
-    <div class="form-group" style="margin-top:16px">${textField({ name: "confirm", label: "Type the ledger name", placeholder: ledger.name })}</div>
+    <div class="form-group" style="margin-top:16px">${textField({ name: "confirm", label: "Type the name", placeholder: ledger.name })}</div>
     <p class="hint">Type “${ledger.name}” to confirm.</p><div data-err></div></form>`);
   const btn = el(html`<button type="button" class="btn danger">Hand over</button>`);
   const f = wireForm(b);
-  const miss = () => { const v = f.values(); if (!v.to) return "Pick who to hand over to"; if (v.confirm.trim().toLowerCase() !== ledger.name.trim().toLowerCase()) return "Type the ledger name to confirm"; return null; };
+  const miss = () => { const v = f.values(); if (!v.to) return "Pick who to hand over to"; if (v.confirm.trim().toLowerCase() !== ledger.name.trim().toLowerCase()) return "Type the name to confirm"; return null; };
   f.onChange(() => guardButton(btn, "Hand over", miss)); guardButton(btn, "Hand over", miss);
   const sh = openSheet({ title: "Hand over ownership", body: b, footer: btn });
   btn.onclick = async () => {

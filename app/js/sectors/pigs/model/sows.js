@@ -1,3 +1,4 @@
+import { matchScore } from "../../../core/rank.js";
 // Sows, gilts and boars (design/13 §4). One record per breeding pig; status, parity and dates
 // are worked out from services, scans and litters, never stored (so an edit can't leave them
 // stale). Status cycle: Served → In pig (scan +) → In farrowing → Suckling → Weaned/empty → …
@@ -22,7 +23,7 @@ export const listOf = (m, sow) => m.get(sow.id) || [];
 export const sowLabel = (s) => s.sowNo || (s.tag || "").split(/\s+/).pop() || "—";
 export const isBoar = (s) => s.type === "boar";
 export const onFarm = (s) => !s.cull?.date && !s.died && !s.deleted;
-export function sowMatches(s, q) { q = String(q || "").trim().toLowerCase(); if (!q) return true; return String(s.sowNo || "").toLowerCase().startsWith(q) || String(s.tag || "").replace(/\s+/g, "").toLowerCase().includes(q.replace(/\s+/g, "")); }
+export function sowMatches(s, q) { return matchScore({ no: s.sowNo, name: s.name, tag: s.tag }, q) != null; }
 export const sortByNo = (a, b) => String(a.sowNo || "").localeCompare(String(b.sowNo || ""), "en", { numeric: true });
 
 /** The sow's current cycle and every date in it. */

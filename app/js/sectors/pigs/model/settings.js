@@ -31,6 +31,9 @@ export function pigSettings(ledger, meta = {}) {
   s.herdMark = m.herdMark || l.herdMark || "";
   s.sowsSetup = sows; s.finisherPlaces = +(m.finisherPlaces ?? l.finisherPlaces) || 0;
   s.smallHerd = m.smallHerd ?? (sows > 0 && sows <= 20 && s.system !== "finishing");
+  // Red Tractor assured? Small herds default to no: they get only the legal minimum (review B #12)
+  s.assured = m.assured ?? !s.smallHerd;
+  s.legalOnly = s.smallHerd && !s.assured;
   s.targets = { ...DEFAULT_TARGETS, ...(m.targets || {}) };
   s.contract = { ...DEFAULTS.contract, ...(m.contract || {}) };
   s.breeding = s.system !== "finishing"; // has sows

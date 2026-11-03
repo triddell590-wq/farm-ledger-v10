@@ -50,7 +50,7 @@ test("animals: class, gain (14-day rule), withdrawal, age text", () => {
   assert.equal(classOf(ix, d.animals[0], T), "cow"); assert.equal(classOf(ix, d.animals[1], T), "store"); assert.equal(classOf(ix, d.animals[2], T), "calf"); assert.equal(classOf(ix, d.animals[3], T), "bull");
   const g = dlwg(ix, d.animals[1]); assert.equal(g.from.date, "2026-09-01"); assert.equal(Math.round(g.value * 100) / 100, Math.round((100 / 39) * 100) / 100);
   assert.equal(withdrawal(ix, d.animals[1], T).until, "2026-10-21"); assert.equal(withdrawal(ix, d.animals[1], "2026-10-22"), null);
-  assert.equal(ageText(d.animals[2], T), "3 wk"); assert.equal(ageText(d.animals[0], T), "8 yr"); assert.equal(ageLong(d.animals[1], T), "25 mo 23 d");
+  assert.equal(ageText(d.animals[2], T), "3 wk"); assert.equal(ageText(d.animals[0], T), "8 yr"); assert.equal(ageLong(d.animals[1], T), "2 yr 1 mo"); assert.equal(ageLong({ dob: "2026-01-10" }, "2026-11-02"), "9 mo 23 d"); assert.equal(ageLong({ dob: "2018-03-05" }, "2026-11-02"), "8 yr 7 mo"); // years over 2 (A #15)
   assert.equal((ix.calvings.get("c") || []).length, 1, "calving derived from calf's damTag");
   assert.equal(bornInNI({ tag: "UK 1 234567 0001 1" }), false); assert.equal(bornInNI({ tag: "UK 9 123456 7001 2" }), true);
 });

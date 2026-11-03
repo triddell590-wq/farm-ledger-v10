@@ -8,6 +8,7 @@ import { openSheet } from "../ui/sheet.js";
 import { textField, wireForm, guardButton } from "../ui/form.js";
 import { toast } from "../ui/toast.js";
 import { taskList } from "../ui/tasks.js";
+import { nowCount } from "../services/today-rules.js";
 import { openMoneySheet } from "../ui/money-sheet.js";
 import { todaysTasks, addTask } from "../services/tasks.js";
 import { addRecord, watchRecords } from "../services/records.js";
@@ -58,7 +59,7 @@ async function today(ctx) {
   const paint = async () => {
     const tasks = await todaysTasks([ledger]);
     const box = body.querySelector("[data-tasks]");
-    box.replaceChildren(el(html`<div>${groupLabel("To do today", tasks.filter((t) => !t.done).length || "")}</div>`));
+    box.replaceChildren(el(html`<div>${groupLabel("To do today", nowCount(tasks) || "")}</div>`));
     if (tasks.length) box.appendChild(taskList(tasks, { onChange: paint }));
     else box.appendChild(el(emptyState({ sector: ledger.type, title: "Nothing to do today", body: "Add a job and it shows here and on your farm's Today list.", action: canWrite(ledger.role, "tasks") ? "Add a job" : null, actAttr: "data-add-task" })));
     const b = box.querySelector("[data-add-task]"); if (b) b.onclick = () => taskSheet(ledger, paint);
@@ -128,7 +129,7 @@ export function quickAddSheet(ledger, items, { focus = null } = {}) {
   if (focus && shown.length === 1 && shown !== items) { shown[0].run(); return Promise.resolve(); }
   const rest = items.filter((i) => !shown.includes(i));
   const tiles = (list) => list.map((i) => html`<button type="button" class="share-tile" data-q="${i.id}">${raw(icon(i.icon))}${i.label}</button>`);
-  const body = el(html`<div data-sector="${ledger.type}"><p class="sheet-title-sm">Add to ${ledger.name}</p><div class="share-grid" data-grid>${tiles(shown)}</div>
+  const body = el(html`<div data-sector="${ledger.type}"><p class="sheet-title-sm">Add to ${String(ledger.name || "").replace(/^Poultry\s*[–-]\s*/, "")}</p><div class="share-grid" data-grid>${tiles(shown)}</div>
     ${rest.length ? html`<button type="button" class="btn secondary" style="margin-top:12px" data-more>Something else…</button>` : ""}</div>`);
   const sh = openSheet({ size: "small", body, label: "Quick add", auto: true });
   body.addEventListener("click", (e) => {
@@ -139,7 +140,7 @@ export function quickAddSheet(ledger, items, { focus = null } = {}) {
 }
 
 export function taskSheet(ledger, after) {
-  const body = el(html`<form novalidate><div class="form-group">${textField({ name: "title", label: "Job", placeholder: "Weigh pen 4 bullocks", autofocus: true })}${textField({ name: "due", label: "Due", type: "date", value: todayStr() })}</div>${canRead(ledger.role, "finance") ? html`<p class="hint">Shows on ${ledger.name} and on your farm's Today list.</p>` : ""}</form>`);
+  const body = el(html`<form novalidate><div class="form-group">${textField({ name: "title", label: "Job", placeholder: "e.g. Weigh pen 4 bullocks", autofocus: true })}${textField({ name: "due", label: "Due", type: "date", value: todayStr() })}</div>${canRead(ledger.role, "finance") ? html`<p class="hint">Shows on ${ledger.name} and on your farm's Today list.</p>` : ""}</form>`);
   const btn = el(html`<button type="button" class="btn">Save job</button>`);
   const f = wireForm(body); const miss = () => (f.values().title ? null : "Add the job to save");
   f.onChange(() => guardButton(btn, "Save job", miss)); guardButton(btn, "Save job", miss);

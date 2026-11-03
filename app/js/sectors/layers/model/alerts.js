@@ -37,7 +37,7 @@ export function layerAlerts(c) {
     const nx = plannedFlock(c, h.id);
     if (nx && !nx.daeraNotified && !s.smallFlock) {
       const by = addDays(nx.placedDate, -RULES.salmonella.NI.noticeDays); const left = daysBetween(today, by);
-      if (left <= 7) out.push({ key: `notice:${nx.id}`, level: left < 0 ? "late" : "due", title: `Tell DAERA about the new flock for ${H} at least 2 weeks before it arrives`, body: `Flock arrives ${dayName(nx.placedDate)} · tell DAERA by ${dayName(by)}.`, href: L(`flock/${nx.id}`), legal: true, houseId: h.id });
+      if (left <= 7) out.push({ key: `notice:${nx.id}`, level: left < 0 ? "late" : "due", date: by, title: left < 0 ? `${-left === 1 ? "1 day" : -left + " days"} late — tell DAERA now about the new flock for ${H}` : `Tell DAERA about the new flock for ${H} at least 2 weeks before it arrives`, body: left < 0 ? `It was due by ${dayName(by)}, 2 weeks before the flock arrives ${dayName(nx.placedDate)}.` : `Flock arrives ${dayName(nx.placedDate)} · tell DAERA by ${dayName(by)}.`, href: L(`flock/${nx.id}`), legal: true, houseId: h.id });
     }
     if (!f) continue;
     const list = series(c, f); const std = standardFor(f.breedStdId);

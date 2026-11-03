@@ -1,10 +1,11 @@
 // Beef → Herd (design/10 §4.1): every animal, search by tag / last 5 / name, class chips,
-// filter chips, sort, multi-select with an action bar (Treat · Weigh · Move · Sell).
+// filter chips, sort, multi-select with an action bar (Treat · Weigh · Move · Sell). The chips
+// live behind one "Filter" button and rows can be compact, so 8–10 animals fit (A #44).
 import { html, raw } from "../../core/html.js";
 import { el } from "../../ui/dom.js";
 import { icon } from "../../ui/icons.js";
 import { openSheet } from "../../ui/sheet.js";
-import { radioGroup, wireForm } from "../../ui/form.js";
+import { radioGroup, checkRow, wireForm } from "../../ui/form.js";
 import { canWrite } from "../../core/policy.js";
 import { daysBetween } from "../../core/dates.js";
 import { num } from "../../ui/format.js";
@@ -13,12 +14,14 @@ import { liveSnap } from "./data.js";
 import { animalRow, urgentPill, herdViews } from "./ui.js";
 import { onFarm, classOf, CLASS_NAMES, withdrawal, lastWeight, dlwg, ageDays } from "./model/animals.js";
 import { tagMatches } from "./model/tags.js";
+import { rankMatches, cattleKeys } from "../../core/rank.js";
 import { birthsToRegister, dueInfo } from "./model/breeding.js";
 import { finishingFacts } from "./model/finishing.js";
 
 const CLASSES = ["cow", "calf", "weanling", "store", "finisher", "heifer", "bull"];
 const SORTS = [["tag", "Tag"], ["age", "Age"], ["due", "Due date"], ["left", "Days left"], ["dlwg", "Last daily gain"]];
-const LS = "fl10-beef-herd-sort";
+const LS = "fl10-beef-herd-sort"; const LS_COMPACT = "fl10-herd-compact";
+const readCompact = () => { try { return localStorage.getItem(LS_COMPACT) === "1"; } catch (e) { return false; } };
 
 export default async function herd(ctx) {
   const { ledger } = ctx;
@@ -51,7 +54,8 @@ function filtered(snap, st) {
   if (st.filter === "unweighed") list = list.filter((a) => ["finisher", "store", "weanling"].includes(classOf(ix, a, today)) && (!lastWeight(ix, a) || daysBetween(lastWeight(ix, a).date, today) > snap.s.weighEveryDays));
   if (st.filter.startsWith("group:")) list = list.filter((a) => a.groupId === st.filter.slice(6));
   if (st.q) list = list.filter((a) => tagMatches(a, st.q));
-  return sortList(snap, list, st.sort);
+  list = sortList(snap, list, st.sort);
+  return st.q ? rankMatches(list, st.q, cattleKeys).map((x) => x.item) : list; // exact number / tag block first
 }
 function sortList(snap, list, by) {
   const { ix, today } = snap; const big = "9999-12-31";
@@ -68,30 +72,21 @@ function sortList(snap, list, by) {
 function render(snap, st, repaint) {
   const { by, live } = counts(snap); const { ix, today, lid } = snap;
   const young = (by.calf || 0) + (by.weanling || 0) + (by.store || 0) + (by.finisher || 0) + (by.heifer || 0);
-  const context = live.length ? [`${num(live.length)} cattle`, by.cow && `${num(by.cow)} cows`, by.bull && `${num(by.bull)} bull${by.bull > 1 ? "s" : ""}`, young && `${num(young)} young`].filter(Boolean).join(" · ") : "No cattle on the farm";
-  const wdN = live.filter((a) => withdrawal(ix, a, today)).length;
-  const regN = birthsToRegister(snap.data, snap.s, today).length;
-  const unwN = live.filter((a) => ["finisher", "store", "weanling"].includes(classOf(ix, a, today)) && (!lastWeight(ix, a) || daysBetween(lastWeight(ix, a).date, today) > snap.s.weighEveryDays)).length;
-  const goneN = snap.data.animals.length - live.length;
-  const groups = [...ix.groups.values()];
+  const context = live.length ? [live.length === 1 ? "1 animal" : `${num(live.length)} cattle`, by.cow && (by.cow === 1 ? "1 cow" : `${num(by.cow)} cows`), by.bull && `${num(by.bull)} bull${by.bull > 1 ? "s" : ""}`, young && `${num(young)} young`].filter(Boolean).join(" · ") : "No cattle on the farm";
   const list = filtered(snap, st);
   const canEdit = canWrite(snap.role, "animals");
-  const chip = (attr, val, label, n, on) => html`<button type="button" class="chip" ${raw(`${attr}="${val}"`)} aria-pressed="${on}">${on ? raw(icon("check", { size: 18 })) : ""}${label}${n != null ? html` <span class="count">${num(n)}</span>` : ""}</button>`;
   const gName = st.filter.startsWith("group:") ? ix.groups.get(st.filter.slice(6))?.name : null;
+  const FNAMES = { withdrawal: "In withdrawal", register: "To register", unweighed: `Not weighed ${snap.s.weighEveryDays}d+`, gone: "Sold or died" };
+  const active = [st.cls !== "all" && ["cls", CLASS_NAMES[st.cls]], st.filter && ["f", gName || FNAMES[st.filter] || ""], st.sort !== "tag" && ["sort", `Sorted by ${SORTS.find(([k]) => k === st.sort)[1].toLowerCase()}`]].filter(Boolean);
+  const compact = readCompact();
   const node = el(html`<div>
     <div class="title-row">${largeTitle("Herd", context)}${live.length && canEdit ? html`<button type="button" class="text-btn" data-select>${st.select ? "Cancel" : "Select"}</button>` : ""}</div>
     ${herdViews(snap.lid, "herd")}
     ${snap.data.animals.length ? html`<div class="filter-bar">
       <div class="search-field">${raw(icon("search"))}<input type="search" placeholder="Search tag, name or last 5 digits" aria-label="Search the herd" data-q value="${st.q}" autocomplete="off"></div>
-      <div class="chips scroll-chips" role="group" aria-label="Kind of animal">${chip("data-cls", "all", "All", live.length, st.cls === "all")}${CLASSES.filter((c) => by[c]).map((c) => chip("data-cls", c, CLASS_NAMES[c], by[c], st.cls === c))}</div>
-      <div class="chips scroll-chips" role="group" aria-label="Filters">
-        ${groups.length ? html`<button type="button" class="chip" data-groups aria-pressed="${!!gName}">${gName || "Groups"} ${raw(icon("down", { size: 16 }))}</button>` : ""}
-        ${wdN || st.filter === "withdrawal" ? chip("data-f", "withdrawal", "In withdrawal", wdN, st.filter === "withdrawal") : ""}
-        ${regN || st.filter === "register" ? chip("data-f", "register", "To register", regN, st.filter === "register") : ""}
-        ${unwN || st.filter === "unweighed" ? chip("data-f", "unweighed", `Not weighed ${snap.s.weighEveryDays}d+`, unwN, st.filter === "unweighed") : ""}
-        ${goneN ? chip("data-f", "gone", "Sold or died", goneN, st.filter === "gone") : ""}
-        <button type="button" class="chip" data-sort>Sort: ${SORTS.find(([k]) => k === st.sort)[1]}</button>
-      </div></div>` : ""}
+      <button type="button" class="chip filter-btn" data-filter aria-haspopup="dialog" aria-label="Filter and sort${active.length ? `, ${active.length} on` : ""}">${raw(icon("grid", { size: 18 }))}Filter${active.length ? html` <span class="count">${active.length}</span>` : ""}</button>
+      ${active.length ? html`<div class="chips active-filters" aria-label="Showing">${active.map(([k, label]) => html`<button type="button" class="chip" aria-pressed="true" data-clear="${k}" aria-label="${label}, remove">${label} ${raw(icon("close", { size: 16 }))}</button>`)}</div>` : ""}
+      </div>` : ""}
     <div data-list></div>
   </div>`);
   const box = node.querySelector("[data-list]");
@@ -102,14 +97,12 @@ function render(snap, st, repaint) {
     box.append(el(html`<div class="card pad ink-2">${st.q ? `No cattle match “${st.q}”.` : "No cattle in this list."}</div>`));
   } else {
     const sections = sectionsFor(snap, list, st.sort);
-    box.append(el(html`<div>${sections.map(([label, rows]) => html`${label ? groupLabel(label, num(rows.length)) : ""}<div class="list herd-list">${rows.map((a) => animalRow(snap, a, { selectable: st.select, selected: st.sel.has(a.id) }))}</div>`)}</div>`));
+    box.append(el(html`<div>${sections.map(([label, rows]) => html`${label ? groupLabel(label, num(rows.length)) : ""}<div class="list herd-list${compact ? " compact" : ""}">${rows.map((a) => animalRow(snap, a, { selectable: st.select, selected: st.sel.has(a.id) }))}</div>`)}</div>`));
   }
   // events
   const qi = node.querySelector("[data-q]"); if (qi) qi.addEventListener("input", () => { st.q = qi.value; repaint(); });
-  node.querySelectorAll("[data-cls]").forEach((b) => (b.onclick = () => { st.cls = b.dataset.cls; if (st.filter === "gone" && st.cls !== "all") st.filter = ""; repaint(); }));
-  node.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => { st.filter = st.filter === b.dataset.f ? "" : b.dataset.f; repaint(); }));
-  const gb = node.querySelector("[data-groups]"); if (gb) gb.onclick = () => groupSheet(groups, st, repaint);
-  node.querySelector("[data-sort]")?.addEventListener("click", () => sortSheet(st, repaint));
+  node.querySelector("[data-filter]")?.addEventListener("click", () => filterSheet(snap, st, repaint));
+  node.querySelectorAll("[data-clear]").forEach((b) => (b.onclick = () => { const k = b.dataset.clear; if (k === "cls") st.cls = "all"; if (k === "f") st.filter = ""; if (k === "sort") { st.sort = "tag"; try { localStorage.setItem(LS, "tag"); } catch (e) { /* blocked */ } } repaint(); }));
   const sb = node.querySelector("[data-select]"); if (sb) sb.onclick = () => { st.select = !st.select; st.sel.clear(); repaint(); };
   node.querySelector("[data-import]")?.addEventListener("click", () => import("./flows/animal-edit.js").then((m) => m.importHerdSheet(snap)));
   node.querySelector("[data-add]")?.addEventListener("click", () => import("./flows/animal-edit.js").then((m) => m.addAnimalSheet(snap)));
@@ -146,14 +139,39 @@ function paintBar(snap, st, repaint) {
     if (act === "Sell") (await import("./flows/sale.js")).default(snap, { animalIds: ids });
   };
 }
-function groupSheet(groups, st, repaint) {
-  const cur = st.filter.startsWith("group:") ? st.filter.slice(6) : "";
-  const body = el(html`<div><p class="sheet-title-sm">Show a group</p>${radioGroup("g", [{ value: "", label: "All groups" }, ...groups.map((g) => ({ value: g.id, label: g.name, help: g.shed || "" }))], cur)}</div>`);
-  const f = wireForm(body); const sh = openSheet({ size: "small", body, label: "Groups", auto: true });
-  f.onChange(() => { const v = f.values().g; st.filter = v ? `group:${v}` : ""; sh.close(true, { force: true }); repaint(); });
-}
-function sortSheet(st, repaint) {
-  const body = el(html`<div><p class="sheet-title-sm">Sort the herd by</p>${radioGroup("s", SORTS.map(([value, label]) => ({ value, label })), st.sort)}</div>`);
-  const f = wireForm(body); const sh = openSheet({ size: "small", body, label: "Sort", auto: true });
-  f.onChange(() => { st.sort = f.values().s; try { localStorage.setItem(LS, st.sort); } catch (e) { /* blocked */ } sh.close(true, { force: true }); repaint(); });
+/** Everything the chip rows used to hold, in one sheet: kind, filters, group, sort, compact rows. */
+function filterSheet(snap, st, repaint) {
+  const body = el(html`<div class="herd-filter"></div>`);
+  const sh = openSheet({ size: "small", body, label: "Filter the herd", auto: true });
+  const paintSheet = () => {
+    const { ix, today } = snap; const live = snap.data.animals.filter(onFarm); const by = {}; for (const a of live) { const c = classOf(ix, a, today); by[c] = (by[c] || 0) + 1; }
+    const wdN = live.filter((a) => withdrawal(ix, a, today)).length; const regN = birthsToRegister(snap.data, snap.s, today).length;
+    const unwN = live.filter((a) => ["finisher", "store", "weanling"].includes(classOf(ix, a, today)) && (!lastWeight(ix, a) || daysBetween(lastWeight(ix, a).date, today) > snap.s.weighEveryDays)).length;
+    const goneN = snap.data.animals.length - live.length; const groups = [...ix.groups.values()];
+    const chip = (attr, val, label, n, on) => html`<button type="button" class="chip" ${raw(`${attr}="${val}"`)} aria-pressed="${on}">${on ? raw(icon("check", { size: 18 })) : ""}${label}${n != null ? html` <span class="count">${num(n)}</span>` : ""}</button>`;
+    body.replaceChildren(el(html`<div>
+      <p class="sheet-title-sm">Show</p>
+      <div class="chips" role="group" aria-label="Kind of animal">${chip("data-cls", "all", "All", live.length, st.cls === "all")}${CLASSES.filter((c) => by[c]).map((c) => chip("data-cls", c, CLASS_NAMES[c], by[c], st.cls === c))}</div>
+      <div class="chips" role="group" aria-label="Filters" style="margin-top:10px">
+        ${wdN || st.filter === "withdrawal" ? chip("data-f", "withdrawal", "In withdrawal", wdN, st.filter === "withdrawal") : ""}
+        ${regN || st.filter === "register" ? chip("data-f", "register", "To register", regN, st.filter === "register") : ""}
+        ${unwN || st.filter === "unweighed" ? chip("data-f", "unweighed", `Not weighed ${snap.s.weighEveryDays}d+`, unwN, st.filter === "unweighed") : ""}
+        ${goneN ? chip("data-f", "gone", "Sold or died", goneN, st.filter === "gone") : ""}
+        ${groups.map((g) => chip("data-f", `group:${g.id}`, g.name, null, st.filter === `group:${g.id}`))}
+      </div>
+      <p class="sheet-title-sm" style="margin-top:16px">Sort by</p>${radioGroup("s", SORTS.map(([value, label]) => ({ value, label })), st.sort)}
+      <div class="form-group" style="margin-top:12px">${checkRow("compact", "Compact rows", readCompact(), "Fits more cattle on the screen")}</div>
+      <div class="btn-col" style="margin-top:16px"><button type="button" class="btn" data-done>Show ${num(filtered(snap, st).length)}</button></div></div>`));
+    const f = wireForm(body);
+    f.onChange((name) => {
+      const v = f.values();
+      if (name === "s") { st.sort = v.s; try { localStorage.setItem(LS, st.sort); } catch (e) { /* blocked */ } }
+      if (name === "compact") { try { localStorage.setItem(LS_COMPACT, v.compact ? "1" : "0"); } catch (e) { /* blocked */ } }
+      repaint(); paintSheet();
+    });
+    body.querySelectorAll("[data-cls]").forEach((b) => (b.onclick = () => { st.cls = b.dataset.cls; if (st.filter === "gone" && st.cls !== "all") st.filter = ""; repaint(); paintSheet(); }));
+    body.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => { st.filter = st.filter === b.dataset.f ? "" : b.dataset.f; repaint(); paintSheet(); }));
+    body.querySelector("[data-done]").onclick = () => sh.close(true, { force: true });
+  };
+  paintSheet();
 }

@@ -1,4 +1,6 @@
 // Cow card (design/12 §4.2) and calf card. Cow number leads; the official tag is second.
+import { session } from "../../../services/session.js";
+import { wireRecordTaps, recChev } from "../../../ui/record-sheet.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -44,18 +46,19 @@ function lactationsTable(snap, a) {
 
 function timeline(snap, a) {
   const ev = [];
-  const p = (date, text, by) => ev.push({ date, text, by });
-  for (const c of listOf(snap.ix.calvings, a)) p(c.date, `Calved (${c.ease || "unassisted"})`, c.byName);
-  for (const h of listOf(snap.ix.heats, a)) p(h.date, `Seen bulling${h.sign ? " · " + h.sign : ""}`, h.byName);
-  for (const s of listOf(snap.ix.services, a)) p(s.date, `Served · ${s.sireText || "sire"}${s.sexed ? " (sexed)" : ""}`, s.byName || s.technician);
-  for (const x of listOf(snap.ix.pds, a)) p(x.date, `PD ${x.result === "+" ? "+ in calf" : x.result === "-" ? "− empty" : "recheck"}`, x.vet || x.byName);
-  for (const d of listOf(snap.ix.dryOffs, a)) p(d.date, `Dried off · ${d.treatment}`, d.byName);
-  for (const m of snap.data.medicines.filter((x) => (x.animalIds || []).includes(a.id))) p(m.date, `${m.reason || "Treatment"}${m.quarters?.length ? " " + quartersText(m.quarters) : ""} · ${m.productName || ""}`, m.givenBy);
-  for (const f of listOf(snap.ix.fresh, a)) if (f.events?.length) p(f.date, `Fresh cow: ${f.events.join(", ")}`, f.byName);
-  for (const t of listOf(snap.ix.trims, a)) p(t.date, `Foot trim · ${t.foot || ""} ${t.lesion || ""}`, t.byName);
+  const p = (date, text, by, coll, id) => ev.push({ date, text, by, coll, id });
+  for (const c of listOf(snap.ix.calvings, a)) p(c.date, `Calved (${c.ease || "unassisted"})`, c.byName, "calvings", c.id);
+  for (const h of listOf(snap.ix.heats, a)) p(h.date, `Seen bulling${h.sign ? " · " + h.sign : ""}`, h.byName, "heats", h.id);
+  for (const s of listOf(snap.ix.services, a)) p(s.date, `Served · ${s.sireText || "sire"}${s.sexed ? " (sexed)" : ""}`, s.byName || s.technician, "services", s.id);
+  for (const x of listOf(snap.ix.pds, a)) p(x.date, `PD ${x.result === "+" ? "+ in calf" : x.result === "-" ? "− empty" : "recheck"}`, x.vet || x.byName, "pds", x.id);
+  for (const d of listOf(snap.ix.dryOffs, a)) p(d.date, `Dried off · ${d.treatment}`, d.byName, "dryOffs", d.id);
+  for (const m of snap.data.medicines.filter((x) => (x.animalIds || []).includes(a.id))) p(m.date, `${m.reason || "Treatment"}${m.quarters?.length ? " " + quartersText(m.quarters) : ""} · ${m.productName || ""}`, m.givenBy, "medicines", m.id);
+  for (const f of listOf(snap.ix.fresh, a)) if (f.events?.length) p(f.date, `Fresh cow: ${f.events.join(", ")}`, f.byName, "freshChecks", f.id);
+  for (const t of listOf(snap.ix.trims, a)) p(t.date, `Foot trim · ${t.foot || ""} ${t.lesion || ""}`, t.byName, "footTrims", t.id);
   ev.sort((x, y) => y.date.localeCompare(x.date));
   if (!ev.length) return "";
-  return sectionOf("Timeline", html`<div class="list timeline">${ev.slice(0, 30).map((e) => html`<div class="row no-lead"><span class="when">${dm(e.date)}</span><span class="main"><span class="primary">${e.text}</span>${e.by ? html`<span class="secondary">${e.by}</span>` : ""}</span></div>`)}</div>`);
+  // each line opens its record: see it, edit it, delete it (ui/record-sheet.js)
+  return sectionOf("Timeline", html`<div class="list timeline">${ev.slice(0, 30).map((e) => html`<div class="row no-lead${e.id ? " tap" : ""}" ${raw(e.id ? `data-rec="${e.coll}:${e.id}" role="button" tabindex="0"` : "")}><span class="when">${dm(e.date)}</span><span class="main"><span class="primary">${e.text}</span>${e.by ? html`<span class="secondary">${e.by}</span>` : ""}</span>${e.id ? raw(recChev()) : ""}</div>`)}</div>`);
 }
 
 function calfPart(snap, a) {
@@ -117,6 +120,7 @@ function paint(body, snap, id) {
       <button type="button" class="row" data-a="off"><span class="tile neutral">${raw(icon("truck"))}</span><span class="main"><span class="primary">Off the farm</span><span class="secondary">Sold, culled or died</span></span></button></div></div>` : ""}
   </div>`);
   body.replaceChildren(node);
+  wireRecordTaps(node, () => session.ledger(snap.lid));
   const run = { treat: () => flow("treatment")(snap, { animalIds: [a.id] }), bulling: () => flow("breeding", "heatSheet")(snap, { animalIds: [a.id] }), served: () => flow("breeding", "serveSheet")(snap, { animalId: a.id }), pd: () => flow("breeding", "pdSheet")(snap, { animalId: a.id }), dry: () => flow("dryoff")(snap, { animalId: a.id }), calving: () => flow("calving")(snap, { animalId: a.id }), edit: () => flow("cow-edit", "editCowSheet")(snap, a), off: () => flow("cow-edit", "offSheet")(snap, { animalIds: [a.id] }),
     vet: () => { setVetList(snap.lid, a, a.vetCheck ? null : "Check at the next fertility visit"); toast(a.vetCheck ? "Taken off the vet list" : `${cowLabel(a)} added to the vet list`); } };
   node.querySelectorAll("[data-a]").forEach((b) => (b.onclick = () => run[b.dataset.a]()));

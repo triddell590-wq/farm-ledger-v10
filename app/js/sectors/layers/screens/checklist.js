@@ -22,6 +22,8 @@ import { REGISTERS, buildRegister, INSPECTORS, inspectorPack } from "../model/re
 import { sortedHouses, flockIn, aliveAt } from "../model/flock.js";
 import { salmonella } from "../model/health.js";
 import { saveLionItem, saveAudit } from "../actions.js";
+import { readyScore, readyHero, readyLists, wireReady } from "../../../ui/ready-check.js";
+export const layersHasData = (snap) => (snap.data.flocks || []).some((f) => !f.deleted);
 
 export default async function checklist(ctx) {
   const page = ctx.match.groups.page;
@@ -31,6 +33,7 @@ export default async function checklist(ctx) {
     return page === "inspect" ? inspect(snap, back) : list(snap, back, page);
   }, after: (node, snap, repaint) => {
     node.querySelectorAll("[data-item]").forEach((b) => (b.onclick = () => itemSheet(snap, b.dataset.item, page)));
+    wireReady(node, (id, on) => { saveLionItem(snap, id, on ? true : null, snap.meta.lion?.items?.[id]?.note); toast(on ? "Ticked" : "Unticked"); });
     node.querySelectorAll("[data-audit]").forEach((b) => (b.onclick = () => auditSheet(snap, b.dataset.audit)));
     node.querySelectorAll("[data-who]").forEach((b) => (b.onclick = () => { remember(snap.lid, "inspector", b.dataset.who); repaint(); }));
     const p = node.querySelector("[data-pack]"); if (p) p.onclick = () => printDoc(inspectorPack(snap.c, p.dataset.pack));
@@ -40,14 +43,15 @@ export default async function checklist(ctx) {
 function list(snap, back, page) {
   const items = page === "rspca" ? RSPCA_ITEMS : LION_ITEMS;
   const rows = evaluate(snap.c, items, snap.meta.lion || {}); const done = rows.filter((r) => r.ok).length;
+  const sc = readyScore(rows.map((r) => ({ auto: r.auto, state: r.auto ? (r.ok === true ? "ok" : r.ok === false ? "gap" : "due") : "open", done: r.ok === true })), layersHasData(snap)); // A #14
   const can = canWriteMeta(snap.role, "lion"); const au = audits(snap.meta.lion || {}, snap.today); const m = snap.meta.lion || {};
-  return html`<div>${back}${largeTitle(page === "rspca" ? "RSPCA Assured" : "British Lion Code", `${done} of ${rows.length} met`)}
+  return html`<div>${back}${largeTitle(page === "rspca" ? "RSPCA Assured" : "British Lion Code", sc.hasData ? `${sc.ok} of ${sc.n} checked from your records · ${sc.selfDone} of ${sc.selfN} ticked` : `${done} of ${rows.length} met`)}
     <p class="ly-note ly-header-note">${page === "rspca" ? RSPCA_HEADER : LION_HEADER}</p>
     ${page === "lion" ? html`<div class="section">${groupLabel("Audits")}<div class="list">
       ${auditRow("internal", "Internal audit", m.internalAudit, au.internalDue, au.internalLate, "Every 6 months", can)}
       ${auditRow("independent", "Independent audit", m.independentAudit, au.independentDue, au.independentLate, "At least every 18 months", can)}</div></div>` : ""}
-    <div class="section">${groupLabel("Requirements", can ? "Tap to mark" : "")}<div class="list">
-      ${rows.map((r) => html`<button type="button" class="row no-lead ly-check" data-item="${r.id}" ${raw(can ? "" : "disabled")}><span class="main"><span class="primary">${r.text}</span><span class="secondary">${r.note || (r.auto ? "" : "Not evidenced in the app — mark it when it's in place")}${r.by ? ` · marked by ${r.by} ${d2(r.at)}` : r.auto ? " · from your records" : ""}</span></span>${r.ok === true ? pill("ok", "Met") : r.ok === false ? pill("due", "Not yet") : pill("info", "Mark")}</button>`)}</div></div>
+    ${readyHero(sc)}
+    ${readyLists(rows.map((r) => r.auto ? { id: r.id, text: r.text, auto: true, state: r.ok === true ? "ok" : r.ok === false ? "gap" : "due", note: `${r.note || ""}${r.by ? ` · marked by ${r.by} ${d2(r.at)}` : ""}` } : { id: r.id, text: r.text, auto: false, state: "open", done: r.ok === true, note: `${r.note || ""}${r.by ? `${r.note ? " · " : ""}${r.ok === false ? "not yet" : "ticked"} by ${r.by} ${d2(r.at)}` : ""}` }), { can, actions: (r) => (can ? html`<button type="button" class="text-btn" data-item="${r.id}">${r.auto ? "Mark" : "Note"}</button>` : "") })}
     <p class="ly-cap">Ticks from your records update by themselves. A mark you set overrides the app until you clear it.</p></div>`;
 }
 

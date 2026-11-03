@@ -6,20 +6,21 @@ import { largeTitle, groupLabel } from "../../screens/common.js";
 import { liveScreen } from "./screen.js";
 import { pill, short, num, banner } from "./ui.js";
 import { cropTagging, toNotify, inventoryWindow, restriction } from "./model/paperwork.js";
-import { fqaStatus } from "./model/fqa.js";
+import { readyScore } from "../../ui/ready-check.js";
+import { sheepFqaRows, sheepHasData } from "./fqa.js";
 
 const row = (href, label, sub, right = "") => html`<a class="row no-lead" href="${href}"><span class="main"><span class="primary">${label}</span>${sub ? html`<span class="secondary">${sub}</span>` : ""}</span>${right}<span class="chev">${raw(icon("chevron"))}</span></a>`;
 export default async function paperwork(ctx) {
   return liveScreen(ctx, { title: "Paperwork", tab: "paperwork", depth: 0, paint: (snap) => {
     const L = (h) => `#/l/${snap.lid}/${h}`;
-    const fq = fqaStatus(snap.c, snap.meta.fqa?.items || {});
+    const fq = readyScore(sheepFqaRows(snap, snap.meta.fqa?.items || {}), sheepHasData(snap)); // A #14: records-only score
     const tg = cropTagging(snap.data, snap.cy, snap.s); const nt = toNotify(snap.data); const inv = inventoryWindow(snap.today, snap.s);
     const invDone = snap.data.inventories.find((i) => +i.year === inv.year);
     const invPill = invDone?.submittedOn ? pill("ok", "Sent") : snap.today >= inv.from && snap.today <= inv.to ? pill("due", "Count now") : snap.today >= inv.infoFrom && snap.today < inv.from ? pill("info", "Due soon") : inv.deadline && snap.today > inv.deadline ? pill("late", "Late") : "";
     const r = restriction(snap.data);
     return html`<div>${largeTitle("Paperwork", [snap.s.flockNo ? `Flock ${snap.s.flockNo}` : "Add your flock number in Targets", snap.keeper.name].filter(Boolean).join(" · "))}
       ${r ? banner("late", `Flock restricted (${r.disease}) since ${short(r.date)}`, " Moves are stopped until your vet confirms in writing.") : ""}
-      <div class="list">${row(L("paperwork/fqa"), "Inspection ready?", "FQAS self-check — sheep items", html`<span class="kv-v ${fq.pct >= 80 ? "v-ok" : "v-due"}">${fq.pct}%</span>`)}</div>
+      <div class="list">${row(L("paperwork/fqa"), "Inspection ready?", "FQAS self-check — sheep items", fq.pct == null ? html`<span class="kv-v">—</span>` : html`<span class="kv-v ${fq.pct >= 80 ? "v-ok" : "v-due"}">${fq.pct}%</span>`)}</div>
       <div class="section">${groupLabel("This year")}<div class="list">
         ${row(L("paperwork/inventory"), "Annual inventory", `Count 1–5 Dec${inv.deadline ? ` · send by ${short(inv.deadline)}` : ""}`, invPill)}
         ${row(L("paperwork/tagging"), "Tagging", tg.untagged ? `${tg.untagged} lambs to tag${tg.tagBy ? ` by ${short(tg.tagBy)}` : ""}` : "All lambs tagged", tg.untagged && tg.tagBy && tg.tagBy < snap.today ? pill("late", "Late") : "")}

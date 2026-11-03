@@ -7,7 +7,7 @@ import { icon } from "../../ui/icons.js";
 import { openSheet } from "../../ui/sheet.js";
 import { canWrite } from "../../core/policy.js";
 import { daysBetween, shortDate, addDays } from "../../core/dates.js";
-import { listDate, num, timeHM } from "../../ui/format.js";
+import { listDate, num, timeHM, listDateY } from "../../ui/format.js";
 import { backLink, groupLabel } from "../../screens/common.js";
 import { listMembers } from "../../services/members.js";
 import { liveSnap } from "./data.js";
@@ -18,12 +18,15 @@ import { dueInfo, scStatus, SC_WORDS, SC_LEVEL, lastCalving, birthsToRegister, h
 import { finishingFacts } from "./model/finishing.js";
 import { adj200 } from "./model/finishing.js";
 import { timelineFor } from "./model/timeline.js";
+import { wireRecordTaps, recChev } from "../../ui/record-sheet.js";
+import { session } from "../../services/session.js";
 
 export default async function animalScreen(ctx) {
   const { ledger } = ctx; const id = ctx.match.groups.id;
   const body = el(html`<div class="beef-page"></div>`);
+  // "Added by …" only when more than one person uses the ledger (review A #15)
   let names = new Map();
-  listMembers(ledger.id).then((m) => { names = new Map(m.map((x) => [x.uid || x.id, x.displayName || x.email])); }).catch(() => {});
+  try { names = new Map((await listMembers(ledger.id)).map((x) => [x.uid || x.id, x.displayName || x.email])); } catch (e) { /* offline: no names */ }
   let title = "Animal";
   const { first, stop } = liveSnap(ledger, (snap) => {
     const a = snap.ix.byId.get(id);
@@ -61,7 +64,7 @@ function render(snap, a, names) {
     ${box(snap, a, cls, f)}
     ${live && canEdit ? html`<div class="act-grid">${["Weigh", "Treat", "Move", "Sell"].map((l) => html`<button type="button" class="btn secondary" data-act="${l}">${l}</button>`)}<button type="button" class="btn secondary" data-more style="grid-column:1/-1">More for this animal…</button></div>` : ""}
     <div class="section">${groupLabel("Timeline", tl.length || "")}
-      ${tl.length ? html`<div class="list timeline">${tl.slice(0, 40).map((e) => html`<div class="row no-lead"><span class="when">${shortDate(e.date).replace(/ (\d{4})$/, (m, y) => (y === today.slice(0, 4) ? "" : ` ${y.slice(2)}`))}</span><span class="main"><span class="primary">${e.title}</span>${e.sub ? html`<span class="secondary">${e.sub}</span>` : ""}${e.by && e.by.createdBy ? html`<span class="secondary">Added by ${names.get(e.by.createdBy) || "someone on the ledger"}${e.by.createdAt ? `, ${shortDate(isoOf(e.by.createdAt))} ${timeHM(e.by.createdAt)}` : ""}</span>` : ""}</span></div>`)}</div>`
+      ${tl.length ? html`<div class="list timeline">${tl.slice(0, 40).map((e) => html`<div class="row no-lead${e.coll !== "animals" && e.id ? " tap" : ""}" ${raw(e.coll !== "animals" && e.id ? `data-rec="${e.coll}:${e.id}" role="button" tabindex="0"` : "")}><span class="when">${shortDate(e.date).replace(/ (\d{4})$/, (m, y) => (y === today.slice(0, 4) ? "" : ` ${y.slice(2)}`))}</span><span class="main"><span class="primary">${e.title}</span>${e.sub ? html`<span class="secondary">${e.sub}</span>` : ""}${e.by && e.by.createdBy && names.size > 1 ? html`<span class="secondary">Added by ${names.get(e.by.createdBy) || "someone on the ledger"}${e.by.createdAt ? `, ${shortDate(isoOf(e.by.createdAt))} ${timeHM(e.by.createdAt)}` : ""}</span>` : ""}</span>${e.coll !== "animals" && e.id ? raw(recChev()) : ""}</div>`)}</div>`
         : html`<div class="card pad ink-2">Nothing recorded yet.</div>`}</div>
     <div class="section"><div class="list">${sections(snap, a).map(([k, label, sub]) => html`<button type="button" class="row" data-sec="${k}"><span class="main"><span class="primary">${label}</span><span class="secondary">${sub}</span></span><span class="chev">${raw(icon("chevron"))}</span></button>`)}</div></div>
   </div>`);
@@ -73,6 +76,8 @@ function render(snap, a, names) {
     if (k === "Sell") (await import("./flows/sale.js")).default(snap, { animalIds: ids });
   }));
   node.querySelector("[data-more]")?.addEventListener("click", () => moreSheet(snap, a, cls));
+  // every timeline line opens its record: see it, edit it, delete it (ui/record-sheet.js)
+  wireRecordTaps(node, () => session.ledger(snap.lid));
   node.querySelectorAll("[data-sec]").forEach((b) => (b.onclick = () => import("./flows/animal-edit.js").then((m) => m.sectionSheet(snap, a, b.dataset.sec))));
   return node;
 }
@@ -82,7 +87,9 @@ function tiles(snap, a, cls, lw, gain, target) {
   const { ix, today } = snap;
   if (cls === "cow") {
     const cv = ix.calvings.get(a.id) || []; const kids = ix.kids.get(a.id) || [];
-    const weaned = kids.filter((k) => k.weanedOn || (k.dob && daysBetween(k.dob, today) > 240)).length;
+    // a calf with a weaning (200-day) weight was weaned, even if it has since left (review A #15)
+    const hasWeanWeight = (k) => (ix.weights.get(k.id) || []).some((x) => daysBetween(k.dob, x.date) >= 150);
+    const weaned = kids.filter((k) => k.weanedOn || (k.dob && (daysBetween(k.dob, today) > 240 || hasWeanWeight(k)))).length;
     const w200 = kids.map((k) => { const w = (ix.weights.get(k.id) || []).find((x) => daysBetween(k.dob, x.date) >= 150 && daysBetween(k.dob, x.date) <= 280); return w ? adj200({ weanKg: w.kg, birthKg: +k.birthKg || 40, ageDays: daysBetween(k.dob, w.date) })?.adj200 : null; }).filter(Boolean);
     const ease = cv.slice(-3).map((c) => c.ease).filter(Boolean);
     return html`${numTile({ label: "Calves weaned (lifetime)", value: num(weaned), delta: w200.length ? `avg 200-day weight ${Math.round(w200.reduce((s, x) => s + x, 0) / w200.length)} kg` : `${num(cv.length)} calving${cv.length === 1 ? "" : "s"} recorded` })}
@@ -106,25 +113,25 @@ function box(snap, a, cls, f) {
     const lastInterval = prev.length === 2 ? daysBetween(prev[0].date, prev[1].date) : null;
     const svc = due.service;
     return html`<div class="card" style="margin-top:12px"><div class="card-head">Breeding</div>${kvRows([
-      lc && ["Calved", `${listDate(lc.date).slice(4)} ${lc.date.slice(0, 4)} (${ordinal(n)})`],
+      lc && ["Calved", `${listDateY(lc.date).slice(4)} (${ordinal(n)})`],
       lastInterval && ["Calving interval last", `${lastInterval} d`],
       svc && [svc.kind === "AI" ? "Served (AI)" : "Bull in", listDate(svc.date || svc.bullIn).slice(4)],
-      due.empty ? ["Scan", "Empty", "late"] : due.date ? [due.basis === "scan" ? "Scan: in calf, due" : "Due", `${listDate(due.date).slice(4)} ${due.date.slice(0, 4)}`] : due.from ? ["Due window", `${listDate(due.from).slice(4)} – ${listDate(due.to).slice(4)}`] : ["Due", "Not served yet"],
-      sc && ["SC Scheme", sc.status === "ok" ? `✓ calve by ${listDate(sc.deadline).slice(4)} ${sc.deadline.slice(0, 4)}` : `${SC_WORDS[sc.status]} · by ${listDate(sc.deadline).slice(4)}`, SC_LEVEL[sc.status] === "ok" ? "ok" : SC_LEVEL[sc.status] === "neutral" ? "" : SC_LEVEL[sc.status]],
+      due.empty ? ["Scan", "Empty", "late"] : due.date ? [due.basis === "scan" ? "Scan: in calf, due" : "Due", `${listDateY(due.date).slice(4)}`] : due.from ? ["Due window", `${listDate(due.from).slice(4)} – ${listDate(due.to).slice(4)}`] : ["Due", "Not served yet"],
+      sc && ["SC Scheme", sc.status === "ok" ? `✓ calve by ${listDateY(sc.deadline).slice(4)}` : `${SC_WORDS[sc.status]} · by ${listDate(sc.deadline).slice(4)}`, SC_LEVEL[sc.status] === "ok" ? "ok" : SC_LEVEL[sc.status] === "neutral" ? "" : SC_LEVEL[sc.status]],
     ])}</div>`;
   }
   if (cls === "bull") {
     const ft = a.pedigree?.fertilityTest;
-    return html`<div class="card" style="margin-top:12px"><div class="card-head">Fertility</div>${kvRows([["Fertility test", ft?.date ? `${listDate(ft.date).slice(4)} ${ft.date.slice(0, 4)} (${ft.result || "?"}${ft.vet ? `, ${ft.vet}` : ""})` : "Not recorded"]])}</div>`;
+    return html`<div class="card" style="margin-top:12px"><div class="card-head">Fertility</div>${kvRows([["Fertility test", ft?.date ? `${listDateY(ft.date).slice(4)} (${ft.result || "?"}${ft.vet ? `, ${ft.vet}` : ""})` : "Not recorded"]])}</div>`;
   }
   if (cls === "heifer" && (a.replacement || sexCode(a.sex) === "F")) {
     const w = heiferWindow(data, s, ix, a, today);
-    if (w && !f?.deadlines.length) return html`<div class="card" style="margin-top:12px"><div class="card-head">Breeding window</div>${kvRows([["Status", HEIFER_WORDS[w.status], w.status === "missed" ? "late" : w.status === "open" ? "due" : ""], ["Serve between", `${listDate(w.serveFrom).slice(4)} – ${listDate(w.serveTo).slice(4)} ${w.serveTo.slice(0, 4)}`], ["Best: serve by", `${listDate(w.best).slice(4)} (calve at 24 months)`]])}</div>`;
+    if (w && !f?.deadlines.length) return html`<div class="card" style="margin-top:12px"><div class="card-head">Breeding window</div>${kvRows([["Status", HEIFER_WORDS[w.status], w.status === "missed" ? "late" : w.status === "open" ? "due" : ""], ["Serve between", `${listDate(w.serveFrom).slice(4)} – ${listDateY(w.serveTo).slice(4)}`], ["Best: serve by", `${listDate(w.best).slice(4)} (calve at 24 months)`]])}</div>`;
   }
   if (!f) return "";
   const money = snap.role !== "worker";
   return html`<div class="card" style="margin-top:12px"><div class="card-head">Deadlines</div>${kvRows([
-    ...f.deadlines.map((d) => [d.label, `${listDate(d.date).slice(4)} ${d.date.slice(0, 4)} · ${d.left < 0 ? "passed" : `${d.left} d`}`, d.left < 0 ? "late" : d.left <= 30 ? "due" : ""]),
+    ...f.deadlines.map((d) => [d.label, `${listDateY(d.date).slice(4)} · ${d.left < 0 ? "passed" : `${d.left} d`}`, d.left < 0 ? "late" : d.left <= 30 ? "due" : ""]),
     f.estCarcase && ["Est. carcase now", `${Math.round(f.estCarcase)} kg (${Math.round(f.ko)}%)`],
     f.readyBy && [`Ready by (at ${s.targetCarcaseKg} kg)`, f.readyBy <= today ? "Now" : listDate(f.readyBy).slice(4)],
     money && s.price.perKgDead && f.estCarcase && ["Value today", `£${num(f.estCarcase * s.price.perKgDead)}`],

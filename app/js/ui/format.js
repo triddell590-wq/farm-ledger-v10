@@ -37,7 +37,14 @@ const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct
 const MONTH_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 /** "Tue 14 Oct" for lists */
-export function listDate(iso) { if (!iso) return ""; const d = new Date(iso.slice(0, 10) + "T12:00:00"); return `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`; }
+/** "Tue 14 Oct" for lists; "Fri 24 Oct 2025" when the date is more than about 6 months from today. */
+export function listDate(iso, today = todayStr()) {
+  if (!iso) return ""; const d = new Date(iso.slice(0, 10) + "T12:00:00");
+  const far = Math.abs(daysBetween(today, iso.slice(0, 10))) > 182;
+  return `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}${far ? " " + d.getFullYear() : ""}`;
+}
+/** "Tue 14 Oct 2026": always with the year */
+export function listDateY(iso) { if (!iso) return ""; const d = new Date(iso.slice(0, 10) + "T12:00:00"); return `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`; }
 /** "14 Oct 2026" for records */
 export const recordDate = shortDate;
 /** "Tuesday 14 October" */
@@ -48,6 +55,15 @@ export function relDays(iso, from = todayStr()) {
   if (n === 0) return "today"; if (n === 1) return "tomorrow"; if (n === -1) return "1 day overdue";
   return n > 0 ? `in ${n} days` : `${-n} days overdue`;
 }
+/** "Oct 2026" from "2026-10-15". */
+export function monthYear(iso) { if (!iso) return ""; const [y, m] = String(iso).slice(0, 7).split("-"); return `${MON[+m - 1]} ${y}`; }
+/** "Source: DAERA, checked Oct 2026" — plain words, no internal notes. */
+export function sourceText(source, checkedOn) {
+  const src = String(source || "").replace(/\s*\((?:[^()]*\bResearch\b[^()]*)\)/g, "").replace(/,?\s*via Research [^,;)]*/g, "").trim();
+  return [src ? `Source: ${src}` : "", checkedOn ? `checked ${monthYear(checkedOn)}` : ""].filter(Boolean).join(", ");
+}
+/** "+4.7%" / "−4.7%" with a true minus, matching money ("−£160 (−4.7%)"). */
+export function signedPct(p, dp = 1) { const n = Number(p) || 0; return `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).toFixed(dp)}%`; }
 export function timeHM(d) { d = d instanceof Date ? d : new Date(d); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; }
 export function initials(name) {
   const p = String(name || "?").trim().split(/\s+/).filter(Boolean);
@@ -56,4 +72,6 @@ export function initials(name) {
 export function avatarClass(name) { let h = 0; for (const c of String(name || "")) h = (h * 31 + c.charCodeAt(0)) | 0; return "av" + (Math.abs(h) % 6); }
 export function avatar(name) { return html`<span class="avatar ${avatarClass(name)}" aria-hidden="true">${initials(name)}</span>`; }
 export function plural(n, one, many = one + "s") { return `${num(n)} ${n === 1 ? one : many}`; }
+/** "1 animal" / "12 cattle" — cattle has no singular a farmer would write. */
+export const cattleCount = (n) => (n === 1 ? "1 animal" : `${num(n)} cattle`);
 export { raw };

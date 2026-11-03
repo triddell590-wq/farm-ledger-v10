@@ -1,5 +1,6 @@
 // Record a calving (design/10 §6.1): dam, date, ease; one group per calf (+ Twin); tagged and
 // sampled now? Creates the calf, the calving, the register line and the births-to-register card.
+import { checkDate } from "../../../core/sanity.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -9,10 +10,21 @@ import { confirmSheet } from "../../../ui/sheet.js";
 import { todayStr } from "../../../core/dates.js";
 import { cattleRow, entrySheet, nowHM, opt } from "./common.js";
 import { recordCalving, softDelete } from "../actions.js";
-import { parseTag, normTag, DAERA_BREEDS, DAERA_COLOURS, breedCode, nextTag, isFemale } from "../model/tags.js";
+import { parseTag, normTag, DAERA_BREEDS, DAERA_COLOURS, breedCode, nextTag, isFemale, sexCode } from "../model/tags.js";
 import { onFarm, classOf } from "../model/animals.js";
 import { breedingSince, lastCalving } from "../model/breeding.js";
 import { animalLabel } from "../ui.js";
+
+// The colour most calves of a breed are registered as (DAERA codes).
+const BREED_COLOUR = { CH: "W", AA: "B", LIM: "R", SIM: "RW", HER: "RW", BB: "BLW", BRB: "BLW", DAQ: "D", SAL: "R", SHB: "RN", HOL: "BW", FR: "BW", GAL: "B", AU: "D", PAR: "D", HI: "R", DEX: "B" };
+/** Calf breed (the sire's, else the dam's) and colour (when sire and dam are the same breed, or one is unknown). */
+export function calfDefaults(snap, dam, svc) {
+  const herdBull = svc && (svc.sireId ? snap.ix.byId.get(svc.sireId) : svc.sireText ? snap.data.animals.find((b) => sexCode(b.sex) === "B" && [b.name, b.mgmtNo, b.pedigree?.regName].filter(Boolean).some((n) => String(svc.sireText).toLowerCase().includes(String(n).toLowerCase()))) : null);
+  const sb = breedCode(svc?.sireBreed || herdBull?.breed || ""), db = breedCode(dam?.breed || "");
+  const breed = sb || db || "";
+  const colour = breed && (!sb || !db || sb === db) ? BREED_COLOUR[breed] || "" : "";
+  return { breed, colour };
+}
 
 export default function calvingSheet(snap, { damId } = {}) {
   const females = (a) => onFarm(a) && isFemale(a) && ["cow", "heifer"].includes(classOf(snap.ix, a, snap.today));
@@ -55,7 +67,10 @@ export default function calvingSheet(snap, { damId } = {}) {
     const { svc } = breedingSince(snap.data, d, lastCalving(snap.ix, d)?.date);
     const s = svc[svc.length - 1];
     body.querySelectorAll("[name^=sire]").forEach((i) => { if (!i.value && s && s.sireText) i.value = s.sireText; });
-    if (s && s.sireBreed) body.querySelectorAll("[name^=breed]").forEach((i) => { i.value = breedCode(s.sireBreed); });
+    // calf breed and colour from the sire and dam (review A #45): CH × CH → CH, White
+    const def = calfDefaults(snap, d, s);
+    if (def.breed) body.querySelectorAll("[name^=breed]").forEach((i) => { i.value = def.breed; });
+    if (def.colour) body.querySelectorAll("[name^=colour]").forEach((i) => { if (!i.value) i.value = def.colour; });
   };
   fillSire();
   const tagIssue = (v, i, values) => {
@@ -80,6 +95,7 @@ export default function calvingSheet(snap, { damId } = {}) {
   const paintErrors = (v) => { for (let i = 0; i < calves; i++) { const box = body.querySelector(`[data-tagerr="${i}"]`); const m = tagIssue(v, i, v); box.replaceChildren(m ? el(fieldError(m)) : document.createTextNode("")); const st = body.querySelector(`[data-still="${i}"]`); if (st) st.hidden = v[`alive${i}`] !== "no"; } };
   const { form, refresh } = entrySheet({
     title: "Record a calving", body, label: "Save calving", missing,
+    checks: (v) => { const out = checkDate(v.date, snap.today, { what: "The calving date" }); for (let i = 0; i < calves; i++) { const k = +v[`kg${i}`]; if (k && (k < 15 || k > 90)) out.push(`Calf${calves > 1 ? " " + (i + 1) : ""}: ${k} kg is an unusual birth weight (most are 25–60 kg).`); } return out; },
     dirty: () => !!dam.ids().length,
     async save(v, sh) {
       const list = []; for (let i = 0; i < calves; i++) list.push({ alive: v[`alive${i}`] !== "no", sex: v[`sex${i}`], tag: v[`tag${i}`], breed: v[`breed${i}`], colour: v[`colour${i}`], sireText: v[`sire${i}`], birthKg: v[`kg${i}`], colostrum: v[`col${i}`], tagged: v.tagged, bvdSample: v.bvd });

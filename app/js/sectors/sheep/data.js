@@ -9,6 +9,7 @@ import { session } from "../../services/session.js";
 import { sheepSettings } from "./model/settings.js";
 import { cycleFor, stageOf } from "./model/year.js";
 import { countsAt, totals } from "./model/mobs.js";
+import { loadFarmProducts, watchFarmProducts } from "../../services/med-store.js";
 
 export const SHEEP_COLLECTIONS = ["mobs", "sheep", "events", "lambings", "lambCrops", "medicines", "movements", "sales", "inventories", "deaths", "diseaseReports", "vetOps", "feedRecords", "tasks", "finance", "notes"];
 export const SHEEP_META = ["settings", "keeper", "fqa"];
@@ -35,7 +36,7 @@ export async function loadSheep(ledger, extra = {}) {
   await Promise.all(SHEEP_COLLECTIONS.map(async (k) => { data[k] = readable(ledger, k) ? await listRecords(ledger.id, k).catch(() => []) : []; }));
   if (readable(ledger, "meta")) await Promise.all(SHEEP_META.map(async (k) => { meta[k] = await getMeta(ledger.id, k).catch(() => null); }));
   const space = farmSpace(ledger); let farmStore = [], contacts = [], fields = [];
-  if (space && readable(space, "medProducts")) [farmStore, contacts, fields] = await Promise.all(["medProducts", "contacts", "fields"].map((k) => listRecords(space.id, k).catch(() => [])));
+  if (space && readable(space, "medProducts")) [farmStore, contacts, fields] = await Promise.all([loadFarmProducts(space, ledger), ...["contacts", "fields"].map((k) => listRecords(space.id, k).catch(() => []))]);
   return buildSnap(ledger, data, meta, { farmStore, contacts, fields, ...extra });
 }
 
@@ -48,7 +49,7 @@ export function watchSheep(ledger, cb) {
   for (const k of want) { pending.add(k); subs.push(watchRecords(ledger.id, k, {}, (list) => { data[k] = list; pending.delete(k); if (!pending.size) ready = true; fire(); }, () => { pending.delete(k); if (!pending.size) ready = true; fire(); })); }
   if (readable(ledger, "meta")) for (const k of SHEEP_META) subs.push(watchMeta(ledger.id, k, (d) => { meta[k] = d; fire(); }, () => {}));
   const space = farmSpace(ledger);
-  if (space && readable(space, "medProducts")) for (const [k, coll] of [["farmStore", "medProducts"], ["contacts", "contacts"], ["fields", "fields"]]) subs.push(watchRecords(space.id, coll, {}, (l) => { far[k] = l; fire(); }, () => {}));
+  if (space && readable(space, "medProducts")) { subs.push(watchFarmProducts(space, ledger, (l) => { far.farmStore = l; fire(); })); for (const [k, coll] of [["contacts", "contacts"], ["fields", "fields"]]) subs.push(watchRecords(space.id, coll, {}, (l) => { far[k] = l; fire(); }, () => {})); }
   if (!want.length) { ready = true; fire(); }
   return () => { clearTimeout(timer); subs.forEach((u) => u && u()); };
 }

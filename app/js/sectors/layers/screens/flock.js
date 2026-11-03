@@ -2,6 +2,7 @@
 // breed standard band by week of age, with daily dots faint — hen-housed eggs so far and the
 // estimate at depop, the flock timeline, and links to weekly KPIs, the passport and samples.
 // Also the push screen for #/l/<id>/flock/<flockId> and #/l/<id>/curve/<flockId>.
+import { plural as pl } from "../../../ui/format.js";
 import { html, raw } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
@@ -64,7 +65,7 @@ function paint(snap, routed, isCurve) {
     <div class="section">${groupLabel("Flock timeline")}<div class="card">${tline([...timeline(c, f).map((x) => ({ label: x.label, state: x.state, data: x.edit && canWrite(snap.role, "flocks") ? `data-flow="editFlock" data-arg='${flowArg({ id: f.id })}'` : null })), ...(sal.exempt ? [] : sal.plan.filter((p) => p.state !== "depop").slice(0, 6).map((p) => ({ label: `Salmonella wk ${p.wk}${p.state === "done" ? " ✓" : p.state === "pos" ? " +" : ""}`, state: p.state === "done" ? "done" : p.state === "pos" ? "pos" : p.state === "late" ? "late" : p.state === "due" ? "due" : "future", href: L(`salmonella/${f.id}`) })))])}</div>
       <p class="ly-cap">Tap the depop or next-flock date to move it — the Salmonella plan and packer dates follow.</p></div>
     <div class="section"><div class="list">
-      ${linkRow(L(`weekly/${f.id}`), "Weekly figures", `${wkRows.length} weeks · lay, egg weight, feed, water, deaths`, "", "chart")}
+      ${linkRow(L(`weekly/${f.id}`), "Weekly figures", `${pl(wkRows.length, "week", "weeks")} · lay, egg weight, feed, water, deaths`, "", "chart")}
       ${linkRow(L(`flock/${f.id}/passport`), "Flock passport", "Rearer, vaccinations, feed, medicines, moves, Salmonella", "", "document")}
       ${linkRow(L(`salmonella/${f.id}`), "Salmonella", sal.exempt ? "Not needed for a small flock" : `Next sample ${dm(sal.due)}`, sal.exempt ? "" : sal.level !== "ok" ? pill(sal.level, sal.level === "late" ? "Late" : "Due") : "", "syringe")}
       ${linkRow(L(`samples/${f.houseId}/weights`), "Body weight and uniformity", lastSample(snap, f, "weights"), "", "scale")}

@@ -22,6 +22,8 @@ export async function seedLayers(page, { houses = true } = {}) {
     R.setMeta(lid, "keeper", { name: "Tom Riddell", address: "Gulladuff, Magherafelt, Co. Londonderry" });
     R.setMeta(lid, "settings", { producerCode: "1UK9-0412", registeredEmi: true, establishmentNo: "BT45 0412", packer: "Skea Eggs", collectionDays: [1, 4], vetPhone: "028 7963 1122", miteDay: dowOf(T), layingHens: 31600 });
     const h1 = nid(), h2 = nid(), h3 = nid();
+    // onboarding now makes starter houses from the setup numbers (review B #5); the seed brings its own
+    for (const h of await R.listRecords(lid, "houses")) await store.remove(`ledgers/${lid}/houses/${h.id}`);
     add("houses", { name: "House 1", order: 1, system: 1, producerCode: "1UK9-0412", establishmentNo: "BT45 0412", usableM2: 1820, nests: 2300, perchM: 2500, litterM2: 600, rangeHa: 6.4, rangeMaxM: 140, sheltersPerHa: 4, places: 16000, trapRows: 2, trapCols: 6 }, h1);
     add("houses", { name: "House 2", order: 2, system: 1, producerCode: "1UK9-0412", establishmentNo: "BT45 0412", usableM2: 1800, nests: 2200, perchM: 2400, litterM2: 600, rangeHa: 6.4, rangeMaxM: 165, sheltersPerHa: 2, places: 16000, trapRows: 2, trapCols: 6 }, h2);
     add("houses", { name: "House 3", order: 3, system: 2, producerCode: "2UK9-0412", establishmentNo: "BT45 0412", usableM2: 1200, nests: 1600, perchM: 1650, litterM2: 400, places: 10000, trapRows: 2, trapCols: 5 }, h3);

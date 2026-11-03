@@ -2,6 +2,7 @@
 // check (Red Tractor AH.9.4–9.5): method + "checked for signs of life" (required). Suckling
 // deaths in a crate are kept on the litter so pre-weaning mortality counts them once. In contract
 // mode a photo note is required (the integrator's batch report).
+import { checkDate } from "../../../core/sanity.js";
 import { html } from "../../../core/html.js";
 import { el } from "../../../ui/dom.js";
 import { checkRow, stepper } from "../../../ui/form.js";
@@ -59,7 +60,7 @@ export default function deathSheet(snap, { roomId = null, pen = null, crate = nu
   const strip = photoStrip({ lid: snap.lid, role: snap.role, parent: { coll: "deaths", label: "Death" }, title: snap.s.contract.on ? "Photo (contract)" : "Photos", hint: snap.s.contract.on ? "Needed for the integrator" : "", onChange: () => es && es.refresh() });
   body.appendChild(strip.node);
   let es = null;
-  es = entrySheet({ title: "Death", body, label: "Save death",
+  es = entrySheet({ title: "Death", body, label: "Save death", checks: (v) => checkDate(v.date, snap.today, { what: "The date of death" }),
     missing: (v) => {
       if (!rid && !sowId) return "Choose where";
       if (!v.stage) return "Choose the stage"; if (!v.cause) return "Choose the cause";

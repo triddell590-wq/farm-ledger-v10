@@ -1,6 +1,7 @@
 // Crop results (design/15 §9.1 – §9.4): EPEF, FCR, liveability, average weight, 7-day mortality,
 // footpad; processor feedback per thin/clear (docket), days empty, energy per crop and — for the
 // money roles only — the payment estimate against the settlement, line by line, with "Send query".
+import { signedPct } from "../../../ui/format.js";
 import { html, raw } from "../../../core/html.js";
 import { icon } from "../../../ui/icons.js";
 import { toast } from "../../../ui/toast.js";
@@ -79,8 +80,8 @@ function moneyBlock(snap, crop, r, h, compact) {
   const set = (snap.finance || []).filter((f) => f.cropId === crop.id && f.source === "settlement").pop();
   const chk = est && set ? settlementCheck(est.total, set.amount) : null;
   const text = est && set ? [`Settlement query — crop ${crop.no || ""} ${h.name || ""} (cleared ${crop.clearedDate || ""})`, `Birds ${n0(r.sold)} · ${n0(r.kg)} kg · FCR ${f2(r.fcr)} · mortality ${pc(r.cumMort, 2)}`, ...est.lines.map((l) => `${l.label}: ${pounds(l.amount, 2)}`), `My estimate ${pounds(est.total, 2)} · paid ${pounds(set.amount, 2)} · difference ${pounds(chk.diff, 2)}`, "Could you send the line-by-line workings?"].join("\n") : "";
-  return html`<div class="section">${groupLabel("Payment", "money roles only")}
-    ${est ? kvRows([...(compact ? [] : est.lines.map((l) => [l.label, pounds(l.amount, 0)])), [crop.clearedDate ? "Estimate" : "If clear-out goes to plan", `${pounds(est.total)}${est.perBird ? ` · ${pounds(est.perBird, 3)}/bird` : ""}`], set ? ["Settlement", pounds(set.amount), chk?.flag ? "due" : "ok", null, chk ? `${chk.diff >= 0 ? "+" : "−"}${pounds(Math.abs(chk.diff))} (${chk.pct >= 0 ? "+" : ""}${chk.pct.toFixed(1)}%) vs estimate${chk.flag ? " ⚠" : ""}` : ""] : null]) : html`<p class="br-quiet">Add your contract profile (More → Contract and payment) to see an estimate.</p>`}
+  return html`<div class="section">${groupLabel("Payment", "Hidden from workers")}
+    ${est ? kvRows([...(compact ? [] : est.lines.map((l) => [l.label, pounds(l.amount, 0)])), [crop.clearedDate ? "Estimate" : "If clear-out goes to plan", `${pounds(est.total)}${est.perBird ? ` · ${pounds(est.perBird, 3)}/bird` : ""}`], set ? ["Settlement", pounds(set.amount), chk?.flag ? "due" : "ok", null, chk ? `${chk.diff >= 0 ? "+" : "−"}${pounds(Math.abs(chk.diff))} (${signedPct(chk.pct)}) vs estimate${chk.flag ? " ⚠" : ""}` : ""] : null]) : html`<p class="br-quiet">Add your contract profile (More → Contract and payment) to see an estimate.</p>`}
     ${!compact && chk?.flag ? html`<button type="button" class="btn secondary br-mt" data-query data-text="${text}">${raw(icon("share"))}Send query</button>` : ""}
     ${!compact && crop.clearedDate && !set && canWrite(snap.role, "finance") ? html`<button type="button" class="btn br-mt" data-flow="settlement" data-arg="${flowArg({ cropId: crop.id })}">${raw(icon("money"))}Record the settlement</button>` : ""}</div>`;
 }

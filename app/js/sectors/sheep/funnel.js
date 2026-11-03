@@ -23,7 +23,7 @@ export default async function funnelScreen(ctx) {
       <div style="margin:4px 0 12px">${!g.enough ? html`<p class="hint" style="margin:0 4px">No ${g.crop} crop recorded to compare with.</p>` : segmented("ghost", [{ value: "0", label: `${f.crop} only` }, { value: "1", label: `Compare with ${g.crop}` }], ghost ? "1" : "0")}</div>
       ${f.enough ? funnelView(f, { ghost: ghost && g.enough ? g : null, lid: snap.lid }) : emptyState({ sector: "sheep", title: "Not enough to show yet", body: "The funnel fills as you record rams in, scanning, lambing and weaning." })}
       ${ghost && g.enough ? html`<p class="foot-note">Dashed outline: ${g.crop} crop (${g.steps.map((s) => (s.n == null ? "–" : num(s.n))).join(" → ")}).</p>` : ""}
-      <p class="source">Scanning % = lambs scanned ÷ ewes to the ram. Lambing % = born alive ÷ ewes to the ram. Weaning % = weaned ÷ ewes to the ram (Research C §4, DAERA).</p>
+      <p class="source">Scanning % = lambs scanned ÷ ewes to the ram. Lambing % = born alive ÷ ewes to the ram. Weaning % = weaned ÷ ewes to the ram (DAERA).</p>
       ${lines ? html`<div class="section">${groupLabel(lines.title, lines.rows.length)}${lines.rows.length ? kvRows(lines.rows) : html`<div class="card pad t-callout ink-2">Nothing recorded for this step yet.</div>`}</div>` : ""}</div>`;
   }, after: (node) => { const f = wireForm(node); f.onChange(() => { try { localStorage.setItem(LS, f.values().ghost); } catch (e) { /* blocked */ } location.hash = location.hash; dispatchEvent(new HashChangeEvent("hashchange")); }); } });
 }

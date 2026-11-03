@@ -6,6 +6,7 @@ import { el } from "../../ui/dom.js";
 import { icon, FL_ICONS } from "../../ui/icons.js";
 import { openSheet } from "../../ui/sheet.js";
 import { download } from "../../ui/download.js";
+import { rankMatches, sowKeys } from "../../core/rank.js";
 import { sowLabel, sowPill, sowLine, sowMatches, sortByNo, onFarm, cycleOf, dayName } from "./model/sows.js";
 import { weekDates } from "./model/weeks.js";
 import { batchName } from "./model/batches.js";
@@ -81,15 +82,18 @@ export function roomTile(lid, x, { full = false } = {}) {
 }
 
 /** Generic list picker sheet. items: [{ id, html, search }]. Resolves id or null. */
-export function pickFrom({ title, items, placeholder = "Search", empty = "Nothing to choose." }) {
+export function pickFrom({ title, items, placeholder = "Search", empty = "Nothing to choose.", onMeta = null }) {
   const body = el(html`<div class="picker">${items.length > 8 ? html`<div class="pg-search">${raw(icon("search"))}<input type="search" inputmode="search" placeholder="${placeholder}" aria-label="${placeholder}" data-q autocomplete="off"></div>` : ""}<div class="list" data-list style="margin-top:8px"></div></div>`);
+  let shown = 0;
   const paint = () => {
     const q = (body.querySelector("[data-q]")?.value || "").trim().toLowerCase();
-    const rows = items.filter((i) => !q || String(i.search || "").toLowerCase().includes(q)).slice(0, 200);
+    // items with keys {no,name,tag} rank exact number / tag block first (review A #1)
+    const rows = (items.some((i) => i.keys) ? rankMatches(items, q, (i) => i.keys || { name: i.search }).map((x) => x.item) : items.filter((i) => !q || String(i.search || "").toLowerCase().includes(q))).slice(0, 200);
+    shown = q ? rows.length : 0;
     body.querySelector("[data-list]").replaceChildren(el(html`<div style="display:contents">${rows.length ? rows.map((i) => html`<button type="button" class="row" data-pick="${i.id}">${raw(i.html)}</button>`) : html`<p class="hint" style="padding:16px">${empty}</p>`}</div>`));
   };
   body.querySelector("[data-q]")?.addEventListener("input", paint);
-  body.addEventListener("click", (e) => { const b = e.target.closest("[data-pick]"); if (b) sh.close(b.dataset.pick, { force: true }); });
+  body.addEventListener("click", (e) => { const b = e.target.closest("[data-pick]"); if (b) { if (onMeta) onMeta({ ambiguous: shown > 1 }); sh.close(b.dataset.pick, { force: true }); } });
   const sh = openSheet({ title, body });
   paint();
   return sh.done.then((r) => (typeof r === "string" ? r : null));
@@ -100,7 +104,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 /** Pick one breeding pig (sow number keypad first). filter(sow, cycle) */
 export function pickSow(snap, { title = "Choose a sow", filter = () => true } = {}) {
   const list = snap.data.sows.filter(onFarm).sort(sortByNo).map((s) => ({ s, c: cycleOf(snap.s, snap.ix, s, snap.today) })).filter((x) => filter(x.s, x.c));
-  return pickFrom({ title, placeholder: "Sow number or tag", empty: "No sows to choose.", items: list.map(({ s, c }) => ({ id: s.id, search: `${s.sowNo} ${s.tag || ""}`, html: rowHtml(sowLabel(s), `P${c.parity} · ${s.type === "gilt" && !c.litters.length ? "gilt" : c.status}`, sowLine(c, snap.ix, (id) => batchName(snap.ix.batches.get(id)))) })) });
+  return pickFrom({ title, placeholder: "Sow number or tag", empty: "No sows to choose.", items: list.map(({ s, c }) => ({ id: s.id, search: `${s.sowNo} ${s.tag || ""}`, keys: sowKeys(s), html: rowHtml(sowLabel(s), `P${c.parity} · ${s.type === "gilt" && !c.litters.length ? "gilt" : c.status}`, sowLine(c, snap.ix, (id) => batchName(snap.ix.batches.get(id)))) })) });
 }
 /** Pick a room. filter(room, facts?) */
 export function pickRoom(snap, { title = "Choose a room", filter = () => true, facts = [] } = {}) {

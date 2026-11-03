@@ -78,7 +78,7 @@ test("classification: withdrawal is never a 'now late' legal item; info stays in
   const k = Object.fromEntries(items.map((i) => [i.key, i.kind]));
   assert.deepEqual(k, { wd: "withdrawal", nifais: "legal", bvd: "sampling", fyi: null, milk: "withdrawal" });
   assert.deepEqual(N.lateLegal(items).map((i) => i.key), ["nifais"]);
-  assert.equal(N.badgeCount(items), 4);
+  assert.equal(N.badgeCount(items), 1, "bell counts legal late / due-soon only, never withdrawal or plain jobs");
 });
 
 test("aggregation: alerts first, tasks deduped against alerts, late before due, ledger grouping", () => {
@@ -126,7 +126,7 @@ test("messages: summary, late (single and grouped), invite", () => {
   const items = N.itemsFrom(W1, [{ key: "a", level: "late", legal: true, title: "Notify NIFAIS of death" }, { key: "b", level: "due", legal: true, title: "Room checks" }], [{ key: "t", title: "Weigh stores", due: "2026-10-27" }], "2026-10-27");
   const s = N.summaryMessage(items, { farmName: "Drumlin Farm" });
   assert.equal(s.title, "Today on Drumlin Farm"); assert.match(s.body, /1 legal job is late: Notify NIFAIS of death\./); assert.match(s.body, /1 legal deadline due/); assert.match(s.body, /1 job to do/);
-  assert.equal(s.url, "#/notifications"); assert.equal(s.count, 3);
+  assert.equal(s.url, "#/notifications"); assert.equal(s.count, 2);
   assert.equal(N.summaryMessage([]), null);
   const one = N.lateMessage([items[0]]); assert.equal(one.title, "Late: Notify NIFAIS of death"); assert.match(one.body, /^Beef/); assert.equal(one.url, "#/l/L1");
   const many = N.lateMessage([items[0], items[0], items[0], items[0]]); assert.equal(many.title, "4 legal jobs are late"); assert.equal(many.url, "#/notifications");

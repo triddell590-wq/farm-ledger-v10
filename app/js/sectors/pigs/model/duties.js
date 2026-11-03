@@ -14,13 +14,19 @@ const live = (a) => (a || []).filter((r) => !r.deleted);
 const L = (c, h) => `#/l/${c.lid}/${h}`;
 const dm = (iso) => `${dayName(iso)} ${+iso.slice(8)} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][+iso.slice(5, 7) - 1]}`;
 
+/** "Bin 1 is empty — order feed now" / "Order feed: Bin 3 empty in about 3 days". */
+export function binTitle(b) {
+  const d = Math.max(0, Math.floor(b.daysLeft));
+  return d === 0 ? `${b.bin.name} is empty — order feed now` : `Order feed: ${b.bin.name} empty in about ${d === 1 ? "1 day" : d + " days"}`;
+}
+
 export function todayTasks(c) {
   const t = []; const T = c.today; const add = (o) => { if (!c.doneKeys.has(o.key)) t.push({ due: T, ...o }); };
   const rf = roomFacts(c); const occupied = rf.filter((x) => x.pigs > 0 || x.batch);
   // room checks — the law asks for one inspection a day
   if (occupied.length) { const done = occupied.filter((x) => x.check).length; if (done < occupied.length) add({ key: `checks:${T}`, title: `Room checks — ${done} of ${occupied.length} done`, sub: "Daily · the law asks for once a day", href: L(c, "rooms"), legal: true, auto: true }); }
   // alarm tests per house
-  for (const h of houses(c.data.rooms.filter((r) => r.mechVent !== false && !r.deleted))) { const a = alarmState(live(c.data.alarmTests), h, T); if (a.level !== "ok") add({ key: `alarm:${h}:${a.next}`, title: `Test the ventilation alarm — ${h}`, sub: a.last ? `Last tested ${dm(a.last.date)} · every 7 days` : "Never tested · every 7 days", href: L(c, `alarm/${encodeURIComponent(h)}`), legal: true, due: a.next }); }
+  if (!c.s.legalOnly) for (const h of houses(c.data.rooms.filter((r) => r.mechVent !== false && !r.deleted))) { const a = alarmState(live(c.data.alarmTests), h, T); if (a.level !== "ok") add({ key: `alarm:${h}:${a.next}`, title: `Test the ventilation alarm — ${h}`, sub: a.last ? `Last tested ${dm(a.last.date)} · every 7 days` : "Never tested · every 7 days", href: L(c, `alarm/${encodeURIComponent(h)}`), legal: true, due: a.next }); }
   if (c.s.breeding) {
     const cy = cycles(c);
     // move to farrowing (batch), farrowing checks, piglet tasks, weaning, service, returns, scans
@@ -43,7 +49,7 @@ export function todayTasks(c) {
   // water drop
   for (const x of rf.filter((y) => y.wAlert)) add({ key: `water:${x.room.id}:${T}`, title: `${x.room.name} water down ${Math.abs(Math.round(x.wc.change * 100))}% on yesterday — check drinkers and pigs`, href: L(c, `room/${x.room.id}`) });
   // feed bins
-  for (const b of binFacts(c).filter((y) => y.level === "due")) add({ key: `bin:${b.bin.id}:${b.emptyOn}`, title: `Order feed: ${b.bin.name} empty in ~${Math.max(0, Math.floor(b.daysLeft))} days`, sub: `Lead time ${+b.bin.leadDays || c.s.leadDays} days`, href: L(c, "tools/bins") });
+  for (const b of binFacts(c).filter((y) => y.level === "due")) add({ key: `bin:${b.bin.id}:${b.emptyOn}`, title: binTitle(b), sub: `Lead time ${+b.bin.leadDays || c.s.leadDays} days`, href: L(c, "tools/bins") });
   // wash stages
   for (const x of rf.filter((y) => !y.wash.inUse && !y.wash.ready && y.wash.stage !== "emptied" && !y.pigs)) add({ key: `wash:${x.room.id}:${x.wash.stage}`, title: `${x.room.name}: ${x.wash.stage} — ${x.wash.next} next`, href: L(c, `room/${x.room.id}`) });
   // ship loads are stored tasks (actions.planLoad) with the feed-withdrawal time in the title
@@ -52,9 +58,10 @@ export function todayTasks(c) {
   // movement notifications
   for (const m of live(c.data.moves)) { const n = notifyState(m, T); if (n.by && n.level !== "info") add({ key: `notify:${m.id}`, title: `Notify movement of ${m.n} ${m.category || "pigs"} (by ${dm(n.by)})`, sub: "On NIFAIS within 7 days", href: L(c, "reg/pm1"), legal: true, due: n.by, action: { type: "notify", id: m.id } }); }
   // QVR, eMB, vermin, water, inventory
-  const q = qvrState(live(c.data.vetVisits), T); if (q.level !== "ok") add({ key: `qvr:${q.last?.id || "none"}`, title: q.last ? `Book your quarterly vet visit — ${q.weeks} weeks since the last` : "Record your last quarterly vet visit", sub: q.last ? `20-week limit: by ${dm(q.nextBy)}` : "", href: L(c, "qvr") });
-  const e = embDue(T, live(c.data.embUploads)); if (!e.done && e.level !== "info" && e.level !== "ok") add({ key: `emb:${e.label}`, title: `Upload ${e.label.split(" ")[0]} antibiotic use to eMB-Pigs by ${dm(e.due)}`, href: L(c, "emb"), action: { type: "emb", quarter: e.label } });
-  for (const k of ["vermin", "water"]) { const st = checkState(live(c.data.siteChecks), k, T); if (st.level !== "ok" && !(k === "water" && c.s.mainsWater)) add({ key: `chk:${k}:${st.due}`, title: k === "vermin" ? "Quarterly vermin survey due" : "Yearly water test due (non-mains supply)", href: L(c, `reg/${k}`) }); }
-  const inv = inventoryDue(T); if (inv.level === "due" && !live(c.data.inventories).some((x) => x.date === inv.date)) add({ key: `inv:${inv.date}`, title: `Pig inventory: count on ${dm(inv.date)}`, sub: "DAERA / NISRA survey · one return per herd", href: L(c, "inventory"), legal: true });
+  // assurance to-dos (QVR, eMB, vermin survey, water test) only for Red Tractor members (B #12)
+  if (!c.s.legalOnly) { const q = qvrState(live(c.data.vetVisits), T); if (q.level !== "ok") add({ key: `qvr:${q.last?.id || "none"}`, title: q.last ? `Book your quarterly vet visit — ${q.weeks} weeks since the last` : "Record your last quarterly vet visit", sub: q.last ? `20-week limit: by ${dm(q.nextBy)}` : "", href: L(c, "qvr"), due: q.last && q.level !== "late" && q.nextBy ? [addDays(q.nextBy, -14), T].sort()[1] : T });
+  const e = embDue(T, live(c.data.embUploads)); if (!e.done && e.level !== "info" && e.level !== "ok") add({ key: `emb:${e.label}`, title: `Upload ${e.label.split(" ")[0]} antibiotic use to eMB-Pigs by ${dm(e.due)}`, href: L(c, "emb"), due: e.due || T, action: { type: "emb", quarter: e.label } });
+  for (const k of ["vermin", "water"]) { const st = checkState(live(c.data.siteChecks), k, T); if (st.level !== "ok" && !(k === "water" && c.s.mainsWater)) add({ key: `chk:${k}:${st.due}`, title: k === "vermin" ? "Quarterly vermin survey" : "Yearly water test (non-mains supply)", href: L(c, `reg/${k}`), due: st.due || T }); } }
+  const inv = inventoryDue(T); if (inv.level === "due" && !live(c.data.inventories).some((x) => x.date === inv.date)) add({ key: `inv:${inv.date}`, title: `Pig inventory: count on ${dm(inv.date)}`, sub: "DAERA / NISRA survey · one return per herd", href: L(c, "inventory"), legal: true, due: inv.date });
   return t;
 }

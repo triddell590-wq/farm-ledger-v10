@@ -12,6 +12,7 @@ import { recordDate, relDays } from "../ui/format.js";
 import { todayStr, daysBetween } from "../core/dates.js";
 import { makeScreen, largeTitle, backLink, emptyState, groupLabel } from "./common.js";
 import { photoStrip } from "../ui/photo-strip.js";
+import { watchFarmStore, storeLedgers } from "../services/med-store.js";
 
 const KINDS = {
   medicines: {
@@ -23,7 +24,7 @@ const KINDS = {
       { key: "wdEggs", label: "Egg withdrawal (days)", inputmode: "numeric" }, { key: "source", label: "Supplier", optional: true },
       { key: "batch", label: "Batch number", optional: true }, { key: "expiry", label: "Expiry", type: "date", optional: true },
     ],
-    line: (r) => [r.wdMeat != null && r.wdMeat !== "" ? `Meat ${r.wdMeat} days` : null, r.wdMilk ? `Milk ${r.wdMilk} days` : null, r.wdEggs ? `Eggs ${r.wdEggs} days` : null, r.batch ? `Batch ${r.batch}` : null].filter(Boolean).join(" · "),
+    line: (r) => [r.ledgerName ? `From ${r.ledgerName}` : null, r.wdMeat != null && r.wdMeat !== "" ? `Meat ${r.wdMeat} days` : null, r.wdMilk ? `Milk ${r.wdMilk} days` : null, r.wdEggs ? `Eggs ${r.wdEggs} days` : null, r.batch ? `Batch ${r.batch}` : null].filter(Boolean).join(" · "),
     pill: (r) => (r.expiry ? (daysBetween(todayStr(), r.expiry) < 0 ? ["late", "Expired"] : daysBetween(todayStr(), r.expiry) <= 30 ? ["due", "Expires " + relDays(r.expiry)] : null) : null),
   },
   documents: {
@@ -72,17 +73,20 @@ export default async function farmRecords({ params }) {
     const start = JSON.stringify(f.values());
     const sh = openSheet({ title: r ? r[req.key] : `Add ${K.one}`, body: b, footer: can ? btn : null, cancelText: can ? "Cancel" : "Done", isDirty: () => can && (JSON.stringify(f.values()) !== start || (strip && strip.dirty())) });
     if (strip) sh.done.then(() => strip.destroy());
-    btn.onclick = () => { const v = f.values(); if (r) updateRecord(space.id, K.coll, r, v); else { const id = addRecord(space.id, K.coll, v); if (strip) strip.commit(id, label(v[K.fields[0].key])); } sh.close(true, { force: true }); toast(`${K.one[0].toUpperCase() + K.one.slice(1)} saved`); };
+    // a product kept in a Beef/Dairy ledger's own list is edited where it lives (one store, A #9)
+    const home = r?.local && r.lid ? r.lid : space.id;
+    btn.onclick = () => { const v = f.values(); if (r) updateRecord(home, K.coll, r, v); else { const id = addRecord(space.id, K.coll, v); if (strip) strip.commit(id, label(v[K.fields[0].key])); } sh.close(true, { force: true }); toast(`${K.one[0].toUpperCase() + K.one.slice(1)} saved`); };
     const d = b.querySelector("[data-del]");
-    if (d) d.onclick = async () => { if (await confirmSheet({ title: `Remove this ${K.one}?`, confirm: "Remove", danger: true })) { softDelete(space.id, K.coll, r.id); sh.close(true, { force: true }); toast("Removed"); } };
+    if (d) d.onclick = async () => { if (await confirmSheet({ title: `Remove this ${K.one}?`, confirm: "Remove", danger: true })) { softDelete(home, K.coll, r.id); sh.close(true, { force: true }); toast("Removed"); } };
   };
-  const unsub = watchRecords(space.id, K.coll, {}, (list) => {
+  const watch = (cb) => (K.coll === "medProducts" ? watchFarmStore(space, storeLedgers(session.ledgers, farm.farmId), cb) : watchRecords(space.id, K.coll, {}, cb, () => {}));
+  const unsub = watch((list) => {
     const out = body.querySelector("[data-out]"); const key = K.fields[0].key;
     list.sort((a, b) => String(a[key]).localeCompare(String(b[key])));
     if (!list.length) { out.replaceChildren(el(emptyState({ iconName: K.icon, title: K.empty[0], body: K.empty[1], action: can ? `Add ${K.one}` : null, actAttr: "data-add" }))); const a = out.querySelector("[data-add]"); if (a) a.onclick = () => open(); return; }
     out.replaceChildren(el(html`<div>${groupLabel(K.title, list.length)}<div class="list">${list.map((r) => { const p = K.pill && K.pill(r); return html`<button type="button" class="row" data-id="${r.id}"><span class="tile neutral">${raw(icon(K.icon))}</span><span class="main"><span class="primary">${r[key]}</span><span class="secondary">${K.line(r)}</span></span>${p ? html`<span class="pill ${p[0]}">${raw(icon(p[0] === "late" ? "alert" : "clock"))}${p[1]}</span>` : ""}</button>`; })}</div></div>`));
     out.querySelectorAll("[data-id]").forEach((b) => (b.onclick = () => open(list.find((x) => x.id === b.dataset.id))));
-  }, () => {});
+  });
   const { farmTabs } = await import("./common.js");
   return makeScreen({ body, title: K.title, area: "farm", tab: "more", depth: 1, chrome: { tabs: farmTabs(), tab: "more", fab: can ? () => open() : null }, destroy: unsub });
 }

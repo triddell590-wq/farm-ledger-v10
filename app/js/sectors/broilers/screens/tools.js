@@ -91,7 +91,7 @@ const CALC = {
         return big(n0(p), `g on day ${to} (estimate)`) + line(`${std.hybrid} objective day ${to}`, `${n0(stdWt(std, to))} g`) + line("Running at", `${ratio >= 1 ? "+" : "−"}${Math.abs((ratio - 1) * 100).toFixed(0)}% vs objective`) + formula(`Projection = today's weight + objective gain to day ${to} × (today ÷ objective today). An estimate; the Growth tab uses your last weighs.`); } };
   },
   uniformity() {
-    return { fields: html`<div class="field stacked"><label>Weights (grams), any separator</label><textarea name="w" rows="5" placeholder="1820 1765 1902 …"></textarea></div>`,
+    return { fields: html`<div class="field stacked"><label>Weights (grams), any separator</label><textarea name="w" rows="5" placeholder="e.g. 1820 1765 1902"></textarea></div>`,
       calc: (v) => { const xs = String(v.w || "").split(/[^\d.]+/).map(Number).filter((x) => x > 0); const st = weighStats(xs); if (!st.n) return "Type or paste the weights."; return big(`${n0(st.mean)} g`, `mean of ${st.n}`) + line("CV", st.cv != null ? `${n1(st.cv)}%` : "—") + line("Uniformity (±10%)", st.uniformity != null ? pc(st.uniformity, 0) : "—") + formula("CV = standard deviation ÷ mean × 100. Uniformity = % of birds within 10% of the mean. Aim for CV under 10%."); } };
   },
   payment(snap) {

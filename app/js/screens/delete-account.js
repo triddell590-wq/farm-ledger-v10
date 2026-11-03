@@ -1,4 +1,5 @@
 // Delete account (design/01 §11.2): two steps, never one. Per owned ledger: hand over or delete.
+import { RETENTION_LINE } from "../content/region-rules.js";
 import { html, raw } from "../core/html.js";
 import { el } from "../ui/dom.js";
 import { icon } from "../ui/icons.js";
@@ -15,16 +16,25 @@ export default async function deleteAccountScreen() {
   const out = body.querySelector("[data-out]");
   let plan = { owned: [], joined: [] };
   try { plan = await deletionPlan(); } catch (e) { /* offline */ }
-  const owned = plan.owned.filter((o) => o.ledger.type !== "farm");
+  // Every ledger I own, the farm-wide records too (money, map, medicine store): hand each over to
+  // someone already on it, or delete it. Where nobody else is on it, say plainly it will go (A #31).
+  const owned = plan.owned.sort((x, y) => (x.ledger.type === "farm") - (y.ledger.type === "farm"));
   const others = {};
   for (const o of owned) others[o.ledger.id] = (await listMembers(o.ledger.id).catch(() => [])).filter((m) => m.uid !== auth.user.uid);
+  const label = (l) => (l.type === "farm" ? "Farm-wide records (money, map, medicine store)" : l.name);
+  const canHand = owned.filter((o) => others[o.ledger.id].length);
+  const alone = owned.filter((o) => !others[o.ledger.id].length);
   out.replaceChildren(el(html`<div>
-    <p class="t-body">This removes your login and takes you off every ledger you've been invited to${plan.joined.length ? ` (${plan.joined.length})` : ""}.</p>
-    ${owned.length ? html`${groupLabel(`You own ${owned.length} ${owned.length === 1 ? "ledger" : "ledgers"}. Choose for each:`)}
-      <div class="form-group">${owned.map((o) => html`<div class="field"><span class="label">${o.ledger.name}</span><span class="spacer"></span>
-        <select name="lg-${o.ledger.id}" aria-label="What happens to ${o.ledger.name}" style="color:var(--late)">${others[o.ledger.id].map((m) => html`<option value="${m.uid}">Hand over to ${m.displayName || m.email}</option>`)}<option value="delete" selected>Delete</option></select></div>`)}</div>` : ""}
-    <div class="warn-card" style="margin-top:16px">${raw(icon("alert"))}<span>Medicine and movement records must be kept for at least 5 years by law. <a href="#/settings/data">Download my data first</a></span></div>
-    <form novalidate style="margin-top:16px"><div class="form-group">${textField({ name: "confirm", label: "Type DELETE to confirm", placeholder: "DELETE", autocomplete: "off" })}${textField({ name: "password", label: "Your password", type: "password", autocomplete: "current-password" })}</div></form>
+    <p class="t-body">This removes your login and takes you off every herd and flock you've been invited to${plan.joined.length ? ` (${plan.joined.length})` : ""}.</p>
+    ${canHand.length ? html`${groupLabel(`Hand over or delete — ${canHand.length === 1 ? "someone else is on this" : "other people are on these"}`)}
+      <div class="form-group">${canHand.map((o) => html`<div class="field" data-owned="${o.ledger.id}"><span class="label">${label(o.ledger)}</span><span class="spacer"></span>
+        <select name="lg-${o.ledger.id}" aria-label="What happens to ${label(o.ledger)}">${others[o.ledger.id].map((m, i) => html`<option value="${m.uid}" ${raw(i === 0 ? "selected" : "")}>Hand over to ${m.displayName || m.email}</option>`)}<option value="delete">Delete it</option></select></div>`)}</div>
+      <p class="hint">Handing over makes them the owner. Everything in it stays for them.</p>` : ""}
+    ${alone.length ? html`${groupLabel(`${alone.length === 1 ? "Nobody else is on this, so it will be deleted" : "Nobody else is on these, so they will be deleted"}`)}
+      <div class="list">${alone.map((o) => html`<div class="row no-lead" data-owned="${o.ledger.id}"><span class="main"><span class="primary">${label(o.ledger)}</span></span><span class="t-callout" style="color:var(--late-ink)">Deleted</span></div>`)}</div>
+      ${canHand.length || !owned.length ? "" : html`<p class="hint">To keep any of it, invite someone to it first and hand it over to them, or download your data below.</p>`}` : ""}
+    <div class="warn-card" style="margin-top:16px">${raw(icon("alert"))}<span>${RETENTION_LINE}. <a href="#/settings/data">Download my data first</a></span></div>
+    <form novalidate style="margin-top:16px"><div class="form-group">${textField({ name: "confirm", label: "Type DELETE to confirm", autocomplete: "off" })}${textField({ name: "password", label: "Your password", type: "password", autocomplete: "current-password" })}</div></form>
     <div data-err></div>
     <div class="section"><button type="button" class="btn danger" data-go>Delete my account for good</button></div>
   </div>`));

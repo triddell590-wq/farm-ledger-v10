@@ -19,10 +19,20 @@ export function nifaisDays(s) {
   const n = usesNifaisRegister(s) ? nifaisOnline(s) : null;
   return n ? { birth: n.birth, moveOff: n.moveOff, moveOn: n.other, death: n.other, retag: n.other } : { birth: ON_FARM.nifaisBirth, moveOff: ON_FARM.nifaisMove, moveOn: ON_FARM.nifaisMove, death: ON_FARM.nifaisDeath, retag: ON_FARM.retag };
 }
-const tagShort = (a) => { const t = tagParts(a.tag).tail; return shortName(a) || t || a.tag || "animal"; };
+// Jobs and alerts name an animal the way the farmer does (review A #16): management number and
+// name first, the tag's own digits second when they differ ("0105 Peggy (0403 1)").
+const tagShort = (a) => { const t = tagParts(a.tag).tail; const n = shortName(a); if (!n) return t || a.tag || "animal"; return t && !n.replace(/\s/g, "").startsWith(t.replace(/\s/g, "").slice(0, 4)) ? `${n} (${t})` : n; };
+export const jobName = tagShort;
+const deadName = (ix, d) => { const a = d.animalId && ix.byId.get(d.animalId); return a ? tagShort(a) : d.tagLabel || ""; };
 const calfOf = (ix, a) => { const d = a.damId ? ix.byId.get(a.damId) : null; return `calf of ${d ? tagShort(d) : a.damTag ? tagParts(a.damTag).tail : tagShort(a)}`; };
 const LEVEL_ORDER = { late: 0, due: 1, info: 2 };
 
+/** "the Charolais Cattle Society" stays as it is; "Charolais" becomes "Charolais society". */
+export function societyName(name) {
+  const n = String(name || "").trim();
+  if (!n) return "breed society";
+  return /\b(society|association|club|herd ?book)$/i.test(n) ? n : `${n} society`;
+}
 /** All generated jobs. Each: { key, title, show, due, href?, animalId?, action?, legal? } */
 export function generatedTasks(c) {
   const { data, s, ix, today, lid } = c; const out = []; const nd = nifaisDays(s);
@@ -31,13 +41,13 @@ export function generatedTasks(c) {
     const a = b.animal; const who = calfOf(ix, a); const show = addDays(a.dob, 1);
     for (const st of b.steps) {
       if (st.done) continue;
-      const title = { tagged: `Tag ${who}`, bvdSample: `Post BVD sample for ${who}`, nifais: usesNifaisRegister(s) ? `Record ${who} on NIFAIS` : `Register ${who} on NIFAIS`, society: `Register ${who} with the ${s.society || "breed"} society`, dna: `Post DNA sample for ${who}` }[st.key];
+      const title = { tagged: `Tag ${who}`, bvdSample: `Post BVD sample for ${who}`, nifais: usesNifaisRegister(s) ? `Record ${who} on NIFAIS` : `Register ${who} on NIFAIS`, society: `Register ${who} with the ${societyName(s.society)}`, dna: `Post DNA sample for ${who}` }[st.key];
       out.push({ key: `reg:${a.id}:${st.key}`, title, show, due: st.by, href: A("breeding/register"), animalId: a.id, action: { type: "reg", animalId: a.id, step: st.key }, legal: ["tagged", "nifais", "bvdSample"].includes(st.key) });
     }
   }
   for (const m of data.medicines) {
     const n = +m.courseDays || 1; if (m.deleted || m.notUsed || n < 2 || !m.date) continue;
-    for (let i = 1; i < n; i++) { const d = addDays(m.date, i); if (d < addDays(today, -2)) continue; out.push({ key: `dose:${m.courseId || m.id}:${i}`, title: `${i === 1 ? "Second" : i === 2 ? "Third" : `Dose ${i + 1}`} dose: ${m.groupLabel || (m.animalTags || []).map((t) => tagParts(t).tail).join(", ")} (${m.productName})`, show: d, due: d, href: A("paperwork/medicine") }); }
+    for (let i = 1; i < n; i++) { const d = addDays(m.date, i); if (d < addDays(today, -2)) continue; out.push({ key: `dose:${m.courseId || m.id}:${i}`, title: `${i === 1 ? "Second" : i === 2 ? "Third" : `Dose ${i + 1}`} dose: ${m.groupLabel || (m.animalTags || []).map((t) => { const a = ix.byTag?.get(String(t).replace(/\s+/g, "").toLowerCase()); return a ? tagShort(a) : tagParts(t).tail; }).join(", ")} (${m.productName})`, show: d, due: d, href: A("paperwork/medicine") }); }
   }
   // weigh reminders, per class that is weighed for gain
   for (const cls of ["finisher", "store", "weanling"]) {
@@ -53,8 +63,14 @@ export function generatedTasks(c) {
   }
   for (const d of data.deaths) {
     if (d.deleted || !d.date) continue;
-    if (!d.nifaisNotified) out.push({ key: `death:${d.id}`, title: `${usesNifaisRegister(s) ? "Record on NIFAIS" : "Notify NIFAIS"} of death: ${d.tagLabel || ""}`.trim(), show: d.date, due: addDays(d.date, nd.death), action: { type: "notified", coll: "deaths", id: d.id }, legal: true });
-    if (d.tseRequired && !d.tseDone) out.push({ key: `tse:${d.id}`, title: `Phone the TSE sampling site: ${d.tagLabel || ""}`.trim(), show: d.date, due: addDays(d.date, 1), action: { type: "tse", id: d.id }, legal: true });
+    if (!d.nifaisNotified) out.push({ key: `death:${d.id}`, title: `${usesNifaisRegister(s) ? "Record on NIFAIS" : "Notify NIFAIS"} of death: ${deadName(ix, d)}`.trim(), show: d.date, due: addDays(d.date, nd.death), action: { type: "notified", coll: "deaths", id: d.id }, legal: true });
+    if (d.tseRequired && !d.tseDone) out.push({ key: `tse:${d.id}`, title: `Phone the TSE sampling site: ${deadName(ix, d)}`.trim(), show: d.date, due: addDays(d.date, 1), action: { type: "tse", id: d.id }, legal: true });
+  }
+  // factory sale saved without its kill sheet (review A #3)
+  for (const sl of data.sales || []) {
+    if (sl.deleted || !sl.awaitingKillSheet || !sl.date) continue;
+    const names = (sl.lines || []).filter((l) => !l.deadKg).map((l) => { const a = ix.byId.get(l.animalId); return a ? tagShort(a) : tagParts(l.tag).tail || l.tag; });
+    out.push({ key: `kill:${sl.id}`, title: `Add the kill sheet for ${names.length > 2 ? `${names.slice(0, 2).join(", ")} and ${names.length - 2} more` : names.join(" and ") || "the factory sale"}`, show: sl.date, due: addDays(sl.date, 7), href: A(`sale/${sl.id}`), action: { type: "killsheet", id: sl.id } });
   }
   for (const a of data.animals) if (onFarm(a) && a.retagPending) out.push({ key: `retag:${a.id}:${a.retagPending}`, title: `Fit replacement tag: ${tagShort(a)}`, show: a.retagPending, due: addDays(a.retagPending, nd.retag), animalId: a.id, action: { type: "retagDone", animalId: a.id }, legal: true });
   for (const p of data.purchases) {
@@ -156,8 +172,8 @@ function collapse(list) {
   for (const [g, items] of Object.entries(groups)) {
     if (items.length <= 2) { out.push(...items); continue; }
     const lv = items.some((x) => x.level === "due") ? "due" : "info";
-    out.push(g === "deadline" ? { key: "dl", level: lv, title: `${items.length} cattle near a scheme or spec deadline`, body: items.slice(0, 2).map((x) => x.title).join("; ") + "…", href: items[0].href.replace(/animal\/.*/, "finishing") }
-      : { key: "sc", level: "due", title: `${items.length} cows at risk for the Suckler Cow Scheme`, body: "Not served or scanned in time to calve within the limit.", href: items[0].href });
+    out.push(g === "deadline" ? { key: "dl", level: lv, title: `${items.length === 1 ? "1 animal is" : items.length + " cattle are"} near a scheme or spec deadline`, body: items.slice(0, 2).map((x) => x.title).join("; ") + "…", href: items[0].href.replace(/animal\/.*/, "finishing") }
+      : { key: "sc", level: "due", title: `${items.length === 1 ? "1 cow" : items.length + " cows"} at risk for the Suckler Cow Scheme`, body: "Not served or scanned in time to calve within the limit.", href: items[0].href });
   }
   return out;
 }

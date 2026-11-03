@@ -8,6 +8,8 @@ import { entrySheet, chipsField } from "./common.js";
 import { logTank } from "../actions.js";
 import { currentMilking, partWord, datePart, milkingsOn } from "../model/milking.js";
 import { latestTank } from "../model/quality.js";
+import { onFarm, groupOf } from "../model/cows.js";
+import { checkLitres } from "../../../core/sanity.js";
 
 export default function tankSheet(snap) {
   const s = snap.s; const m = currentMilking(s, snap.now); const last = latestTank(snap.data.tankLog);
@@ -31,7 +33,10 @@ export default function tankSheet(snap) {
     if (over) body.querySelector("[data-over-t]").textContent = `${(parseFloat(v.tempC) - s.tankLimit).toFixed(1)} °C above limit — check the cooling and note what you did.`;
     body.querySelector("[data-rec]").hidden = v.collected !== "yes";
   };
+  const milkingCows = () => snap.data.animals.filter((a) => onFarm(a) && groupOf(snap.ix, a, snap.today) === "milking").length;
   const es = entrySheet({ title: "Tank temperature", body, label: "Save tank temperature",
+    // litres collected against cows in milk (tankers usually call every other day) — review A #2
+    checks: (v) => [...(v.collected === "yes" ? checkLitres(v.litres, milkingCows(), { days: 2 }) : []), ...((parseFloat(v.tempC) > 25 || parseFloat(v.tempC) < -2) ? [`${v.tempC} °C is an unusual tank temperature.`] : [])],
     missing: (v) => (v.tempC === "" || Number.isNaN(parseFloat(v.tempC)) ? "Add the temperature" : parseFloat(v.tempC) > s.tankLimit && !v.action ? "Note the action taken to save" : null),
     save(v, sh) {
       logTank(snap.lid, { date: snap.today, milking: s.robot ? "day" : v.milking || m?.part || "am", tempC: parseFloat(v.tempC), collected: v.collected === "yes", receiptTemp: v.receiptTemp, litres: v.litres, action: v.action });

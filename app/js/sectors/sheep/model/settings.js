@@ -45,7 +45,7 @@ export const SOURCES = {
   maxCarcase: "Guess — set your processor's maximum.",
   koPct: "Typical lamb kill-out (guess). Edit to match your kill sheets.",
   meal: "Guide figures based on DAERA/AHDB late-pregnancy feeding tables (editable).",
-  ramGuide: "Research C guidance: 1 mature ram per 40 ewes, 1 ram lamb per 25 (editable).",
+  ramGuide: "Guide: 1 mature ram per 40 ewes, 1 ram lamb per 25 (editable).",
   lossTarget: "DAERA: losses from scanning to weaning under 12%.",
 };
 

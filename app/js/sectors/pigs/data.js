@@ -12,6 +12,7 @@ import { indexHerd } from "./model/sows.js";
 import { weekIndex } from "./model/weeks.js";
 import { nextBatchNo } from "./model/batches.js";
 import { batchFactsAll } from "./model/facts.js";
+import { loadFarmProducts, watchFarmProducts, mergeStores } from "../../services/med-store.js";
 
 export const PIG_COLLECTIONS = [...new Set([...collectionsFor("pigs"), "tasks"])].filter((k) => !["photos", "documents", "notes", "events"].includes(k));
 export const PIG_META = metaFor("pigs");
@@ -42,7 +43,7 @@ export async function loadPigs(ledger, { now } = {}) {
   await Promise.all(PIG_COLLECTIONS.map(async (k) => { data[k] = canRead(ledger.role, k) ? await listRecords(ledger.id, k).catch(() => []) : []; }));
   if (canRead(ledger.role, "meta")) await Promise.all(PIG_META.map(async (k) => { meta[k] = await getMeta(ledger.id, k).catch(() => null); }));
   const space = farmSpace(ledger); let farmStore = [], contacts = [];
-  if (space && canRead(space.role, "medProducts")) { farmStore = await listRecords(space.id, "medProducts").catch(() => []); contacts = await listRecords(space.id, "contacts").catch(() => []); }
+  if (space && canRead(space.role, "medProducts")) { farmStore = await loadFarmProducts(space, ledger); contacts = await listRecords(space.id, "contacts").catch(() => []); }
   return buildSnap(ledger, data, meta, { farmStore, contacts, now });
 }
 
@@ -56,7 +57,7 @@ export function watchPigs(ledger, cb) {
   if (canRead(ledger.role, "meta")) for (const k of PIG_META) subs.push(watchMeta(ledger.id, k, (d) => { meta[k] = d; fire(); }, () => {}));
   const space = farmSpace(ledger);
   if (space && canRead(space.role, "medProducts")) {
-    subs.push(watchRecords(space.id, "medProducts", {}, (l) => { farmStore = l; fire(); }, () => {}));
+    subs.push(watchFarmProducts(space, ledger, (l) => { farmStore = l; fire(); }));
     subs.push(watchRecords(space.id, "contacts", {}, (l) => { contacts = l; fire(); }, () => {}));
   }
   if (!want.length) { ready = true; fire(); }

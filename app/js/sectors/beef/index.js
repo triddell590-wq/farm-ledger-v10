@@ -32,6 +32,7 @@ const routes = [
   { pattern: /^paperwork\/tb$/, load: S("tb") },
   { pattern: /^tb\/(?<id>[^/]+)(?:\/(?<mode>day|read))?$/, load: S("tb") },
   { pattern: /^finishing$/, load: S("finishing") },
+  { pattern: /^sale\/(?<id>[^/]+)$/, load: S("kill-sheet") },
   { pattern: /^feed$/, load: S("feed") },
   { pattern: /^money$/, load: S("money") },
   { pattern: /^tools(?:\/(?<tool>[a-z-]+))?$/, load: S("tools") },

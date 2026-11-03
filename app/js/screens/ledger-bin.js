@@ -11,12 +11,12 @@ import { makeScreen, largeTitle, backLink, emptyState, farmTabs, sectorTile } fr
 
 const day = (d) => d.toLocaleDateString("en-GB", { day: "numeric", month: "long" });
 export default async function ledgerBin() {
-  const body = el(html`<div>${backLink("#/settings", "Settings")}${largeTitle("Recently deleted ledgers", "Restore a ledger, or delete it for good. After 30 days it goes by itself.")}<div data-list><p class="hint">Loading…</p></div></div>`);
+  const body = el(html`<div>${backLink("#/settings", "Settings")}${largeTitle("Recently deleted", "Bring back a herd or flock, or delete it for good. After 30 days it goes by itself.")}<div data-list><p class="hint">Loading…</p></div></div>`);
   const box = body.querySelector("[data-list]");
   const paint = async () => {
     let list = [];
     try { list = await listBinned(); } catch (e) { box.replaceChildren(el(html`<p class="hint">Couldn't load this list. Check your signal and try again.</p>`)); return; }
-    if (!list.length) { box.replaceChildren(el(emptyState({ iconName: "trash", title: "Nothing here", body: "Ledgers you delete stay here for 30 days." }))); return; }
+    if (!list.length) { box.replaceChildren(el(emptyState({ iconName: "trash", title: "Nothing here", body: "Herds and flocks you delete stay here for 30 days." }))); return; }
     box.replaceChildren(el(html`<div class="list">${list.map((l) => html`<div class="row" data-sector="${l.type}">${sectorTile(l.type)}<span class="main"><span class="primary">${l.name}</span><span class="secondary">Deleted ${day(l.deletedAt)} · gone for good ${day(l.purgeOn)}</span></span>
       <span style="display:flex;gap:8px"><button type="button" class="btn small secondary" data-restore="${l.id}">Restore</button><button type="button" class="btn small danger" data-purge="${l.id}" aria-label="Delete ${l.name} for good">${raw(icon("trash"))}</button></span></div>`)}</div>`));
     box.onclick = async (e) => {
@@ -29,5 +29,5 @@ export default async function ledgerBin() {
     };
   };
   paint();
-  return makeScreen({ body, title: "Recently deleted ledgers", area: "farm", depth: 2, chrome: { tabs: farmTabs(), tab: "more" } });
+  return makeScreen({ body, title: "Recently deleted", area: "farm", depth: 2, chrome: { tabs: farmTabs(), tab: "more" } });
 }

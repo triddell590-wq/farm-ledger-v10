@@ -4,11 +4,12 @@
 // and the map starting on the farm's postcode. Fields and places are farm-wide (farm space
 // `fields` / `places`); fields kept in a sector ledger show too. Tiles are cached by the service
 // worker so the map still shows at the farm with no signal.
-import { html, raw } from "../core/html.js";
+import { html, raw, esc } from "../core/html.js";
 import { el } from "../ui/dom.js";
 import { icon } from "../ui/icons.js";
 import { openSheet, confirmSheet } from "../ui/sheet.js";
-import { textField, selectField, wireForm, guardButton } from "../ui/form.js";
+import { textField, selectField, checkRow, wireForm, guardButton } from "../ui/form.js";
+import { stockUnits, matchStock, setUnitField, fieldHeadline, headWord } from "../services/field-stock.js";
 import { listRecords, addRecord, updateRecord, softDelete, restore } from "../services/records.js";
 import { canRead, canWrite } from "../core/policy.js";
 import { toast } from "../ui/toast.js";
@@ -59,7 +60,7 @@ export default async function mapTab(farm) {
       <div class="map-card" data-card hidden></div>
       <div class="map-draw" data-draw hidden>
         <p class="map-hint" data-hint>Tap the map at each corner of the field, then tap Finish.</p>
-        <div class="map-draw-bar"><button type="button" class="map-chip" data-cancel>Cancel</button><button type="button" class="map-chip" data-undo disabled>Undo point</button><span class="map-count" data-count>0 points</span><button type="button" class="map-chip go" data-finish disabled>Finish</button></div>
+        <div class="map-draw-bar"><button type="button" class="map-chip" data-cancel>Cancel</button><button type="button" class="map-chip" data-undo disabled aria-label="Undo the last point">Undo</button><span class="map-count" data-count>0 points</span><button type="button" class="map-chip go" data-finish disabled>Finish</button></div>
       </div>
       <div class="map-jump" data-jump></div>
     </div>
@@ -68,6 +69,7 @@ export default async function mapTab(farm) {
   const $ = (s) => body.querySelector(s);
   let map = null, L = null, fieldLayer = null, labelLayer = null, drawLayer = null, photo = null, growth = null;
   let fields = [], places = [], selected = null, full = false;
+  let units = [], stock = new Map(); // groups and mobs, and which field each is in (A #28)
   const gps = { watch: null, fix: null, dot: null, ring: null, follow: false, err: "" };
   const draw = { on: false, pts: [], editing: null };
 
@@ -75,7 +77,10 @@ export default async function mapTab(farm) {
     fields = []; places = [];
     for (const l of sources) { try { (await listRecords(l.id, "fields")).forEach((f) => fields.push({ ...f, ledger: l })); } catch (e) { /* no access */ } }
     if (space) { try { places = await listRecords(space.id, "places"); } catch (e) { places = []; } }
+    units = farm ? await stockUnits(farm.ledgers).catch(() => []) : [];
+    stock = matchStock(fields, units);
   };
+  const headline = (f) => fieldHeadline(stock.get(f.id) || []);
   const farmPlace = () => places.find((p) => p.id === "farm" || p.kind === "farm");
   const status = (t) => { const s = $("[data-status]"); s.textContent = t || ""; s.hidden = !t; };
 
@@ -84,7 +89,7 @@ export default async function mapTab(farm) {
     const box = $("[data-list]");
     if (!fields.length) { box.replaceChildren(el(emptyState({ iconName: "map", title: "No fields yet", body: target ? "Tap “Draw a field on the map” and trace the field's edge on the satellite photo — the acres are worked out for you." : "Fields your farm adds show here." }))); return; }
     const total = fields.reduce((s, f) => s + (Number(f.acreage) || 0), 0);
-    box.replaceChildren(el(html`<div>${groupLabel("Fields", `${num(total, 1)} acres`)}<div class="list">${fields.map((f) => html`<button type="button" class="row" data-f="${f.id}"><span class="tile" style="background:${lineOf(f)};color:#12301c">${raw(icon("map"))}</span><span class="main"><span class="primary">${f.name}</span><span class="secondary">${f.type || ""}${f.polygon?.length > 2 ? "" : " · not drawn on the map yet"}</span></span><span class="value">${num(Number(f.acreage) || 0, 1)} <span class="t-callout ink-2">ac</span></span></button>`)}</div></div>`));
+    box.replaceChildren(el(html`<div>${groupLabel("Fields", `${num(total, 1)} acres`)}<div class="list">${fields.map((f) => html`<button type="button" class="row" data-f="${f.id}"><span class="tile" style="background:${lineOf(f)};color:#12301c">${raw(icon("map"))}</span><span class="main"><span class="primary">${f.name}</span><span class="secondary">${[f.type || "", headline(f)].filter(Boolean).join(" · ")}${f.polygon?.length > 2 ? "" : " · not drawn on the map yet"}</span></span><span class="value">${num(Number(f.acreage) || 0, 1)} <span class="t-callout ink-2">ac</span></span></button>`)}</div></div>`));
     box.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => { const f = fields.find((x) => x.id === b.dataset.f); if (f.polygon?.length > 2 && map) { jumpField(f); $("[data-wrap]").scrollIntoView({ behavior: "smooth", block: "start" }); } else fieldSheet(f); }));
   };
 
@@ -95,7 +100,8 @@ export default async function mapTab(farm) {
       const ll = f.polygon.map((x) => [x.lat, x.lng]); const on = selected === f.id;
       L.polygon(ll, { color: "#000", weight: 8, opacity: 0.35, fill: false, interactive: false }).addTo(fieldLayer);
       const p = L.polygon(ll, { color: lineOf(f), weight: on ? 5 : 4, fillColor: lineOf(f), fillOpacity: on ? 0.5 : 0.08 }).addTo(fieldLayer);
-      p.bindTooltip(f.name, { permanent: true, direction: "center", className: "fl-field-label" });
+      const hl = headline(f);
+      p.bindTooltip(`${esc(f.name)}${hl ? `<br><span class="fl-head">${esc(hl)}</span>` : ""}`, { permanent: true, direction: "center", className: "fl-field-label" });
       p.on("click", (e) => { L.DomEvent.stopPropagation(e); if (!draw.on) select(f.id); });
     }
     paintEdges(); paintCard();
@@ -109,7 +115,7 @@ export default async function mapTab(farm) {
     const card = $("[data-card]"); const f = fields.find((x) => x.id === selected);
     if (!f || draw.on) { card.hidden = true; return; }
     const round = fieldSides(f.polygon).perimeter; const can = canWrite(f.ledger.role, "fields");
-    card.replaceChildren(el(html`<div class="map-card-in"><span class="fc-swatch" style="background:${lineOf(f)}"></span><span class="fc-text"><b>${f.name}</b><span>${num(Number(f.acreage) || 0, 1)} ac${round ? ` · ${mFmt(round)} round` : ""} · ${f.type || ""}</span></span>
+    card.replaceChildren(el(html`<div class="map-card-in"><span class="fc-swatch" style="background:${lineOf(f)}"></span><span class="fc-text"><b>${f.name}</b><span>${num(Number(f.acreage) || 0, 1)} ac${round ? ` · ${mFmt(round)} round` : ""} · ${f.type || ""}${headline(f) ? ` · ${headline(f)}` : ""}</span></span>
       ${can ? html`<button type="button" class="map-chip" data-redraw>Redraw</button><button type="button" class="map-chip go" data-edit>Edit</button>` : html`<button type="button" class="map-chip" data-edit>Details</button>`}<button type="button" class="map-x" data-close aria-label="Close">×</button></div>`));
     card.hidden = false;
     card.querySelector("[data-close]").onclick = () => select(null);
@@ -214,6 +220,18 @@ export default async function mapTab(farm) {
     if (!map) return; draw.on = true; draw.pts = []; draw.editing = editing; select(null);
     $("[data-draw]").hidden = false; $("[data-hint]").textContent = editing ? `Redrawing ${editing.name}: tap each corner, then Finish.` : "Tap the map at each corner of the field, then tap Finish. Zoom in for a tight line.";
     map.doubleClickZoom.disable(); draw.autoFull = !full; if (!full) setFull(true); paintDraw();
+    setTimeout(() => drawableView(editing), 90); // after full screen has resized the map
+  }
+  /** Draw mode opens where you can draw: the field being redrawn, else the farm, at field zoom. */
+  async function drawableView(editing) {
+    if (!map) return;
+    if (editing && editing.polygon?.length > 2) { map.fitBounds(editing.polygon.map((x) => [x.lat, x.lng]), { padding: [40, 40], maxZoom: 18 }); return; }
+    if (map.getZoom() >= 16) return; // already close in: leave the view the farmer chose
+    const drawnF = fields.filter((f) => f.polygon?.length > 2);
+    if (await goFarm(true)) { if (map.getZoom() < 17) map.setZoom(17); return; }
+    if (gps.fix) { map.setView([gps.fix.lat, gps.fix.lng], 17); return; }
+    if (drawnF.length) { map.fitBounds(drawnF.flatMap((f) => f.polygon.map((x) => [x.lat, x.lng])), { padding: [30, 30], maxZoom: 17 }); return; }
+    $("[data-hint]").textContent = "Add your postcode in Settings → Farm details so the map opens on your farm. For now, zoom in on the field, then tap its corners.";
   }
   function stopDraw() { draw.on = false; draw.pts = []; draw.editing = null; drawLayer.clearLayers(); $("[data-draw]").hidden = true; map.doubleClickZoom.enable(); if (draw.autoFull && full) setFull(false); draw.autoFull = false; paintFields(); }
   function paintDraw() {
@@ -221,7 +239,7 @@ export default async function mapTab(farm) {
     draw.pts.forEach((p) => L.circleMarker(p, { radius: 6, color: "#fff", weight: 2, fillColor: "#A8432F", fillOpacity: 1 }).addTo(drawLayer));
     if (draw.pts.length >= 2) L.polygon(draw.pts, { color: "#A8432F", weight: 2, dashArray: "6,6", fillOpacity: 0.15 }).addTo(drawLayer);
     const n = draw.pts.length; const ac = n >= 3 ? areaAcres(draw.pts.map(([lat, lng]) => ({ lat, lng }))) : 0;
-    $("[data-count]").textContent = n >= 3 ? `${n} points · ${num(ac, 2)} ac` : `${n} point${n === 1 ? "" : "s"}`;
+    $("[data-count]").textContent = n >= 3 ? `${n} pts · ${num(ac, 2)} ac` : `${n} point${n === 1 ? "" : "s"}`;
     $("[data-undo]").disabled = !n; $("[data-finish]").disabled = n < 3;
   }
   $("[data-undo]").onclick = () => { draw.pts.pop(); paintDraw(); };
@@ -239,16 +257,23 @@ export default async function mapTab(farm) {
     const acres = drawn ? drawn.acreage : f?.acreage ?? "";
     const b = el(html`<form novalidate><div class="form-group">${textField({ name: "name", label: "Field name", value: f?.name || "", autofocus: !f })}${textField({ name: "acreage", label: "Acres", value: acres, inputmode: "decimal" })}${selectField({ name: "type", label: "Use", value: f?.type || "Grazing", options: USES.map((u) => ({ value: u, label: u })) })}${textField({ name: "description", label: "Notes", value: f?.description || "", optional: true })}</div>
       ${drawn ? html`<p class="hint">Worked out from the boundary you drew: ${num(drawn.acreage, 2)} acres. Change it if your maps say different.</p>` : f && f.polygon?.length > 2 ? html`<p class="hint">Drawn boundary: about ${num(areaAcres(f.polygon) || 0, 2)} acres.</p>` : can ? html`<p class="hint">Not on the map yet — use “Draw boundary” to trace it.</p>` : ""}
+      ${units.length ? html`<h2 class="group-label" style="margin-top:20px">In this field</h2><div class="form-group" data-stock>${units.map((u) => { const inF = f && (stock.get(f.id) || []).includes(u); const other = !inF && fields.find((x) => x.id !== f?.id && (stock.get(x.id) || []).includes(u)); return checkRow(`u:${u.key}`, `${u.name} · ${headWord(u.type, u.n)}`, !!inF, other ? `Now in ${other.name}` : u.ledger.name); })}</div><p class="hint">Tick the groups and mobs grazing here. The map shows the head count on the field.</p>` : ""}
       ${f && can ? html`<div class="btn-col" style="margin-top:16px"><button type="button" class="btn secondary" data-redraw>${f.polygon?.length > 2 ? "Redraw boundary on the map" : "Draw boundary on the map"}</button><button type="button" class="btn secondary" style="color:var(--late)" data-del>${raw(icon("trash"))}Delete this field</button></div>` : ""}</form>`);
     if (!can) b.querySelectorAll("input,select").forEach((i) => (i.disabled = true));
     const btn = el(html`<button type="button" class="btn">Save field</button>`);
     const fm = wireForm(b); const miss = () => (fm.values().name ? null : "Add the field name to save");
     fm.onChange(() => guardButton(btn, "Save field", miss)); guardButton(btn, "Save field", miss);
-    const sh = openSheet({ title: f ? f.name : "New field", body: b, footer: can ? btn : null, cancelText: can ? "Cancel" : "Done", isDirty: () => !f && !!drawn, discardTitle: "Discard this field?" });
+    const start = JSON.stringify(fm.values());
+    const sh = openSheet({ title: f ? f.name : "New field", body: b, footer: can ? btn : null, cancelText: can ? "Cancel" : "Done", isDirty: () => (!f && !!drawn) || JSON.stringify(fm.values()) !== start, discardTitle: "Discard this field?" });
     btn.onclick = () => {
       if (miss()) return; const v = fm.values(); const data = { name: v.name, acreage: parseFloat(v.acreage) || 0, type: v.type, description: v.description };
       if (drawn) data.polygon = drawn.polygon;
       let id = f?.id; if (f) updateRecord(f.ledger.id, "fields", f, data); else id = addRecord(target.id, "fields", data);
+      for (const u of units) { // link / unlink groups and mobs to this field
+        const on = v[`u:${u.key}`]; if (on === undefined) continue;
+        const was = f && (stock.get(f.id) || []).includes(u);
+        if (on && !was) setUnitField(u, id); else if (!on && was) setUnitField(u, null);
+      }
       sh.close(true, { force: true }); toast("Field saved"); refresh(id);
     };
     const rd = b.querySelector("[data-redraw]"); if (rd) rd.onclick = () => { sh.close(true, { force: true }); setTimeout(() => startDraw(f), 250); };
@@ -264,7 +289,7 @@ export default async function mapTab(farm) {
     const fp = farmPlace();
     const b = el(html`<div><p class="hint" style="margin:0 4px 12px">Saved places show as buttons on the map. “Farm” starts at your postcode${postcode ? ` (${postcode})` : ""}. Stand in the yard and tap “Set Farm to where I am” to make it exact.</p>
       <div class="list">${places.length ? places.map((p) => html`<div class="row"><span class="main"><span class="primary">${p.name}</span><span class="secondary">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}${p.source === "postcode" ? " · from postcode" : ""}</span></span>${can ? html`<button type="button" class="map-chip" data-delp="${p.id}" aria-label="Delete ${p.name}">${raw(icon("trash"))}</button>` : ""}</div>`) : html`<div class="row"><span class="main"><span class="secondary">No places saved yet.</span></span></div>`}</div>
-      ${can ? html`<div class="form-group" style="margin-top:16px">${textField({ name: "name", label: "Place name", placeholder: "Out-farm, mart, shed…" })}</div>
+      ${can ? html`<div class="form-group" style="margin-top:16px">${textField({ name: "name", label: "Place name", placeholder: "e.g. out-farm, mart, shed" })}</div>
       <div class="btn-col" style="margin-top:12px"><button type="button" class="btn" data-save="centre">Save the middle of the map</button><button type="button" class="btn secondary" data-save="gps">Save where I am (GPS)</button><button type="button" class="btn secondary" data-farmgps>${fp ? "Set Farm to where I am" : "Set Farm to where I am"}</button></div>` : ""}</div>`);
     const sh = openSheet({ title: "Map places", body: b });
     const fm = can ? wireForm(b) : null;
@@ -292,7 +317,15 @@ export default async function mapTab(farm) {
   const mounted = async () => {
     try {
       L = await loadLeaflet(); const box = $("[data-map]"); if (!box.isConnected) return;
-      map = L.map(box, { zoomControl: true, attributionControl: true, tap: true }).setView(NI_CENTRE, 9);
+      map = L.map(box, { zoomControl: true, attributionControl: false, tap: true }).setView(NI_CENTRE, 9);
+      // Map credits sit behind a small "i" under the zoom buttons, so they never cover the chips.
+      const Info = L.Control.extend({ options: { position: "topleft" }, onAdd() {
+        const b = L.DomUtil.create("button", "map-info"); b.type = "button"; b.setAttribute("aria-label", "Map credits"); b.textContent = "i";
+        L.DomEvent.disableClickPropagation(b);
+        b.onclick = () => { const on = $("[data-status]").dataset.credits === "1"; $("[data-status]").dataset.credits = on ? "" : "1"; status(on ? "" : `Satellite photo: Esri, Maxar, Earthstar Geographics.${store.get("fl-imagery") === "growth" ? " Grass growth contains modified Copernicus Sentinel data." : ""} Map: Leaflet.`); };
+        return b;
+      } });
+      new Info().addTo(map);
       photo = L.tileLayer(`${ESRI}/World_Imagery/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 20, maxNativeZoom: 19, attribution: "Tiles &copy; Esri" }).addTo(map);
       L.tileLayer(`${ESRI}/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 20, maxNativeZoom: 19, opacity: 0.9, zIndex: 2 }).addTo(map);
       L.tileLayer(`${ESRI}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 20, maxNativeZoom: 19, zIndex: 2 }).addTo(map);

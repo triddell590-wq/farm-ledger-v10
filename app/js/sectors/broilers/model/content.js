@@ -8,7 +8,7 @@
 export const BREED_STANDARDS = [
   {
     id: "ross308-2022", hybrid: "Ross 308", edition: "Ross 308 Broiler Performance Objectives 2022 (Aviagen)",
-    source: "Research C Broilers tool 2 (weekly rows; days in between interpolated)",
+    source: "Aviagen Ross 308 objectives (weekly rows; days in between interpolated)",
     days: [
       { d: 0, wtG: 44, cumFcr: null, feedG: 0 }, { d: 7, wtG: 213, cumFcr: 0.78, feedG: 35 }, { d: 14, wtG: 533, cumFcr: 1.005, feedG: 67 },
       { d: 21, wtG: 1012, cumFcr: 1.142, feedG: 105 }, { d: 28, wtG: 1616, cumFcr: 1.269, feedG: 145 }, { d: 35, wtG: 2296, cumFcr: 1.399, feedG: 180 },
@@ -17,7 +17,7 @@ export const BREED_STANDARDS = [
   },
   {
     id: "cobb500-2018", hybrid: "Cobb 500", edition: "Cobb 500 Broiler Performance & Nutrition Supplement L-2114-08 (2018)",
-    source: "Research C Broilers tool 2 (weekly rows; check the current supplement from cobb-vantress.com)",
+    source: "Cobb 500 objectives (weekly rows; check the current supplement from cobb-vantress.com)",
     days: [
       { d: 0, wtG: 42, cumFcr: null, feedG: 0 }, { d: 7, wtG: 193, cumFcr: 1.03, feedG: null }, { d: 14, wtG: 528, cumFcr: 1.22, feedG: null },
       { d: 21, wtG: 1018, cumFcr: 1.37, feedG: null }, { d: 28, wtG: 1615, cumFcr: 1.5, feedG: null }, { d: 35, wtG: 2273, cumFcr: 1.61, feedG: null },
@@ -52,7 +52,7 @@ export function antibioticFlag(text) {
 
 /** Poultry lines of the farm-wide disease banner (01-platform §16.1). */
 export const DISEASE_BANNER = [
-  { id: "ai-2026", species: ["poultry"], level: "info", text: "Bird flu: no housing order in NI · lifted 15 May 2026. Report any suspicion to DAERA.", checkedOn: "2026-10-15", source: "DAERA, via Research B verification pass" },
+  { id: "ai-2026", species: ["poultry"], level: "info", text: "Bird flu: no housing order in NI · lifted 15 May 2026. Report any suspicion to DAERA.", checkedOn: "2026-10-15", source: "DAERA" },
 ];
 // Region rule values (design/01 §17.1) are read through the shared loader
 // content/region-rules.js. Broiler keys not yet in the shared records (broilerDensity,

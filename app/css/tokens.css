@@ -2,7 +2,7 @@
    value in component CSS; always use a token. */
 @font-face{
   font-family:"Atkinson Hyperlegible Next";
-  src:url(../fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2) format("woff2");
+  src:url(../fonts/atkinson-hyperlegible-next-latin-wght-plainzero.woff2) format("woff2"); /* plain 0 for body and money (tools/plain-zero-font.py) */
   font-weight:200 800; font-style:normal; font-display:swap;
   unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
 }
@@ -11,6 +11,13 @@
   src:url(../fonts/atkinson-hyperlegible-next-latin-ext-wght-normal.woff2) format("woff2");
   font-weight:200 800; font-style:normal; font-display:swap;
   unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+/* The original font, slashed zero, for ear tags only (.tag-num) so 0 and O can't be mixed up. */
+@font-face{
+  font-family:"Atkinson Tag";
+  src:url(../fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2) format("woff2");
+  font-weight:200 800; font-style:normal; font-display:swap;
+  unicode-range:U+0030-0039,U+0041-005A,U+0020;
 }
 :root{
   color-scheme: light;
@@ -75,7 +82,15 @@
   --float-border:var(--hair);
 }
 /* High-visibility option (Settings → Appearance → Bigger text and stronger colours) */
-:root.hi-vis{ --body-size:19px; --ink-2:var(--ink); --hair:var(--ink-3); }
+:root.hi-vis{ --ink-2:var(--ink); --hair:var(--ink-3); --text-zoom:1.18; }
+/* Bigger text really is bigger (review A #29): every screen, sheet and toast is drawn ~18% larger
+   and reflows to fit (zoom keeps the layout working at phone width; px sizes all scale). */
+:root.hi-vis .stage,:root.hi-vis .sheet,:root.hi-vis .toast-wrap{zoom:var(--text-zoom)}
+/* zoomed sheets still fit the screen: their viewport heights are divided back by the zoom */
+:root.hi-vis .sheet{max-height:calc((100dvh - 24px - var(--safe-t)) / var(--text-zoom))}
+:root.hi-vis .sheet.small:not(.auto){max-height:calc(50dvh / var(--text-zoom))}
+:root.hi-vis .sheet.large{height:calc(92dvh / var(--text-zoom))}
+@media (min-width:640px){ :root.hi-vis .sheet.large{height:auto;max-height:calc(86dvh / var(--text-zoom))} }
 /* Reduce motion (OS setting or Settings → Appearance) — see motion.css */
 :root.reduce-motion{ --d-instant:1ms; --d-base:1ms; --d-move:1ms; --d-slow:1ms; }
 @media (prefers-reduced-motion:reduce){ :root{ --d-instant:1ms; --d-base:1ms; --d-move:1ms; --d-slow:1ms; } }

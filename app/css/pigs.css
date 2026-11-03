@@ -28,12 +28,12 @@
 .pg-wd.today .dd{background:var(--pigs);color:#fff}
 :root[data-theme=dark] .pg-wd.today .dd{color:#1B221D}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .pg-wd.today .dd{color:#1B221D}}
-.pg-ev{font-size:11px;line-height:13px;font-weight:700;text-align:center;padding:3px 2px;border-radius:7px;background:var(--pigs-soft);color:var(--pigs-ink);width:46px;overflow:hidden}
-.pg-ev small{display:block;font-weight:600;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pg-ev{font-size:13px;line-height:16px;font-weight:800;text-align:center;padding:4px 1px;border-radius:8px;background:var(--pigs-soft);color:var(--pigs-ink);width:calc(100% - 2px);overflow:hidden;letter-spacing:-.2px}
+.pg-ev small{display:block;font-size:13px;font-weight:700;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pg-ev.Far{background:var(--pigs);color:#fff}
 :root[data-theme=dark] .pg-ev.Far{color:#1B221D}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .pg-ev.Far{color:#1B221D}}
-.pg-ev.more{background:none;color:var(--ink-2)}
+.pg-ev.more{background:none;color:var(--ink-2);font-size:12px;font-weight:700}
 
 /* "This week" tiles */
 .pg-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}

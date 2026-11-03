@@ -74,6 +74,17 @@ const M = {
     const { tickGenerated } = await import("./actions.js");
     return todayTasks(snap.c).map((t) => ({ id: t.key, title: t.title, due: t.due, sub: t.sub, href: t.href, legal: t.legal, generated: true, done: false, ledger, tick: (done) => tickGenerated(ledger.id, snap, t, done) }));
   },
+  /** Fix a mistake: a treatment (or its withhold / mastitis case) reopens the Treatment form, filled in. */
+  editRecord(ledger, coll, rec, all) {
+    const medId = coll === "medicines" ? rec.id : ["milkWithhold", "mastitis"].includes(coll) ? rec.medId : null;
+    const med = medId && (all?.medicines || []).find((m) => m.id === medId);
+    if (!med || med.notUsed || !Array.isArray(med.animalIds) || !["Mastitis", "Lame", "Fresh cow", "Pneumonia", "BTV-3 vaccine", "Other"].includes(med.reason)) return null;
+    return (async () => {
+      const snap = await loadDairy(ledger); const m = snap.data.medicines.find((x) => x.id === medId); if (!m) return false;
+      ensureCss(); const f = await import("./flows/treatment.js");
+      return (await f.default(snap, { edit: m })) === true;
+    })();
+  },
   async contextLine(ledger) {
     const s = ledger.settings || {};
     return [ledger.name, s.herdNo ? `Herd ${s.herdNo}` : null].filter(Boolean).join(" · ");

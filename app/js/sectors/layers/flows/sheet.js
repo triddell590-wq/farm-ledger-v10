@@ -16,12 +16,15 @@ import { eggWithheld, classB } from "../model/health.js";
 import { isFreeRange, aiState } from "../model/house.js";
 import { DEATH_CAUSES, CHECKS } from "../model/content.js";
 import { dm, n0, n1 } from "../ui.js";
+import { checkEggs } from "../../../core/sanity.js";
 
 const isCull = (c) => /^Culled/.test(c);
 const WHERE = ["Front left", "Front right", "Middle left", "Middle right", "Back left", "Back right"];
 
 export async function sheetFlow(snap, { houseId = null, date = null } = {}) {
-  const pick = await chooseHouse(snap, { title: "Daily sheet — which house?", houseId });
+  const day = date || snap.today;
+  const doneOn = (h) => { const d = snap.data.days.find((x) => x.houseId === h.id && x.date === day && !x.partial); return d ? ["done", d.savedAt, d.byName && d.byName.split(" ")[0]].filter(Boolean).join(" ") : null; };
+  const pick = await chooseHouse(snap, { title: "Daily sheet — which house?", houseId, doneOn });
   if (!pick) return null;
   return daySheet(snap, pick.h, pick.f, date || snap.today);
 }
@@ -69,17 +72,25 @@ export function daySheet(snap, house, f, date) {
       <div data-feedkg ${raw(feedKind === "skip" ? "hidden" : "")}>${numField("feedKg", "Kilograms", v0.feed?.kg ?? imp?.feedKg ?? "", { step: 10, unit: "kg" })}</div>
       ${stepRow("tMin", "Temp min", v0.tMin ?? imp?.tMin ?? y?.tMin ?? 18, { sub: "°C", max: 45, min: -10 })}
       ${stepRow("tMax", "Temp max", v0.tMax ?? imp?.tMax ?? y?.tMax ?? 24, { sub: "°C", max: 45, min: -10 })}
-      ${fr ? html`<div class="field ly-pop"><label>Pop-holes<small>proof of range access</small></label><span class="ly-times"><input type="time" name="popOpen" value="${v0.popOpen || (ai.on ? "" : "")}" aria-label="Pop-holes opened"><span>–</span><input type="time" name="popClose" value="${v0.popClose || ""}" aria-label="Pop-holes closed"></span></div>
+      ${fr ? html`<div class="field ly-pop"><label>Pop-holes opened at<small>proof of range access</small></label><input type="time" name="popOpen" value="${v0.popOpen || ""}" aria-label="Pop-holes opened"></div>
+        <div class="field ly-pop"><label>Pop-holes closed at</label><input type="time" name="popClose" value="${v0.popClose || ""}" aria-label="Pop-holes closed"></div>
         ${chipsField("keptIn", "Kept in", keptOpts, v0.keptIn || (ai.on ? "Housing order" : null), { hint: ai.on ? `Housing order · day ${ai.daysHoused} housed` : "Only if the birds stayed in today" })}` : ""}
     </div>
     <h2 class="group-label"><span>Checks</span></h2>
-    <div class="form-group">${chipsField("checks", "", CHECKS, v0.checks || CHECKS, { multi: true })}
+    <div class="form-group">${chipsField("checks", "", CHECKS, v0.checks || [], { multi: true, hint: "Tick each one as you check it, or tap All checked." })}
+      <div class="field"><button type="button" class="btn secondary" data-allchecked style="width:100%">All checked ✓</button></div>
       ${textField({ name: "notes", label: "Notes", value: v0.notes || "", optional: true })}</div>
   </form>`);
   const eggs = (v) => { const n = +String(v.eggs || "").replace(/[^\d]/g, ""); if (!v.eggs && v.eggs !== 0) return null; return v.unit === "trays" ? n * 30 : n; };
   const bar = el(html`<div class="ly-sumbar" aria-live="polite" data-sum></div>`);
   const es = entrySheet({ title: `${house.name} · ${dm(date)}`, body, label: `Save ${house.name}`, footerExtra: bar,
     missing: (v) => (eggs(v) == null ? "Add the eggs collected" : null),
+    // the daily inspection is a legal record: it is only "done" when the farmer ticks it (B #8); odd counts get a second look (A #2)
+    checks: (v) => [
+      ...((v.checks || []).length < CHECKS.length ? [(v.checks || []).length ? `Not ticked: ${CHECKS.filter((x) => !(v.checks || []).includes(x)).join(", ")}. Save without them?` : "None of the daily checks are ticked, so this won't count as today's inspection."] : []),
+      ...checkEggs(eggs(v), alive, house.name),
+      ...((+v.dead || 0) + (+v.culled || 0) > Math.max(50, alive * 0.02) ? [`${n0((+v.dead || 0) + (+v.culled || 0))} dead and culled is over 2% of the ${n0(alive)} hens. Check the number — and call the vet if it's right.`] : []),
+    ],
     save(v, sh) {
       const graded = snap.s.gradeOnFarm ? Object.fromEntries(["XL", "L", "M", "S"].map((g) => [g, +v[`g${g}`] || 0])) : undefined;
       const out = saveDay(snap, house, f, date, { eggsTotal: eggs(v), seconds: v.seconds, floor: v.floor, dead: v.dead, culled: v.culled, deaths, waterMeter: v.waterMeter, feedKind: v.feedKind === "skip" ? null : v.feedKind, feedKg: v.feedKg, tMin: v.tMin, tMax: v.tMax, popOpen: v.popOpen, popClose: v.popClose, keptIn: v.keptIn, checks: v.checks, notes: v.notes, graded, source: imp ? "controller" : "manual" }, old);
@@ -101,6 +112,10 @@ export function daySheet(snap, house, f, date) {
     paintCauses();
   };
   es.form.onChange(paint); paint(); es.rebase();
+  body.querySelector("[data-allchecked]").onclick = () => {
+    body.querySelectorAll("[data-chips=checks] .chip").forEach((c) => c.setAttribute("aria-checked", "true"));
+    body.querySelector("[data-chips=checks] .chip")?.click(); body.querySelector("[data-chips=checks] .chip")?.click(); // a click each way fires the form's change without changing anything
+  };
   body.querySelector("[data-causes]").onclick = async () => {
     const r = await causesSheet(deaths, { dead: +es.form.values().dead || 0, culled: +es.form.values().culled || 0 });
     if (!r) return; deaths = r;

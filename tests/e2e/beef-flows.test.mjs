@@ -27,11 +27,13 @@ async function pick(rowLabel, names) {
   await H.settle(p, 400);
 }
 
-test("Beef home opens with season mode, alerts and the bluetongue banner; no errors", async () => {
+test("Beef home opens with season mode and alerts; the quiet bluetongue notice is on the disease screen, not the home; no errors", async () => {
   await H.go(p, `/l/${lid}/today`);
   assert.match(await p.locator(".mode-chip").textContent(), /mode/);
   assert.ok(await p.locator(".alert").count() >= 1);
-  assert.match(await p.locator(".disease-banner").textContent(), /Bluetongue/);
+  assert.equal(await p.locator(".disease-banner").count(), 0, "nothing in force and nothing changed this week (review B #19)");
+  await H.go(p, `/l/${lid}/disease`);
+  assert.match(await p.locator("body").textContent(), /Bluetongue/);
   assert.deepEqual(p.errors, []);
 });
 

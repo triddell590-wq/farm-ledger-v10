@@ -15,7 +15,7 @@ export default async function groups(ctx) {
     const gs = [...snap.ix.groups.values()].sort((a, b) => a.name.localeCompare(b.name)); const can = canWrite(snap.role, "groups");
     const count = (g) => snap.data.animals.filter((a) => onFarm(a) && a.groupId === g.id).length;
     const loose = snap.data.animals.filter((a) => onFarm(a) && !a.groupId).length;
-    const node = el(html`<div>${largeTitle("Groups and sheds", `${gs.length} groups · ${loose} cattle not in a group`)}${herdViews(snap.lid, "groups")}
+    const node = el(html`<div>${largeTitle("Groups and sheds", `${gs.length === 1 ? "1 group" : gs.length + " groups"} · ${loose === 1 ? "1 animal" : loose + " cattle"} not in a group`)}${herdViews(snap.lid, "groups")}
       ${gs.length ? html`<div class="list">${gs.map((g) => { const n = count(g); return html`<div class="row"><a class="main" href="#/l/${snap.lid}/herd?f=group:${g.id}"><span class="primary">${g.name}</span><span class="secondary">${n} head${g.class ? ` · ${CLASS_NAMES[g.class]}` : ""}${g.shed && g.shed !== g.name ? ` · ${g.shed}` : ""}${g.spaces ? ` · ${g.spaces} spaces${n > g.spaces ? " — over!" : ""}` : ""}</span></a>${can ? html`<button type="button" class="icon-btn" data-edit="${g.id}" aria-label="Edit ${g.name}">${raw(icon("edit"))}</button>` : ""}</div>`; })}</div>`
         : emptyState({ sector: "beef", title: "No groups yet", body: "Groups are how you treat, weigh, feed and move cattle together — e.g. “Shed 2 finishers”." })}
       ${can ? html`<div class="act-grid"><button type="button" class="btn" data-new>Add a group</button><button type="button" class="btn secondary" data-move>Move cattle</button></div>` : ""}</div>`);

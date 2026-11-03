@@ -15,6 +15,7 @@ import { syncLabel } from "./sync-sheet.js";
 import { getUnits, getTax } from "./settings-page.js";
 import { notifyRowValue } from "./notify-settings.js";
 import { beforeSignOut } from "../services/notify.js";
+import { isDemo, exitUrl } from "../demo/index.js";
 
 const row = (href, label, value = "", danger = false) => html`<a class="row no-lead${danger ? " destructive" : ""}" href="${href}"><span class="main"><span class="primary">${label}</span></span>${value ? html`<span class="ink-2 t-callout">${value}</span>` : ""}<span class="chev">${raw(icon("chevron"))}</span></a>`;
 
@@ -25,8 +26,8 @@ export default async function settings() {
     <div class="list"><a class="row" href="#/settings/profile">${avatar(u.displayName || u.email)}<span class="main"><span class="primary">${u.displayName || "Your name"}</span><span class="secondary">${u.email} · ${u.emailVerified ? "Confirmed" : "Not confirmed yet"}</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div>
     <div class="section">${groupLabel("Farm")}<div class="list">
       ${row("#/settings/farm", "Farm details", farm?.farmName || "")}
-      ${row("#/settings/ledgers", "Ledgers", String(session.sectorLedgers().length))}
-      ${row("#/settings/bin", "Recently deleted ledgers", "Restore within 30 days")}
+      ${row("#/settings/ledgers", "Herds, flocks and poultry", String(session.sectorLedgers().length))}
+      ${row("#/settings/bin", "Recently deleted", "Bring back within 30 days")}
       ${row("#/settings/units", "Units", `${units.area === "ha" ? "Hectares" : "Acres"}, kg, °C`)}
       ${row("#/settings/tax", "Tax year and VAT", `${tax.yearStart === "jan" ? "Jan–Dec" : "Apr–Apr"} · ${tax.vat === "none" ? "Not VAT registered" : tax.vat === "monthly" ? "Monthly" : "Quarterly"}`)}
     </div></div>
@@ -41,10 +42,11 @@ export default async function settings() {
       ${row("#/legal/terms", "Terms of use")}
       ${row("#/settings/delete", "Delete account", "", true)}
     </div></div>
-    <div class="section"><button type="button" class="btn secondary" data-out>Sign out</button></div>
-    <p class="version">Farm Ledger ${VERSION} · build ${BUILD}${backendName() === "memory" ? " · demo mode" : ""}</p>
+    <div class="section"><button type="button" class="btn secondary" data-out>${isDemo() ? "Leave the demo farm" : "Sign out"}</button></div>
+    <p class="version">Farm Ledger ${VERSION} · build ${BUILD}${isDemo() ? " · demo farm" : backendName() === "memory" ? " · demo mode" : ""}</p>
   </div>`);
   body.querySelector("[data-out]").onclick = async () => {
+    if (isDemo()) { location.replace(exitUrl()); return; }
     const s = syncLabel();
     const unsynced = s.state === "offline" || s.state === "syncing" || s.state === "waiting";
     const ok = await confirmSheet({ title: "Sign out of Farm Ledger on this phone?", body: unsynced ? "Some of your entries haven't synced yet. If you sign out now they may be lost. Wait until you have a signal." : "Your records stay safe online. You'll need your email and password to get back in.", confirm: "Sign out", danger: unsynced });

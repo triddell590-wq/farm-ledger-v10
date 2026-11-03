@@ -1,6 +1,7 @@
 // Move sows to farrowing (design/13 §3.4 "Move 24 sows to Farrowing 3"): the sows due within
 // the move window, crates handed out in order (one tap each to change), never more than 7 days
 // before due (Red Tractor HF.9.2.a); nesting material 24 h before.
+import { plural as pl } from "../../../ui/format.js";
 import { html, raw } from "../../../core/html.js";
 import { icon } from "../../../ui/icons.js";
 import { toast } from "../../../ui/toast.js";
@@ -40,7 +41,7 @@ export default async function moveFarrowing(ctx) {
       const due = cycles(snap.c).filter((y) => y.c.dates && ["served", "inpig"].includes(y.c.status) && !y.c.inCrate && y.c.dates.due <= addDays(snap.today, 9) && y.c.dates.due >= addDays(snap.today, -3)).sort((a, b) => a.c.dates.due.localeCompare(b.c.dates.due));
       const moves = due.map((y, i) => ({ sowId: y.sow.id, roomId: room.id, crate: crates[i], ok: crateEntryCheck(snap.today, y.c.dates.due).ok })).filter((m) => m.crate && m.ok);
       if (!moves.length) { toast("Nobody can go in today — too early."); return; }
-      moveToFarrowing(snap, moves, snap.today); toast(`${moves.length} sows into ${room.name}`);
+      moveToFarrowing(snap, moves, snap.today); toast(`${pl(moves.length, "sow", "sows")} into ${room.name}`);
     };
   } });
 }
