@@ -3,7 +3,8 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, relative } from "node:path";
-const APP = new URL("../app/", import.meta.url).pathname;
+import { fileURLToPath } from "node:url";
+const APP = fileURLToPath(new URL("../app/", import.meta.url)); // not .pathname: a space in the path becomes %20
 const SKIP = new Set(["asset-list.js", "service-worker.js"]);
 const files = [];
 (function walk(d) { for (const f of readdirSync(d).sort()) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (!SKIP.has(f) && !f.startsWith(".")) files.push(relative(APP, p)); } })(APP);

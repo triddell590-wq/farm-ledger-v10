@@ -11,7 +11,7 @@ export function addMonths(iso, n) {
   const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
   d.setUTCDate(Math.min(day, last)); return d.toISOString().slice(0, 10);
 }
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export function shortDate(iso) { if (!iso) return ""; const [y, m, d] = iso.slice(0, 10).split("-"); return `${+d} ${MONTHS[+m - 1]} ${y}`; }
 export function ddmmyy(iso) { if (!iso) return ""; const [y, m, d] = iso.slice(0, 10).split("-"); return `${d}/${m}/${y.slice(2)}`; }
 export function toDate(v) {
@@ -19,11 +19,4 @@ export function toDate(v) {
   if (typeof v.toDate === "function") return v.toDate();
   if (typeof v === "number" || typeof v === "string") { const d = new Date(v); return isNaN(d) ? null : d; }
   return null;
-}
-export function ageParts(dob, now = new Date()) {
-  const b = new Date(dob + "T00:00:00");
-  let y = now.getFullYear() - b.getFullYear(), m = now.getMonth() - b.getMonth(), d = now.getDate() - b.getDate();
-  if (d < 0) { m -= 1; d += new Date(now.getFullYear(), now.getMonth(), 0).getDate(); }
-  if (m < 0) { y -= 1; m += 12; }
-  return { years: y, months: m, days: d };
 }

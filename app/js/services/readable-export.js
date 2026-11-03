@@ -49,7 +49,7 @@ export function readableFiles(exported, folder = slug(exported.ledger.name || ex
   const order = Object.keys(all).filter((c) => !SKIP.has(c)).sort((a, b) => (FIRST.indexOf(a) + 1 || 99) - (FIRST.indexOf(b) + 1 || 99) || collHeading(a).localeCompare(collHeading(b)));
   const files = [];
   for (const c of order) {
-    const list = all[c].filter((r) => !r.deleted && !(c === "finance" && r.kind === "prices"));
+    const list = all[c].filter((r) => !r.deleted && !(c === "finance" && (r.kind === "prices" || r.kind === "settings")));
     if (!list.length) continue;
     // columns: what it is, then every field any record has, in fieldsOf's order, by label
     const keys = []; const labels = new Map();

@@ -19,8 +19,8 @@ import { sectionOf, kvRows, barChart } from "../ui.js";
 import { entrySheet } from "../flows/common.js";
 import { chequeCheck, whatIf, mopf } from "../model/money.js";
 import { onFarm, groupOf } from "../model/cows.js";
+import { MONTHS as MON } from "../../../core/dates.js";
 
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export const monthName = (ym) => (ym ? `${MON[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}` : "");
 const p2 = (x) => (x == null || Number.isNaN(x) ? "—" : `${x.toFixed(2)}p`);
 const n = (v) => (v === "" || v == null ? null : +String(v).replace(/[£,\s]/g, ""));

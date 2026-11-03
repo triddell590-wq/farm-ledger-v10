@@ -50,8 +50,5 @@ export function emptyState({ sector, iconName, title, body, action, href, actAtt
 export function sectorTile(type, size = "") {
   return html`<span class="tile ${size}" data-sector="${type}">${raw(icon(type, size === "lg" ? { size: 40, stroke: 1.75 } : {}))}</span>`;
 }
-export function sectorTag(type, label) {
-  return html`<span class="sector-tag" data-sector="${type}">${raw(icon(type, { size: 16 }))}${label}</span>`;
-}
 /** Needs a signal (design/01 §13): returns an error string when offline, else null. */
 export function needsSignal(what = "This") { return navigator.onLine ? null : `${what} needs a signal. Try again when you have one bar.`; }

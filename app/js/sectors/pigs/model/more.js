@@ -4,8 +4,8 @@ import { houses, alarmState } from "./rooms.js";
 import { qvrState, embDue, notifyState } from "./paperwork.js";
 import { weekDates } from "./weeks.js";
 import { SYSTEMS } from "./settings.js";
+import { MONTHS as MON } from "../../../core/dates.js";
 
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const dm = (iso) => `${+iso.slice(8, 10)} ${MON[+iso.slice(5, 7) - 1]}`;
 
 export function moreState(snap) {

@@ -7,6 +7,8 @@ import { session } from "../services/session.js";
 import { SECTOR_NAMES } from "../core/policy.js";
 import { addRecord } from "../services/records.js";
 import { areaAcres } from "../screens/map-geo.js";
+import { sectorModule } from "../sectors/ui.js";
+import { addDays, todayStr } from "../core/dates.js";
 
 export const DEMO_FARM = "Drumlin Farm (demo)";
 export const isDemo = () => document.documentElement.classList.contains("demo");
@@ -34,6 +36,39 @@ export async function startDemo(memAuth) {
   const [{ seedBeef }, { seedSheep }, { seedDairy }] = await Promise.all([import("./beef.js"), import("./sheep.js"), import("./dairy.js")]);
   await seedBeef(); await seedSheep(); await seedDairy();
   demoMap(farmId);
+  await session.load(true);
+  await tidyDemo();
+}
+
+/** First impressions (Tom, 3 Nov): the test seeds leave a dozen-plus jobs late or due, so the
+ *  demo opened on "19 to do, mostly late" and £0 this month. The demo farmer is on top of things:
+ *  late jobs were done on the day (one legal deadline stays late, to show what that looks like),
+ *  the morning's jobs are ticked, and this month has some money in it. Demo only: the tests use
+ *  the seeds as they are. */
+async function tidyDemo() {
+  const T = todayStr(); const by = { doneBy: "uDemoFarmer", doneByName: "Demo farmer" };
+  const MORNING = /\bmorning\b|\(am\)/i;
+  let keptLate = false;
+  for (const l of session.ledgers) {
+    const mod = await sectorModule(l.type);
+    for (const t of mod.tasks ? await mod.tasks(l) : []) {
+      if (!t.due || t.due > T) continue;
+      const late = t.due < T;
+      if (late && t.legal && !keptLate) { keptLate = true; continue; }
+      const early = !late && (/^(fresh|raddle):/.test(t.id) || MORNING.test(`${t.title} ${t.sub || ""}`));
+      if (!late && !early) continue;
+      // the tank job is done by a reading (the alert reads the log, not the tick)
+      if (t.id.startsWith("tank:")) { await addRecord(l.id, "tankLog", { date: T, milking: "am", time: "07:45", tempC: 3.6, collected: false }); continue; }
+      const doneAt = late ? new Date(`${t.due}T10:00:00`) : new Date(`${T}T07:45:00`);
+      await addRecord(l.id, "tasks", { title: t.title, due: t.due, sourceRef: t.id, note: "", money: false, done: true, doneAt, ...by });
+    }
+  }
+  // money this month: dates from the 1st to today, so early in a month isn't £0
+  const day = +T.slice(8, 10); const inMonth = (n) => addDays(T, -Math.min(n, day - 1));
+  const lid = (type) => session.ledgers.find((l) => l.type === type)?.id;
+  addRecord(lid("sheep"), "finance", { kind: "revenue", category: "Livestock Sales", amount: 1860, date: inMonth(1), note: "12 cull ewes · Ballymena Mart" });
+  addRecord(lid("beef"), "finance", { kind: "expense", category: "Feed", amount: 1240, date: inMonth(9), note: "Beef nuts 4 t", supplier: "Thompsons" });
+  addRecord(lid("dairy"), "finance", { kind: "expense", category: "Vet & medicine", amount: 186, date: inMonth(2), note: "Mastitis tubes" });
   await session.load(true);
 }
 

@@ -22,14 +22,6 @@ export const REGION_NAMES = { NI: "Northern Ireland", ENG: "England", SCO: "Scot
 export const ACTIVE_REGIONS = ["NI"]; // others are content-only later
 
 export const ROLES = ["owner", "manager", "worker", "viewer", "accountant"];
-export const ROLE_NAMES = { owner: "Owner", manager: "Manager", worker: "Worker", viewer: "Viewer", accountant: "Accountant" };
-export const ROLE_HELP = {
-  owner: "Everything, including deleting it and handing it on.",
-  manager: "Everything day to day, including money and inviting helpers.",
-  worker: "Records animals, treatments and jobs. Doesn't see money.",
-  viewer: "Can look at records but not change them. Doesn't see money.",
-  accountant: "Sees and edits the money side only.",
-};
 
 export const FINANCE = "finance";
 export const RESERVED = ["members", "private", "meta", "inviteIndex"];

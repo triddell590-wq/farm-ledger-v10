@@ -82,7 +82,6 @@ export function yieldToDate(ix, a, today) {
 
 /** Cow number leads (design/12 §4.1); the tag is the second line. */
 export function cowLabel(a) { return a.cowNo != null && a.cowNo !== "" ? String(a.cowNo) : tagParts(a.tag).tail || a.tag || "—"; }
-export function cowName(a) { return a.name || ""; }
 export function cowWithName(a) { return [cowLabel(a), a.name].filter(Boolean).join(" "); }
 export function ordinal(n) { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
 

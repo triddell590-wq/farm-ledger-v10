@@ -156,5 +156,4 @@ export function confirmSheet({ title, body = "", confirm = "OK", cancel = "Cance
   b.querySelector("[data-no]").onclick = () => s.close(false, { force: true });
   return s.done.then((r) => r === true);
 }
-export function closeAllSheets() { [...stack].reverse().forEach((s) => s.close(undefined, { force: true })); }
 export const sheetDepth = () => stack.length;

@@ -5,7 +5,7 @@ import { html, raw } from "../../core/html.js";
 import { el } from "../../ui/dom.js";
 import { icon } from "../../ui/icons.js";
 import { segmented, wireForm } from "../../ui/form.js";
-import { openMoneySheet } from "../../ui/money-sheet.js";
+import { openMoneySheet, openMoneyEntry } from "../../ui/money-sheet.js";
 import { canRead, canWrite } from "../../core/policy.js";
 import { listRecords } from "../../services/records.js";
 import { money as moneyHtml, moneyText, num, recordDate } from "../../ui/format.js";
@@ -48,7 +48,7 @@ export default async function moneyScreen(ctx) {
     </div>`);
     node.querySelector("[data-mprint]")?.addEventListener("click", () => printDoc(marginDoc(snap.c, m)));
     const f = wireForm(node); f.onChange(() => { st.year = Number(f.values().year); paint(); });
-    node.querySelectorAll("[data-id]").forEach((b) => (b.onclick = () => openMoneySheet(ledger, fin.find((e) => e.id === b.dataset.id), { onSaved: () => setTimeout(paint, 50) })));
+    node.querySelectorAll("[data-id]").forEach((b) => (b.onclick = () => openMoneyEntry(ledger, fin.find((e) => e.id === b.dataset.id), { onSaved: () => setTimeout(paint, 50) })));
     body.replaceChildren(node);
   };
   await paint();

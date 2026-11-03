@@ -103,21 +103,7 @@ export function pickAnimals(snap, { title = "Choose cattle", multi = true, filte
 export const animalLabel = (a) => (shortName(a) ? `${shortName(a)} (${tagParts(a.tag).tail})` : tagParts(a.tag).tail || a.tag);
 export function namesOf(snap, ids, max = 3) { const l = ids.map((id) => snap.ix.byId.get(id)).filter(Boolean).map(animalLabel); return l.length > max ? `${l.slice(0, max).join(", ")} +${l.length - max}` : l.join(", "); }
 
-/** Printable table view (design/00 §6.18) for a register: opens the browser print dialog. */
-export function printDoc(doc) {
-  const w = document.createElement("div"); w.className = "print-view print-float";
-  w.innerHTML = toHtmlTable(doc);
-  document.body.appendChild(w); document.body.classList.add("printing");
-  const done = () => { w.remove(); document.body.classList.remove("printing"); removeEventListener("afterprint", done); };
-  addEventListener("afterprint", done);
-  setTimeout(() => { try { window.print(); } catch (e) { done(); } setTimeout(() => { if (w.isConnected && !matchMedia("print").matches) done(); }, 1500); }, 50);
-}
-export function toHtmlTable(doc) {
-  const e = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  return `<div class="ph"><b>${e(doc.title)}</b><span>${(doc.top || []).map(([k, v]) => `${e(k)}: ${e(v)}`).join(" · ")}</span></div>
-    <table><thead><tr>${doc.headers.map((h) => `<th>${e(h)}</th>`).join("")}</tr></thead><tbody>${doc.rows.map((r, i) => `<tr${doc.refs?.[i] ? ` data-rec="${e(doc.refs[i])}" class="tap" tabindex="0" role="button"` : ""}>${r.map((c) => `<td>${e(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${doc.headers.length}">Nothing recorded yet.</td></tr>`}</tbody></table>
-    <div class="pf">${e(doc.note || "")} Printed from Farm Ledger on ${new Date().toLocaleDateString("en-GB")}.</div>`;
-}
+export { printDoc, toHtmlTable } from "../../ui/print.js";
 export { CLASS_NAMES, normTag };
 
 import { viewPills } from "../../ui/view-pills.js";

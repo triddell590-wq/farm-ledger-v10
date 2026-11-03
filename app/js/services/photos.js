@@ -77,7 +77,6 @@ function pendingOf(list, meta) {
   for (const p of list) if (local.has(p.id)) s.add(p.id);
   return s;
 }
-export const isPending = (id) => local.has(id);
 
 /** The full picture as a data: URL (reads the chunks; cached for this session). */
 export async function loadImage(lid, photo) {

@@ -1,6 +1,6 @@
 // Date and time helpers for broilers: local "YYYY-MM-DDTHH:MM" strings (no time-zone surprises,
 // as everywhere else in the app), hours arithmetic, NI working days and bank holidays.
-import { addDays, daysBetween } from "../../../core/dates.js";
+import { addDays, daysBetween, MONTHS as MON } from "../../../core/dates.js";
 import { NI_FIXED_HOLIDAYS } from "./content.js";
 
 const p2 = (n) => String(n).padStart(2, "0");
@@ -17,7 +17,7 @@ export function hoursBetween(a, b) {
   const t = (s) => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10), +s.slice(11, 13) || 0, +s.slice(14, 16) || 0);
   return (t(b) - t(a)) / 3600000;
 }
-const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 /** "Mon 20 Oct" */
 export function dayLabel(iso) { if (!iso) return ""; const d = new Date(datePart(iso) + "T12:00:00Z"); return `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; }
 /** "Wed 22 Oct 12:00" */
@@ -50,6 +50,4 @@ export function isWorkingDay(iso) {
 }
 /** The date n working days before iso (iso itself not counted). */
 export function workingDaysBefore(iso, n) { let d = iso; let k = 0; while (k < n) { d = addDays(d, -1); if (isWorkingDay(d)) k++; } return d; }
-/** Working days from a (exclusive) to b (inclusive). */
-export function workingDaysBetween(a, b) { if (b <= a) return 0; let k = 0; let d = a; while (d < b) { d = addDays(d, 1); if (isWorkingDay(d)) k++; } return k; }
 export { addDays, daysBetween };

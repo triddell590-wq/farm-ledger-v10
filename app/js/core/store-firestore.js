@@ -42,28 +42,51 @@ export function createFirestoreBackend(config) {
   }
   const meta = (s) => ({ fromCache: s.metadata.fromCache, hasPendingWrites: s.metadata.hasPendingWrites });
 
+  // One-off reads never wait on a weak signal (Tom, 3 Nov: Today stuck on a farm signal). Paths
+  // this phone has had from the server ("warm") answer from the phone's copy if the server is
+  // slower than FAST_MS; the server's answer still lands in the copy for next time. A path never
+  // synced here waits for the server (up to COLD_MS) so a new phone doesn't show empty screens.
+  const FAST_MS = 600, COLD_MS = 6000, WARM_KEY = "fl10-warm-paths";
+  const warm = new Set((() => { try { return JSON.parse(localStorage.getItem(WARM_KEY) || "[]"); } catch (e) { return []; } })());
+  let saveWarm = null;
+  const markWarm = (path) => {
+    if (warm.has(path)) return; warm.add(path);
+    clearTimeout(saveWarm); saveWarm = setTimeout(() => { try { localStorage.setItem(WARM_KEY, JSON.stringify([...warm].slice(-3000))); } catch (e) { /* private mode */ } }, 500);
+  };
+  const qkey = (collPath, o = {}) => (o.where?.length || o.limit ? collPath + JSON.stringify(o) : collPath);
+  const late = (ms) => new Promise((r) => setTimeout(() => r(LATE), ms)); const LATE = Symbol("late");
+  async function read(path, ref) {
+    const cache = () => ref.get({ source: "cache" });
+    if (!navigator.onLine) return cache();
+    const server = ref.get().then((s) => { markWarm(path); return s; });
+    const first = await Promise.race([server, late(warm.has(path) ? FAST_MS : COLD_MS)]).catch((e) => (e.code === "unavailable" ? LATE : Promise.reject(e)));
+    if (first !== LATE) return first;
+    server.catch(() => {}); // still running: it refreshes the copy
+    return cache();
+  }
+
   const B = {
     name: "firestore",
     db,
     newId: () => db.collection("_").doc().id,
     async get(path) {
-      // Try the server briefly; fall back to the phone's cache when there is no signal.
-      try { return snapData(await db.doc(path).get()); }
-      catch (e) { if (e.code === "unavailable") return snapData(await db.doc(path).get({ source: "cache" })); throw e; }
+      try { return snapData(await read(path, db.doc(path))); }
+      catch (e) { if (e.code === "unavailable") return null; throw e; } // not in the phone's copy and no signal
     },
     set: (path, data, o = {}) => db.doc(path).set(toFs(data), { merge: !!o.merge }),
     update: (path, partial) => db.doc(path).update(toFs(partial)),
     remove: (path) => db.doc(path).delete(),
-    async query(collPath, o) { const s = await buildQuery(db.collection(collPath), o).get(); return s.docs.map(snapData); },
+    async query(collPath, o) { const s = await read(qkey(collPath, o), buildQuery(db.collection(collPath), o)); return s.docs.map(snapData); },
     async queryGroup(collId, o) {
       const s = await buildQuery(db.collectionGroup(collId), o).get();
       return s.docs.map((d) => Object.assign(snapData(d), { _path: d.ref.path }));
     },
     watchDoc(path, cb, onErr) {
-      return db.doc(path).onSnapshot({ includeMetadataChanges: true }, (s) => { cb(snapData(s), meta(s)); track(s); }, onErr);
+      return db.doc(path).onSnapshot({ includeMetadataChanges: true }, (s) => { if (!s.metadata.fromCache) markWarm(path); cb(snapData(s), meta(s)); track(s); }, onErr);
     },
     watchQuery(collPath, o, cb, onErr) {
       return buildQuery(db.collection(collPath), o).onSnapshot({ includeMetadataChanges: true }, (s) => {
+        if (!s.metadata.fromCache) markWarm(qkey(collPath, o));
         cb(s.docs.map(snapData), { ...meta(s), pendingIds: new Set(s.docs.filter((d) => d.metadata.hasPendingWrites).map((d) => d.id)) }); track(s);
       }, onErr);
     },

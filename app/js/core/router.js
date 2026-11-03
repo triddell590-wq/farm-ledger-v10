@@ -19,7 +19,6 @@ export function define(pattern, loader, opts = {}) { routes.push({ pattern, load
 export function setGuard(fn) { guard = fn; }
 export function onScreenChange(fn) { onScreen = fn; }
 export const currentPath = () => (location.hash.replace(/^#/, "") || "/");
-export const currentScreen = () => current && current.screen;
 
 export function go(path, { replace = false } = {}) {
   if (!path.startsWith("/")) path = "/" + path;

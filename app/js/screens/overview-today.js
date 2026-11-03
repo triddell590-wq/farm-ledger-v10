@@ -57,9 +57,11 @@ export default async function today(farm, params) {
   if (offlineHours() > 24) notes.append(el(html`<div class="info-card">${raw(icon("cloudOff"))}<span>You've been offline since yesterday. Your work is safe on this phone.</span></div>`));
   if (!notes.children.length) notes.remove();
 
-  const mods = await Promise.all(ledgers.map((l) => sectorModule(l.type)));
-  // tasks
+  // The screen shows at once; jobs, alerts, herd cards and money fill in as they arrive (Tom, 3 Nov:
+  // waiting for every ledger before showing anything read as "Today won't load" on a farm signal).
   const tb = body.querySelector("[data-tasks]");
+  tb.append(el(html`<div>${groupLabel("To do today")}<p class="t-callout ink-3" data-checking>Checking the farm…</p></div>`));
+  let mods = [];
   const paintTasks = async () => {
     const tasks = await todaysTasks(ledgers);
     // jobs a ledger works out from its records (e.g. Beef: tag a calf, notify NIFAIS)
@@ -76,42 +78,47 @@ export default async function today(farm, params) {
     for (const [lid, n] of per) if (n > 8) { const l = ledgers.find((x) => x.id === lid); tb.append(el(html`<a class="text-btn" href="#/l/${lid}">See all ${n} in ${META[l.type].short} ›</a>`)); }
     return tasks;
   };
-  const allTasks = await paintTasks();
 
-  // alerts from each ledger's own module (an alert that is also a job shows once, as the job;
-  // anything due more than 3 days away is only for information)
-  const today = todayStr();
-  const alerts = (await Promise.all(ledgers.map((l, i) => mods[i].alerts(l, l.role).catch(() => []).then((as) => alertsNotTasks(as, allTasks.filter((t) => t.ledger.id === l.id)).map((a) => ({ ...a, level: alertLevel(a, today), ledger: l })))))).flat()
-    .filter((a) => !(ledgers.find((l) => l === a.ledger)?.role === "accountant") || a.money)
-    .sort((a, b) => ORDER[a.level] - ORDER[b.level] || String(a.date || "").localeCompare(String(b.date || "")));
-  const ab = body.querySelector("[data-alerts]");
-  const top = alerts.filter((a) => a.level !== "info").slice(0, 3);
-  if (alerts.length) {
-    if (top.length) ab.append(el(html`<div>${top.map((a) => alertCard(a))}</div>`));
-    const rest = alerts.length - top.length;
-    if (rest > 0) { const more = el(html`<button type="button" class="text-btn" style="margin-top:4px">${rest} more ${rest === 1 ? "thing" : "things"} to know ›</button>`); more.onclick = () => openSheet({ title: "Needs attention", body: el(html`<div>${alerts.map((a) => alertCard(a))}</div>`), cancelText: "Done" }); ab.append(more); }
-  } else ab.remove();
+  async function fill() {
+    mods = await Promise.all(ledgers.map((l) => sectorModule(l.type)));
+    const allTasks = await paintTasks();
 
-  // ledger cards
-  const lb = body.querySelector("[data-ledgers]");
-  if (ledgers.length) {
-    const heads = await Promise.all(ledgers.map((l, i) => mods[i].headline(l).catch(() => ({}))));
-    lb.append(el(html`<div>${groupLabel("On this farm")}<div class="list">${ledgers.map((l, i) => html`<a class="row" href="#/l/${l.id}" data-sector="${l.type}" data-ledger-card="${l.id}">
-      ${sectorTile(l.type)}<span class="main"><span class="primary" style="font-weight:700">${l.name || sectorName(l.type)}</span><span class="secondary">${l.role === "accountant" ? "Money only" : heads[i].line || ""}</span></span>
-      ${heads[i].value && l.role !== "accountant" ? html`<span class="value">${heads[i].value} <span class="t-callout ink-2" style="font-weight:500">${heads[i].unit}</span></span>` : ""}<span class="chev">${raw(icon("chevron"))}</span></a>`)}</div></div>`));
-  } else lb.append(el(emptyState({ iconName: "farm", title: "Nothing on this farm yet", body: "Add each kind of stock you keep.", action: ADD_LEDGER, href: "#/add-ledger" })));
+    // alerts from each ledger's own module (an alert that is also a job shows once, as the job;
+    // anything due more than 3 days away is only for information)
+    const today = todayStr();
+    const alerts = (await Promise.all(ledgers.map((l, i) => mods[i].alerts(l, l.role).catch(() => []).then((as) => alertsNotTasks(as, allTasks.filter((t) => t.ledger.id === l.id)).map((a) => ({ ...a, level: alertLevel(a, today), ledger: l })))))).flat()
+      .filter((a) => !(ledgers.find((l) => l === a.ledger)?.role === "accountant") || a.money)
+      .sort((a, b) => ORDER[a.level] - ORDER[b.level] || String(a.date || "").localeCompare(String(b.date || "")));
+    const ab = body.querySelector("[data-alerts]");
+    const top = alerts.filter((a) => a.level !== "info").slice(0, 3);
+    if (alerts.length) {
+      if (top.length) ab.append(el(html`<div>${top.map((a) => alertCard(a))}</div>`));
+      const rest = alerts.length - top.length;
+      if (rest > 0) { const more = el(html`<button type="button" class="text-btn" style="margin-top:4px">${rest} more ${rest === 1 ? "thing" : "things"} to know ›</button>`); more.onclick = () => openSheet({ title: "Needs attention", body: el(html`<div>${alerts.map((a) => alertCard(a))}</div>`), cancelText: "Done" }); ab.append(more); }
+    } else ab.remove();
 
-  // money this month
-  const mb = body.querySelector("[data-money]");
-  if (moneyRoles.length) {
-    const m = await moneyFor(moneyRoles, periodRange("month"));
-    const max = Math.max(1, m.totalIn, m.totalOut);
-    const bar = (kind) => m.byLedger.map((x) => html`<span data-sector="${x.ledger.type === "farm" ? "" : x.ledger.type}" style="width:${((kind === "in" ? x.in : x.out) / max) * 100}%;${x.ledger.type === "farm" ? "background:var(--ink-3)" : ""}"></span>`);
-    mb.append(el(html`<div>${groupLabel("Money this month")}<a class="card pad" href="#/farm/money" style="display:block;color:inherit">
-      <div class="money-sum"><span class="ink-2">In</span><span class="v">${money(m.totalIn)}</span></div><div class="bar-track" style="margin:6px 0 12px">${bar("in")}</div>
-      <div class="money-sum"><span class="ink-2">Out</span><span class="v">${money(m.totalOut)}</span></div><div class="bar-track" style="margin-top:6px">${bar("out")}</div>
-      <p class="text-btn" style="padding:0;margin-top:8px">See money ›</p></a></div>`));
-  } else mb.remove();
+    // ledger cards
+    const lb = body.querySelector("[data-ledgers]");
+    if (ledgers.length) {
+      const heads = await Promise.all(ledgers.map((l, i) => mods[i].headline(l).catch(() => ({}))));
+      lb.append(el(html`<div>${groupLabel("On this farm")}<div class="list">${ledgers.map((l, i) => html`<a class="row" href="#/l/${l.id}" data-sector="${l.type}" data-ledger-card="${l.id}">
+        ${sectorTile(l.type)}<span class="main"><span class="primary" style="font-weight:700">${l.name || sectorName(l.type)}</span><span class="secondary">${l.role === "accountant" ? "Money only" : heads[i].line || ""}</span></span>
+        ${heads[i].value && l.role !== "accountant" ? html`<span class="value">${heads[i].value} <span class="t-callout ink-2" style="font-weight:500">${heads[i].unit}</span></span>` : ""}<span class="chev">${raw(icon("chevron"))}</span></a>`)}</div></div>`));
+    } else lb.append(el(emptyState({ iconName: "farm", title: "Nothing on this farm yet", body: "Add each kind of stock you keep.", action: ADD_LEDGER, href: "#/add-ledger" })));
+
+    // money this month
+    const mb = body.querySelector("[data-money]");
+    if (moneyRoles.length) {
+      const m = await moneyFor(moneyRoles, periodRange("month"));
+      const max = Math.max(1, m.totalIn, m.totalOut);
+      const bar = (kind) => m.byLedger.map((x) => html`<span data-sector="${x.ledger.type === "farm" ? "" : x.ledger.type}" style="width:${((kind === "in" ? x.in : x.out) / max) * 100}%;${x.ledger.type === "farm" ? "background:var(--ink-3)" : ""}"></span>`);
+      mb.append(el(html`<div>${groupLabel("Money this month")}<a class="card pad" href="#/farm/money" style="display:block;color:inherit">
+        <div class="money-sum"><span class="ink-2">In</span><span class="v">${money(m.totalIn)}</span></div><div class="bar-track" style="margin:6px 0 12px">${bar("in")}</div>
+        <div class="money-sum"><span class="ink-2">Out</span><span class="v">${money(m.totalOut)}</span></div><div class="bar-track" style="margin-top:6px">${bar("out")}</div>
+        <p class="text-btn" style="padding:0;margin-top:8px">See money ›</p></a></div>`));
+    } else mb.remove();
+  }
+  fill().catch((e) => { console.error("today", e); tb.querySelector("[data-checking]")?.replaceWith(el(html`<p class="t-callout ink-2">Couldn't work out today's jobs. Open Today again to retry.</p>`)); });
 
   const writable = ledgers.filter((l) => canWrite(l.role, "tasks"));
   const fab = writable.length ? async () => {

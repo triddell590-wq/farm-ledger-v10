@@ -2,6 +2,7 @@
 // phone's file chooser), shrink + EXIF strip + orientation, view (swipe, caption), delete with
 // confirm, "Waiting to upload" while offline, draft photos count as unsaved changes, checklist
 // photo evidence — across Documents (farm), Beef, Sheep and Pigs.
+import { fileURLToPath } from "node:url";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import * as H from "./harness.mjs";
@@ -9,7 +10,7 @@ import { seedBeef } from "./beef-seed.mjs";
 import { seedSheep } from "./sheep-seed.mjs";
 import { seedPigs } from "./pigs-seed.mjs";
 
-const FIX = new URL("../fixtures/photos/", import.meta.url).pathname;
+const FIX = fileURLToPath(new URL("../fixtures/photos/", import.meta.url));
 let env, p, beef, sheep, pigs;
 before(async () => {
   env = await H.setup(); p = await H.phone(env, { verified: true });

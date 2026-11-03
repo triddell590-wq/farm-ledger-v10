@@ -2,12 +2,13 @@
 // strip in a record sheet (draft and saved, waiting to upload), the viewer (photo, caption,
 // delete confirm), the ledger gallery (empty and full), checklist evidence, receipt on a money
 // entry, a Beef death with its docket photo. Fails if any screen logs a JavaScript error.
+import { fileURLToPath } from "node:url";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import * as H from "./harness.mjs";
 import { seedPigs } from "./pigs-seed.mjs";
 
-const FIX = new URL("../fixtures/photos/", import.meta.url).pathname;
+const FIX = fileURLToPath(new URL("../fixtures/photos/", import.meta.url));
 let env;
 before(async () => { env = await H.setup(); });
 after(async () => { await env.close(); });

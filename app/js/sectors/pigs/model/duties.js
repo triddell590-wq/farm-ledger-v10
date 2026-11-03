@@ -9,10 +9,11 @@ import { houses, alarmState } from "./rooms.js";
 import { aliveNow } from "./litters.js";
 import { dayName } from "./sows.js";
 import { weekNo } from "./weeks.js";
+import { MONTHS } from "../../../core/dates.js";
 
 const live = (a) => (a || []).filter((r) => !r.deleted);
 const L = (c, h) => `#/l/${c.lid}/${h}`;
-const dm = (iso) => `${dayName(iso)} ${+iso.slice(8)} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][+iso.slice(5, 7) - 1]}`;
+const dm = (iso) => `${dayName(iso)} ${+iso.slice(8)} ${MONTHS[+iso.slice(5, 7) - 1]}`;
 
 /** "Bin 1 is empty — order feed now" / "Order feed: Bin 3 empty in about 3 days". */
 export function binTitle(b) {

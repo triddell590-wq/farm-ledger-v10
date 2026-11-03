@@ -43,11 +43,4 @@ export function houseCard(c, h) {
     sheetLate: late,
   };
 }
-/** Days until the next flock and the clean-out progress for an empty house. */
-export function turnaroundLine(card) {
-  const parts = ["Empty"];
-  if (card.day) parts.push(`day ${card.day} of clean-out`);
-  if (card.nextDate) parts.push(`next flock placed ${card.nextDate}`);
-  return parts.join(" · ");
-}
 export { dateAtWeek };

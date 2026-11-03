@@ -9,7 +9,6 @@ export const fosteredOn = (l) => sum(l.fosterOn);
 export const fosteredOff = (l) => sum(l.fosterOff);
 /** Alive now = born alive − died + fostered on − fostered off (never below 0). */
 export function aliveNow(l) { return Math.max(0, (+l.bornAlive || 0) - diedIn(l) + fosteredOn(l) - fosteredOff(l)); }
-export const totalBorn = (l) => (+l.bornAlive || 0) + (+l.stillborn || 0) + (+l.mummified || 0);
 export const lactationDay = (l, today) => (l.weaned?.date ? daysBetween(l.farrowedAt, l.weaned.date) : daysBetween(l.farrowedAt, today));
 
 /** Pre-weaning mortality = piglet deaths ÷ (born alive + fostered on − fostered off). */

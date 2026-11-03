@@ -1,8 +1,7 @@
 // Red Tractor Chicken v5.1 (modified) inspection checklist — "based on", never "endorsed by"
 // (design/15 §11). Items are evidenced from records where the app holds them; the rest are
 // ticked by the owner/manager (meta "checklist"). Wording is the app's own summary.
-import { RT_VERSION } from "./content.js";
-import { houseState, listOf, cropEvents, cumMortPct, cropDay, currentCrop } from "./crop.js";
+import { listOf, cumMortPct, cropDay, currentCrop } from "./crop.js";
 import { plannedMax, densityNeeds } from "./density.js";
 import { salmStatus, feedOffLevel, turnaroundDays } from "./paper.js";
 import { antibioticFlag } from "./content.js";
@@ -66,4 +65,3 @@ export function evaluate(c, ticks = {}) {
   });
 }
 export function summary(list) { const counted = list.filter((x) => x.state !== "na"); return { ok: counted.filter((x) => x.state === "ok").length, total: counted.length, gaps: list.filter((x) => x.state === "gap").length }; }
-export const CHECKLIST_VERSION = RT_VERSION;

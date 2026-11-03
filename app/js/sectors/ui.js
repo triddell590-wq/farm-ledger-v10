@@ -10,11 +10,9 @@
 //   contextLine(ledger) -> Promise<string>
 const BUILT = new Set(["beef", "sheep", "dairy", "pigs", "layers", "broilers"]); // sectors with their own module (Phase 3 adds them)
 const cache = {};
-export function hasOwnModule(type) { return BUILT.has(type); }
 export async function sectorModule(type) {
   if (cache[type]) return cache[type];
   const mod = BUILT.has(type) ? await import(`./${type}/index.js`) : await import("./generic.js");
   cache[type] = BUILT.has(type) ? mod.default : mod.genericFor(type);
   return cache[type];
 }
-export function registerBuilt(type) { BUILT.add(type); }

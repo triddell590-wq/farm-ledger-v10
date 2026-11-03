@@ -1,18 +1,8 @@
 // Formatting for farmers (design/00 §4.1): tags with the read-aloud digits bold, money with a
 // true minus, dates in the three agreed styles, units always shown.
 import { html, raw } from "../core/html.js";
-import { shortDate, daysBetween, todayStr } from "../core/dates.js";
+import { shortDate, daysBetween, todayStr, MONTHS as MON } from "../core/dates.js";
 
-/** UK tag "UK9 012345 701086" -> "UK 9 01234 5 70108 6" style with the 5 read-aloud digits bold. */
-export function formatTag(tag) {
-  const s = String(tag || "").replace(/\s+/g, "").toUpperCase();
-  const m = /^(UK)(\d)(\d{5})(\d)(\d{5})(\d)$/.exec(s);
-  if (m) return html`<span class="tag-num">${m[1]} ${m[2]} ${m[3]} ${m[4]} <b>${m[5]}</b> ${m[6]}</span>`;
-  // NI tags (v9 layout): UK/XI + lead digit + 6-digit herd + 4-digit animal + check digit
-  const n = /^(UK|XI)(\d)(\d{6})(\d{4})(\d)$/.exec(s);
-  if (n) return html`<span class="tag-num">${n[1]} ${n[2]} ${n[3]} <b>${n[4]} ${n[5]}</b></span>`;
-  return html`<span class="tag-num">${tag || ""}</span>`;
-}
 export function tagText(tag) {
   const s = String(tag || "").replace(/\s+/g, "").toUpperCase();
   const m = /^(UK)(\d)(\d{5})(\d)(\d{5})(\d)$/.exec(s);
@@ -33,7 +23,6 @@ export function money(v, pence = false) {
   return html`${n < 0 ? "−" : ""}<span class="money-sign">£</span>${pence ? nf2.format(a) : nf0.format(Math.round(a))}`;
 }
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTH_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 /** "Tue 14 Oct" for lists */

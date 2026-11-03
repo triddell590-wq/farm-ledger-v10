@@ -7,9 +7,6 @@ export async function listMembers(lid) {
   const ms = await store.query(`ledgers/${lid}/members`);
   return ms.sort((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role) || String(a.displayName || a.email).localeCompare(b.displayName || b.email));
 }
-export const watchMembers = (lid, cb, onErr) => store.watchQuery(`ledgers/${lid}/members`, {}, cb, onErr);
-export const myMembership = (lid) => store.get(`ledgers/${lid}/members/${auth.user.uid}`);
-export const watchMyMembership = (lid, cb, onErr) => store.watchDoc(`ledgers/${lid}/members/${auth.user.uid}`, cb, onErr);
 
 export function changeRole(lid, uid, role) {
   if (role === "owner") throw new Error("Use transferOwnership to make someone the owner");

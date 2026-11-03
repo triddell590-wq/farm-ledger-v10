@@ -7,7 +7,7 @@ import { textField, selectField } from "../../../ui/form.js";
 import { toast } from "../../../ui/toast.js";
 import { todayStr } from "../../../core/dates.js";
 import { cattleRow, entrySheet, opt } from "./common.js";
-import { recordMove, addGroup, softDelete } from "../actions.js";
+import { recordMove, addGroup } from "../actions.js";
 import { updateRecord } from "../../../services/records.js";
 import { CLASS_NAMES } from "../model/animals.js";
 
@@ -52,4 +52,3 @@ export function groupSheet(snap, g = null) {
     },
   });
 }
-export const removeGroup = (snap, g) => softDelete(snap.lid, "groups", g.id);

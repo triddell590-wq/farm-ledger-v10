@@ -63,5 +63,3 @@ export function daysUnder(ix, crop, std, today, pct, max = 10) {
   }
   return n;
 }
-/** Water:feed ratio for a day (L per kg). Normal 1.6–2.0 (guidance). */
-export const waterFeedRatio = (waterL, feedKg) => (waterL && feedKg ? waterL / feedKg : null);

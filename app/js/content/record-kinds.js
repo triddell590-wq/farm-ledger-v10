@@ -5,7 +5,7 @@
 // JSON), and the few values an edit must work out again (withdrawal end dates).
 // Pure: no DOM, no store. `L` is a lookup built by makeLookup() from the ledger's records.
 import { tagParts } from "../sectors/beef/model/tags.js";
-import { addDays, shortDate } from "../core/dates.js";
+import { addDays, shortDate, MONTHS as MON } from "../core/dates.js";
 
 const nf0 = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 });
 const nf2 = new Intl.NumberFormat("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -366,5 +366,4 @@ export function withdrawalWarnings(type, list, today, L = nullL) {
   }
   return [...new Set(out)];
 }
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export const dayMonth = (iso) => { if (!iso) return ""; const [, m, d] = iso.slice(0, 10).split("-"); return `${+d} ${MON[+m - 1]}`; };

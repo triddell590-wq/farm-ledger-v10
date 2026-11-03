@@ -2,11 +2,10 @@
 // "To do today" and what waits in "Coming up", how a job's due line reads, when an alert and a
 // job are the same obligation, and what the bell counts. Pure functions only (no DOM, no clock
 // except `today` passed in), so the ledger homes, Farm → Today, the bell and the Node sender agree.
-import { daysBetween, addDays, todayStr } from "../core/dates.js";
+import { daysBetween, addDays, todayStr, MONTHS as MON } from "../core/dates.js";
 
 export const SOON_DAYS = 3; // "due" within this many days; further off is "coming up"
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** "Sun 1 Nov" (with the year when it isn't within about 6 months of today). */
 export function dayDate(iso, today = todayStr()) {
   if (!iso) return "";

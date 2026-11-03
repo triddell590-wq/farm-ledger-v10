@@ -10,7 +10,8 @@ import { renameFarm, updateLedger } from "../services/ledgers.js";
 import { syncMyName } from "../services/members.js";
 import { getAppearance, setAppearance } from "../services/appearance.js";
 import { textField, segmented, radioGroup, checkRow, wireForm, guardButton, fieldError } from "../ui/form.js";
-import { canEditLedger, REGIONS, REGION_NAMES, ACTIVE_REGIONS } from "../core/policy.js";
+import { canEditLedger, canWrite, REGIONS, REGION_NAMES, ACTIVE_REGIONS } from "../core/policy.js";
+import { vatSettings, saveVatSettings } from "../services/money.js";
 import { toast } from "../ui/toast.js";
 import { go } from "../core/router.js";
 import { openReset } from "./auth-sheets.js";
@@ -87,11 +88,23 @@ const PAGES = {
     const f = wireForm(out); f.onChange(() => { const area = f.values().area; write(LS_UNITS, { area }); updateProfile({ prefs: { ...(session.profile?.prefs || {}), units: area === "ha" ? "hectares" : "acres" } }).catch(() => {}); session.setProfileLocal({ prefs: { ...(session.profile?.prefs || {}), units: area === "ha" ? "hectares" : "acres" } }); toast("Saved"); });
   },
   async tax(out) {
-    const t = getTax();
+    // VAT is the farm's, shared with whoever does the books (services/money.js); the tax year stays on this phone
+    const t = getTax(); const space = session.farm()?.space || null; const v = space ? await vatSettings(space) : null;
+    const vatChoice = !v ? t.vat : v.registered === "no" ? "none" : v.returns;
+    const canSet = space && canWrite(space.role, "finance");
     out.append(el(html`<div><h2 class="group-label">Tax year</h2>${radioGroup("yearStart", [{ value: "apr", label: "6 April to 5 April", help: "The usual UK tax year." }, { value: "jan", label: "January to December" }], t.yearStart)}
-      <h2 class="group-label" style="margin-top:28px">VAT</h2>${radioGroup("vat", [{ value: "quarterly", label: "Quarterly returns" }, { value: "monthly", label: "Monthly returns" }, { value: "none", label: "Not VAT registered" }], t.vat)}
-      <p class="hint">Used for the money reports you send your accountant.</p></div>`));
-    const f = wireForm(out); f.onChange(() => { write(LS_TAX, f.values()); toast("Saved"); });
+      <h2 class="group-label" style="margin-top:28px">VAT</h2>${radioGroup("vat", [{ value: "quarterly", label: "Quarterly returns" }, { value: "monthly", label: "Monthly returns" }, { value: "none", label: "Not VAT registered", help: "Hides VAT on money entries." }], vatChoice)}
+      <div data-stagger ${raw(vatChoice === "quarterly" ? "" : "hidden")}><h2 class="group-label" style="margin-top:28px">Your quarters end in</h2>${radioGroup("stagger", [{ value: "1", label: "March, June, September, December" }, { value: "2", label: "April, July, October, January" }, { value: "3", label: "May, August, November, February" }], String(v?.stagger || 1))}
+        <p class="hint">It's on your VAT registration certificate, or ask your accountant.</p></div>
+      <p class="hint">${canSet ? "The VAT return on the farm's Money tab uses this, for everyone on the farm." : "Only the farm's owner, manager or accountant can change VAT."}</p></div>`));
+    if (!canSet) out.querySelectorAll("[data-radio=vat] [role=radio], [data-radio=stagger] [role=radio]").forEach((b) => (b.disabled = true));
+    const f = wireForm(out);
+    f.onChange((name) => {
+      const x = f.values(); write(LS_TAX, { yearStart: x.yearStart, vat: x.vat });
+      out.querySelector("[data-stagger]").hidden = x.vat !== "quarterly";
+      if (canSet && (name === "vat" || name === "stagger")) saveVatSettings(space, { registered: x.vat === "none" ? "no" : "yes", returns: x.vat === "monthly" ? "monthly" : "quarterly", stagger: x.stagger });
+      toast("Saved");
+    });
   },
   async reminders(out) { // reminder times live with notifications, and can be set even when push is blocked (A #30)
     setTimeout(() => go("/settings/notifications", { replace: true }));

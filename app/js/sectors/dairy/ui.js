@@ -6,10 +6,9 @@ import { icon } from "../../ui/icons.js";
 import { openSheet } from "../../ui/sheet.js";
 import { download } from "../../ui/download.js";
 import { daysBetween } from "../../core/dates.js";
-import { onFarm, groupOf, lactation, dim, lastYield, lastScc, cowLabel, cowMatches, sortByNo, ordinal, ageMonths, isDry } from "./model/cows.js";
+import { onFarm, groupOf, lactation, dim, lastYield, lastScc, cowLabel, sortByNo, ordinal, ageMonths } from "./model/cows.js";
 import { fertilityOf, dm } from "./model/fertility.js";
 import { QUARTERS, QUARTER_NAMES } from "./model/milking.js";
-import { tagParts } from "../beef/model/tags.js";
 import { rankMatches, cowKeys, isExact } from "../../core/rank.js";
 
 let cssDone = false;
@@ -116,23 +115,9 @@ export function lineChart(points, { limit = null, max = null } = {}) {
   return html`<svg class="chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${limit != null ? raw(`<path d="M0 ${h - (limit / m) * h}H${w}" stroke="var(--late)" stroke-dasharray="4 4" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`) : ""}${raw(`<path d="${d}" fill="none" stroke="var(--dairy)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>`)}</svg>`;
 }
 
-/** Printable table (design/00 §6.18): opens the browser print dialog. */
-export function printDoc(doc) {
-  const w = document.createElement("div"); w.className = "print-view print-float"; w.innerHTML = doc.__html || toHtmlTable(doc);
-  document.body.appendChild(w); document.body.classList.add("printing");
-  const done = () => { w.remove(); document.body.classList.remove("printing"); removeEventListener("afterprint", done); };
-  addEventListener("afterprint", done);
-  setTimeout(() => { try { window.print(); } catch (e) { done(); } setTimeout(() => { if (w.isConnected && !matchMedia("print").matches) done(); }, 1500); }, 50);
-}
-export function toHtmlTable(doc) {
-  const e = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  return `<div class="ph"><b>${e(doc.title)}</b><span>${(doc.top || []).map(([k, v]) => `${e(k)}: ${e(v)}`).join(" · ")}</span></div>
-    <table><thead><tr>${doc.headers.map((h) => `<th>${e(h)}</th>`).join("")}</tr></thead><tbody>${doc.rows.map((r, i) => `<tr${doc.refs?.[i] ? ` data-rec="${e(doc.refs[i])}" class="tap" tabindex="0" role="button"` : ""}>${r.map((c) => `<td>${e(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${doc.headers.length}">Nothing recorded yet.</td></tr>`}</tbody></table>
-    <div class="pf">${e(doc.note || "")} Printed from Farm Ledger on ${new Date().toLocaleDateString("en-GB")}.</div>`;
-}
+export { printDoc, toHtmlTable } from "../../ui/print.js";
 export function csvDownload(doc) {
   const q = (s) => { s = String(s == null ? "" : s); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   download(`${doc.title.replace(/[^\w]+/g, "-").toLowerCase()}.csv`, [doc.headers, ...doc.rows].map((r) => r.map(q).join(",")).join("\n"), "text/csv");
 }
-export const dryWord = (ix, a) => (isDry(ix, a) ? "Dry" : "");
 export { cowLabel, dm };

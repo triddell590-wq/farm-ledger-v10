@@ -18,7 +18,3 @@ export function inviteCode(len = 26) {
 /** "7K4P-QX9M-2RTA-…" for reading; normalise() undoes it (case-insensitive, dashes ignored). */
 export const groupCode = (c) => c.replace(/(.{4})(?=.)/g, "$1-");
 export const normaliseCode = (c) => String(c || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-export function hexToken(bytes = 24) {
-  const a = new Uint8Array(bytes); crypto.getRandomValues(a);
-  return Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
-}

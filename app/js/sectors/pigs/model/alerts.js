@@ -8,10 +8,10 @@ import { notifyState, qvrState, embDue, inventoryDue, checkState } from "./paper
 import { houses, alarmState, tailBiteRepeat } from "./rooms.js";
 import { crateEntryCheck, dayName } from "./sows.js";
 import { plan } from "./weeks.js";
+import { MONTHS as MON } from "../../../core/dates.js";
 
 const live = (a) => (a || []).filter((r) => !r.deleted);
 const L = (c, h) => `#/l/${c.lid}/${h}`;
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const dm = (iso) => `${+iso.slice(8)} ${MON[+iso.slice(5, 7) - 1]}`;
 const RANK = { late: 0, due: 1, info: 2 };
 

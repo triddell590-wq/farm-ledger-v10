@@ -1,4 +1,4 @@
-// build fl10-94c2a215c7a6
+// build fl10-7c9900674feb
 // Farm Ledger 10 service worker: keeps a full copy of the app on the phone so it opens with no
 // signal. Same network strategy as v9.14 (which works): the page itself tries the network for
 // at most 3s then uses the saved copy; every other app file is phone-copy-first per version;
@@ -9,7 +9,6 @@ const CACHE = self.CACHE_VERSION;
 const TILE_CACHE = "fl10-tiles-v1";
 const TILE_MAX = 4000;
 const TILE_HOSTS = ["server.arcgisonline.com", "services.arcgisonline.com"];
-const NET_WAIT_MS = 3000;
 
 self.addEventListener("install", (e) => {
   // Fetch each file with the version in the address so GitHub's servers can't hand back a copy
@@ -45,8 +44,7 @@ function appFirst(e) {
     let saved = await c.match(req, { ignoreSearch: true });
     if (!saved && req.mode === "navigate") saved = await c.match("./index.html");
     if (!saved) return net.catch(() => c.match("./index.html"));
-    const wait = new Promise((r) => setTimeout(() => r(saved), NET_WAIT_MS));
-    return Promise.race([net.then((res) => (res && res.ok ? res : saved)).catch(() => saved), wait]);
+    return saved; // never wait on the signal to open the app; the fetch above refreshes the copy, and a new version arrives as a new worker
   });
 }
 

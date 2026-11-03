@@ -138,7 +138,6 @@ export async function refreshDevice() {
 
 // ---- items, bell, badge, "became late" -------------------------------------------------
 let cur = { items: [], at: 0, loading: null };
-export const currentItems = () => cur.items;
 export function myLedgers() { return session.ledgers.filter((l) => l.type !== "farm"); }
 /** Work out everything due across my ledgers (all farms). Emits "notify:items". */
 export function refreshItems({ force = false } = {}) {

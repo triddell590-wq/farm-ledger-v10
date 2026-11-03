@@ -110,19 +110,6 @@ export function lineChart(points, { target = null, unit = "" } = {}) {
   return raw(`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart from ${points[0].x} to ${points[points.length - 1].x}">${target != null ? `<line class="t" x1="${P}" x2="${W - P}" y1="${y(target)}" y2="${y(target)}"/><text x="${W - P}" y="${y(target) - 4}" text-anchor="end">target ${target}${unit}</text>` : ""}<path class="l" d="${d}"/><text x="${P}" y="${H - 2}">${points[0].x.slice(5)}</text><text x="${W - P}" y="${H - 2}" text-anchor="end">${points[points.length - 1].x.slice(5)}</text><text x="${x(points.length - 1)}" y="${y(points[points.length - 1].y) - 6}" text-anchor="end">${points[points.length - 1].y}${unit}</text></svg>`);
 }
 
-/** Printable table (register, movement document) — opens the print dialog. */
-export function printDoc(doc) {
-  const w = document.createElement("div"); w.className = "print-view print-float"; w.innerHTML = toHtmlTable(doc);
-  document.body.appendChild(w); document.body.classList.add("printing");
-  const done = () => { w.remove(); document.body.classList.remove("printing"); removeEventListener("afterprint", done); };
-  addEventListener("afterprint", done);
-  setTimeout(() => { try { window.print(); } catch (e) { done(); } setTimeout(() => { if (w.isConnected && !matchMedia("print").matches) done(); }, 1500); }, 50);
-}
-export function toHtmlTable(doc) {
-  const e = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  return `<div class="ph"><b>${e(doc.title)}</b><span>${(doc.top || []).map(([k, v]) => `${e(k)}: ${e(v)}`).join(" · ")}</span></div>
-    <table><thead><tr>${doc.headers.map((h) => `<th>${e(h)}</th>`).join("")}</tr></thead><tbody>${doc.rows.map((r) => `<tr>${r.map((c) => `<td>${e(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${doc.headers.length}">Nothing recorded yet.</td></tr>`}</tbody></table>
-    <div class="pf">${e(doc.note || "")} Printed from Farm Ledger on ${new Date().toLocaleDateString("en-GB")}.</div>`;
-}
+export { printDoc, toHtmlTable } from "../../ui/print.js";
 export function csvOf(doc) { const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`; return [doc.headers, ...doc.rows].map((r) => r.map(q).join(",")).join("\n"); }
 export { num, listDate };
