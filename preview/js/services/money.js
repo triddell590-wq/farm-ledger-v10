@@ -6,7 +6,8 @@
 import { listRecords, getRecord, addRecord, updateRecord } from "./records.js";
 import { canRead } from "../core/policy.js";
 import { farmSpace } from "./ledger-data.js";
-import { VAT_SETTINGS_ID } from "./vat.js";
+import { VAT_SETTINGS_ID, vatPeriods, vatReturn } from "./vat.js";
+import { todayStr } from "../core/dates.js";
 
 export const EXPENSE_CATEGORIES = ["Animal Purchase", "Feed", "Vet & medicine", "Medicine", "Fertiliser", "Diesel", "Contractor", "Machinery Maintenance", "Bedding", "Rent & rates", "Insurance", "Wages", "Miscellaneous"];
 export const REVENUE_CATEGORIES = ["Livestock Sales", "Milk", "Eggs", "Crop Sales", "Subsidy", "Other Income"];
@@ -55,4 +56,13 @@ export async function saveVatSettings(ledger, s) {
   const data = { kind: "settings", registered: s.registered, returns: s.returns, stagger: +s.stagger || 1 };
   const old = await getRecord(space.id, "finance", VAT_SETTINGS_ID).catch(() => null);
   return old ? updateRecord(space.id, "finance", old, data, { history: false }) : addRecord(space.id, "finance", data, VAT_SETTINGS_ID);
+}
+
+/** The VAT return for one period (0 = the current one, 1 = the one before…), or null when the farm isn't VAT registered. */
+export async function vatPeriodFor(ledgers, at = 0) {
+  const s = ledgers.length ? await vatSettings(ledgers[0]) : null;
+  if (!s || s.registered === "no") return null;
+  const periods = vatPeriods(s, todayStr(), 8); const p = periods[Math.min(at, periods.length - 1)];
+  const m = await moneyFor(ledgers, [p.from, p.to]);
+  return { periods, period: p, ...vatReturn(m.rows, p.from, p.to) };
 }
