@@ -4,6 +4,7 @@ import { el } from "../ui/dom.js";
 import { icon } from "../ui/icons.js";
 import { illustration } from "../ui/illustrations.js";
 import { session } from "../services/session.js";
+import { PREVIEW } from "../core/channel.js";
 
 /** Build a Screen object for the router. */
 export function makeScreen({ body, title = "", area = "farm", tab = null, depth = 0, chrome = {}, sector = null, destroy, mounted, transition, remember }) {
@@ -12,7 +13,7 @@ export function makeScreen({ body, title = "", area = "farm", tab = null, depth 
   const page = document.createElement("div"); page.className = "page";
   if (body) page.appendChild(body instanceof Node ? body : el(body));
   node.appendChild(page);
-  if (title) document.title = `${title} · Farm Ledger`;
+  if (title) document.title = `${title} · Farm Ledger${PREVIEW ? " TEST" : ""}`;
   return { el: node, page, title, area, tab, depth, chrome: { compactTitle: title, ...chrome }, sector, destroy, mounted, transition, remember };
 }
 

@@ -1,11 +1,12 @@
-// build fl10-7c9900674feb
+// build fl10-d02a5380c8e0
 // Farm Ledger 10 service worker: keeps a full copy of the app on the phone so it opens with no
-// signal. Same network strategy as v9.14 (which works): the page itself tries the network for
-// at most 3s then uses the saved copy; every other app file is phone-copy-first per version;
+// signal. The page and every other app file come from the saved copy first (refreshed behind);
 // satellite map tiles are cached as you look at them. Firebase traffic is left to Firebase's
 // own offline storage. The asset list and cache version are generated (asset-list.js).
 importScripts("./asset-list.js");
-const CACHE = self.CACHE_VERSION;
+// The test app (/preview/) shares the site with the live app: each keeps and clears only its own copy.
+const TAG = new URL(self.registration.scope).pathname.endsWith("/preview/") ? "-preview" : "";
+const CACHE = self.CACHE_VERSION + TAG;
 const TILE_CACHE = "fl10-tiles-v1";
 const TILE_MAX = 4000;
 const TILE_HOSTS = ["server.arcgisonline.com", "services.arcgisonline.com"];
@@ -28,8 +29,8 @@ self.addEventListener("install", (e) => {
   self.skipWaiting();
 });
 self.addEventListener("activate", (e) => {
-  const keep = [CACHE, TILE_CACHE];
-  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => !keep.includes(k)).map((k) => caches.delete(k)))));
+  const old = (k) => k !== CACHE && k !== TILE_CACHE && k.startsWith("fl10-") && k.endsWith("-preview") === !!TAG;
+  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter(old).map((k) => caches.delete(k)))));
   self.clients.claim();
 });
 
@@ -51,6 +52,7 @@ function appFirst(e) {
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
+  if (!TAG && url.pathname.startsWith(new URL("preview/", self.registration.scope).pathname)) return; // the test app has its own worker
   if (url.origin === self.location.origin && e.request.mode !== "navigate" && !/\/(index\.html)?$/.test(url.pathname)) {
     e.respondWith(caches.open(CACHE).then((c) => c.match(e.request, { ignoreSearch: true }).then((hit) => hit || fetch(e.request).then((res) => {
       if (res && res.ok) c.put(e.request, res.clone());

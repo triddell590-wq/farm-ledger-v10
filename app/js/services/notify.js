@@ -15,6 +15,7 @@ import { allItems } from "./duties.js";
 import { todayStr } from "../core/dates.js";
 import { saveDevice, removeDevice, getDevice, getLog, writeLog } from "./devices.js";
 import { FCM_VAPID_KEY } from "../config.js";
+import { fbApp } from "../core/channel.js";
 import { normPrefs, filterForPrefs, lateLegal, badgeCount, lateKey, logId, DEFAULT_TZ, validTz } from "./notify-core.js";
 
 const LS_DEVICE = "fl10-device", LS_STATE = "fl10-notify", LS_SEEN = "fl10-late-seen";
@@ -66,7 +67,7 @@ async function messaging() {
   await loadScript("vendor/firebase-messaging-compat.js");
   const fb = window.firebase;
   if (!fb.messaging || !(await fb.messaging.isSupported())) throw Object.assign(new Error("Push isn't supported in this browser."), { code: "push/unsupported" });
-  return fb.messaging();
+  return fbApp(fb).messaging();
 }
 async function swReg() {
   if (!("serviceWorker" in navigator)) return null;

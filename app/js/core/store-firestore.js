@@ -2,6 +2,7 @@
 // window.firebase). Offline persistence is switched on so the app works with no signal:
 // reads come from the phone's cache and writes queue until the signal comes back.
 import { emit } from "./bus.js";
+import { fbApp } from "./channel.js";
 
 function fb() { if (!window.firebase) throw new Error("Firebase SDK did not load"); return window.firebase; }
 
@@ -25,8 +26,7 @@ function snapData(snap) { if (!snap.exists) return null; const d = fromFs(snap.d
 
 export function createFirestoreBackend(config) {
   const firebase = fb();
-  if (!firebase.apps.length) firebase.initializeApp(config);
-  const db = firebase.firestore();
+  const db = fbApp(firebase, config).firestore();
   try {
     const p = db.enablePersistence({ synchronizeTabs: true });
     if (p && p.catch) p.catch((e) => console.warn("Offline cache unavailable:", e && e.code));

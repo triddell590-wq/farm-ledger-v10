@@ -17,6 +17,7 @@ import { defineRoutes, guard } from "./routes.js";
 import { playSplash, endSplash } from "./ui/splash.js";
 import { toast } from "./ui/toast.js";
 import { startKeyboardWatch } from "./ui/keyboard.js";
+import { PREVIEW, mountPreviewBanner } from "./core/channel.js";
 
 const qs = new URLSearchParams(location.search);
 applyAppearance();
@@ -62,6 +63,7 @@ async function boot() {
   try { warm = Date.now() - (+sessionStorage.getItem("fl10-active") || 0) < WARM_START_MS; } catch (e) { /* blocked */ }
   const splashDone = warm ? Promise.resolve() : playSplash();
   await pickBackends();
+  if (PREVIEW) mountPreviewBanner();
   const appEl = document.getElementById("app");
   mountShell(appEl); startKeyboardWatch();
   defineRoutes();

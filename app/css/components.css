@@ -456,8 +456,8 @@ html{scroll-padding-bottom:calc(var(--kb,0px) + 24px)}
   background:var(--due-soft);color:var(--due-ink);font-size:14px;border-bottom:1px solid color-mix(in srgb,var(--due) 35%,transparent)}
 .demo-banner span{flex:1;min-width:0}
 .demo-banner a{font-weight:700;color:var(--due-ink);text-decoration:underline;min-height:32px;display:inline-flex;align-items:center}
-:root.demo .topbar{top:40px}
-:root.demo .topbar{padding-top:0}
+:root.demo .topbar,:root.preview .topbar{top:40px}
+:root.demo .topbar,:root.preview .topbar{padding-top:0}
 .welcome .demo-link{align-self:center;margin-top:4px}
 
 /* map: draw bar on one row; credits behind "i"; head counts on fields (review A #27, #28) */
