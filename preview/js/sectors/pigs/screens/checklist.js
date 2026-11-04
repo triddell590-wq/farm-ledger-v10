@@ -1,0 +1,79 @@
+// Red Tractor Pigs checklist (design/13 §8.7) and "Inspector is here" (§8.1). The header states
+// the standard version and date exactly; items the ledger evidences are ticked from the records,
+// the rest are ticked by the owner/manager with a date. The inspection pack prints every
+// register behind a cover page (works offline: Print → Save as PDF → share).
+import { html, raw } from "../../../core/html.js";
+import { el } from "../../../ui/dom.js";
+import { icon } from "../../../ui/icons.js";
+import { toast } from "../../../ui/toast.js";
+import { canWriteMeta } from "../../../core/policy.js";
+import { addDays } from "../model/dates.js";
+import { largeTitle, backLink, groupLabel } from "../../../screens/common.js";
+import { liveScreen } from "./live.js";
+import { pill, toHtmlTable, d2 } from "../ui.js";
+import { evaluate, summary, SECTIONS, HEADER, HEADER_NOTE } from "../model/checklist.js";
+import { registerDoc } from "../model/registers.js";
+import { qvrState } from "../model/paperwork.js";
+import { signChecklist } from "../actions.js";
+import { evidenceButton, wireEvidenceButtons } from "../../../ui/photo-strip.js";
+import { readyScore, readyHero, readyLists, wireReady } from "../../../ui/ready-check.js";
+import { printView } from "../../../ui/print.js";
+
+const TILES = [["pm1", "Movement book (PM1)", "truck"], ["pm2", "Holding register (PM2)", "records"], ["medicines", "Medicines", "syringe"], ["mortality", "Mortality", "alert"], ["tailbites", "Tail biting", "pigs"], ["enrichment", "Enrichment", "check"], ["alarms", "Alarm tests", "bell"], ["visitors", "Visitors", "people"], ["wash", "Wash and disinfection", "water"], ["feed", "Feed deliveries", "feed"]];
+const PACK = ["pm1", "herd", "medicines", "mortality", "tailbites", "enrichment", "alarms", "visitors", "wash", "feed", "vermin", "water"];
+
+export default async function checklist(ctx) {
+  const page = ctx.match.groups.page;
+  return liveScreen(ctx, { title: page === "rt" ? "Red Tractor Pigs" : "Inspector is here", tab: "paperwork", paint: (snap) => {
+    const back = backLink(`#/l/${snap.lid}/${snap.s.breeding && !snap.s.smallHerd ? "pigs-paperwork" : "paperwork"}`, "Paperwork");
+    return page === "rt" ? rtHtml(snap, back) : inspectHtml(snap, back);
+  }, after: (node, snap) => {
+    wireReady(node, (id, on) => { signChecklist(snap, id, on); toast(on ? `${id} ticked` : `${id} unticked`); });
+    node.querySelectorAll("[data-sign]").forEach((b) => (b.onclick = () => { const id = b.dataset.sign; const on = b.getAttribute("aria-checked") !== "true"; signChecklist(snap, id, on); toast(on ? `${id} ticked` : `${id} unticked`); }));
+    const p = node.querySelector("[data-pack]"); if (p) p.onclick = () => printPack(snap);
+    wireEvidenceButtons(node, { lid: snap.lid, role: snap.role, list: "rtChecklist", labelOf: (id) => `Red Tractor Pigs ${id}` });
+  } });
+}
+
+/** Red Tractor Pigs items as ready-check rows (review A #14). */
+export function pigRtRows(snap) {
+  const sec = Object.fromEntries(SECTIONS);
+  return evaluate(snap.c, snap.meta.rtChecklist || {}).map((r) => {
+    const signed = r.sign?.done ? `Ticked ${d2(r.sign.date)}${r.sign.by ? " · " + r.sign.by : ""}` : "";
+    return r.ev
+      ? { id: r.id, text: `${r.id} · ${r.text}`, key: r.key, sec: sec[r.sec], auto: true, state: r.status === "ok" ? "ok" : r.status === "gap" ? "gap" : "due", note: [r.ev.text, r.ev.state === "due" ? signed : ""].filter(Boolean).join(" · "), link: r.link, canTick: r.ev.state === "due", signed: !!r.sign?.done }
+      : { id: r.id, text: `${r.id} · ${r.text}`, key: r.key, sec: sec[r.sec], auto: false, state: "open", done: !!r.sign?.done, note: signed, link: r.link };
+  });
+}
+export const pigsHasData = (snap) => (snap.data.sows || []).length + (snap.data.batches || []).length + (snap.data.moves || []).length > 0;
+
+function rtHtml(snap, back) {
+  const rows = pigRtRows(snap); const sc = readyScore(rows, pigsHasData(snap)); const can = canWriteMeta(snap.role, "rtChecklist");
+  return html`<div>${back}${largeTitle("Red Tractor Pigs", sc.hasData ? `${sc.ok} of ${sc.n} checked from your records · ${sc.selfDone} of ${sc.selfN} ticked` : "Add your pigs and the app starts checking")}
+    <div class="info-card">${raw(icon("info"))}<span>${HEADER} ${HEADER_NOTE}</span></div>
+    ${readyHero(sc)}
+    ${readyLists(rows, { can, actions: (r) => html`${!r.auto && r.link ? html`<a class="text-btn" href="${r.link}">Open</a>` : ""}${r.auto && r.canTick && can ? html`<button type="button" class="text-btn" data-sign="${r.id}" aria-checked="${!!r.signed}">${r.signed ? "Untick" : "Tick"}</button>` : ""}${evidenceButton(r.id)}` })}</div>`;
+}
+
+function inspectHtml(snap, back) {
+  const lid = snap.lid; const rows = evaluate(snap.c, snap.meta.rtChecklist || {}); const sm = summary(rows); const q = qvrState(snap.data.vetVisits, snap.today);
+  return html`<div>${back}${largeTitle("Inspector is here", "Tap what they ask for")}
+    <div class="pg-inspect">${TILES.map(([k, l, ic]) => html`<a class="pg-itile" href="#/l/${lid}/reg/${k}">${raw(icon(ic, { size: 30 }))}<span>${l}</span></a>`)}
+      <a class="pg-itile" href="#/l/${lid}/qvr">${raw(icon("syringe", { size: 30 }))}<span>Vet visits (QVR)${q.last ? ` · ${q.weeks} wk` : ""}</span></a><a class="pg-itile" href="#/l/${lid}/rt">${raw(icon("check", { size: 30 }))}<span>Checklist · ${sm.done}/${sm.n}</span></a></div>
+    <button type="button" class="btn" data-pack style="margin-top:16px">${raw(icon("share"))}Share as PDF</button>
+    <p class="hint">Builds one document on this phone — works with no signal. Choose “Save as PDF” in the print screen, then share it. Movements and visitors cover 3 years, medicines 5.</p></div>`;
+}
+
+export function packHtml(snap) {
+  const e = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const three = addDays(snap.today, -365 * 3), five = addDays(snap.today, -365 * 5);
+  const within = (doc, from) => ({ ...doc, rows: doc.rows.filter((r) => !/^\d{4}-\d\d-\d\d/.test(String(r[0])) || String(r[0]) >= from) });
+  const sm = summary(evaluate(snap.c, snap.meta.rtChecklist || {})); const q = qvrState(snap.data.vetVisits, snap.today);
+  const cover = `<div class="pack-cover"><h1>Inspection pack — pigs</h1><p><b>${e(snap.meta.keeper?.name || snap.ledger.farmName)}</b><br>Herd mark ${e(snap.s.herdMark || "")}</p>
+    <p>Prepared ${e(snap.today)} from Farm Ledger.<br>Self-check: ${sm.done} of ${sm.n} ready${sm.keyGaps ? `, ${sm.keyGaps} key standards open` : ""}<br>Last quarterly vet visit: ${e(q.last ? `${q.last.date} (${q.last.vet || ""})` : "none recorded")}</p><p class="small">${e(HEADER)}</p></div>`;
+  return cover + PACK.map((k) => registerDoc(snap, k)).filter(Boolean).map((d) => `<section class="pack-doc">${toHtmlTable(within(d, d.title.startsWith("Medicines") ? five : three))}</section>`).join("");
+}
+function printPack(snap) {
+  printView(packHtml(snap), "pack");
+}
+export { el };
