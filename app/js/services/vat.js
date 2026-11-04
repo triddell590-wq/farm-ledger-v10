@@ -78,3 +78,4 @@ export const BOX_NAMES = {
   1: "VAT due on sales", 2: "VAT due on goods from the EU", 3: "Total VAT due", 4: "VAT reclaimed on purchases",
   5: "Net VAT to pay (or reclaim)", 6: "Total sales, ex VAT", 7: "Total purchases, ex VAT", 8: "Goods sold to the EU, ex VAT", 9: "Goods bought from the EU, ex VAT",
 };
+export const rateText = (rate) => (typeof rate === "number" || /^\d+$/.test(rate) ? `${rate}%` : rate === "exempt" ? "Exempt" : "Outside VAT");

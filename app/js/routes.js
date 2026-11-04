@@ -12,6 +12,7 @@ export function defineRoutes() {
   define(/^\/onboard\/(?<step>[123])$/, S("onboard"));
   define(/^\/add-ledger(?:\/(?<step>numbers))?$/, S("onboard"));
   define(/^\/farm\/(?<tab>today|money|map|people|more)$/, S("overview"));
+  define(/^\/farm\/vat$/, S("farm-vat"));
   define(/^\/farm\/(?<kind>medicines|documents|contacts)$/, S("farm-records"));
   define(/^\/farm\/photos$/, S("photos"));
   define(/^\/l\/(?<lid>[^/]+)\/more\/people$/, S("people"));
