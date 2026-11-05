@@ -533,3 +533,10 @@ html{scroll-padding-bottom:calc(var(--kb,0px) + 24px)}
 .vat-open{display:flex;align-items:center;justify-content:space-between;min-height:48px;color:var(--grass);font-weight:600;font-size:var(--body-size)}
 .vat-sub{display:block;font-size:15px;line-height:20px;font-weight:400;color:var(--ink-2)}
 .vat-total{background:var(--surface-2,var(--surface))}
+
+/* "Tools for this" (Tom, 5 Nov): More → Tools offered on the screens they belong to */
+.tool-links{margin-top:28px}
+.tool-links .chips{display:flex;flex-wrap:wrap;gap:8px}
+.tool-links .chip{color:var(--ink);text-decoration:none;height:auto;min-height:44px;padding-top:8px;padding-bottom:8px;line-height:20px}
+.tool-links .chip svg{flex:none}
+.page > :has(+ .tool-links){padding-bottom:0;margin-bottom:0} /* the screen's own bottom space clears the + button */
