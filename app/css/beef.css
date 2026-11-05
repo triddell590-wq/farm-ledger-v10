@@ -156,3 +156,18 @@ body:has(.select-bar) .fab{display:none}
 [data-sector=beef] .finish-row > .pill{grid-column:2;grid-row:1;margin-top:2px}
 .finish-row .book-in{grid-column:1 / -1;grid-row:2;justify-self:start;flex-basis:100%;text-align:left;padding:4px 0 0 0;min-height:40px;color:var(--grass-deep);font-weight:700}
 .load-card{margin:0 0 12px}
+
+/* Herd → Groups: each group with what it eats (Tom, 5 Nov) */
+.grp-feedsum{display:block;color:var(--ink);text-decoration:none;margin-top:4px;padding-top:4px;padding-bottom:0}
+.grp-fs-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--hair)}
+.grp-fs-line>b{font-size:20px;white-space:nowrap}
+.grp-fs-open{display:flex;align-items:center;justify-content:space-between;min-height:48px;color:var(--grass);font-weight:600}
+.grp-list{margin-top:16px;display:flex;flex-direction:column;gap:12px}
+.grp-card{padding:0;overflow:hidden}
+.grp-card>.row{border-radius:0}
+.grp-card .grp-feed{width:100%;text-align:left;border-top:1px solid var(--hair);background:none}
+.grp-card .grp-feed .primary{font-weight:600}
+.grp-card .grp-feed[disabled]{cursor:default;opacity:1}
+.tool-links{margin-top:28px}
+.tool-links .chips{display:flex;flex-wrap:wrap;gap:8px}
+.tool-links .chip{color:var(--ink);text-decoration:none}

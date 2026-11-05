@@ -66,6 +66,28 @@ export function fodderBudget({ leftT, heads, rates, today, turnout }) {
   return { perDay, daysLeft, runOut, short, shortT: short > 0 ? short * perDay : 0 };
 }
 
+/** Who a feed group feeds. Linked to a herd group (Tom, 5 Nov: feed set from Herd → Groups) it's
+ *  whoever is in that group, so moving cattle in or out changes the feed; otherwise the picked cattle. */
+export function feedMembers(g, data) {
+  if (g && g.groupId) return (data?.animals || []).filter((a) => a.groupId === g.groupId).map((a) => a.id);
+  return g?.animalIds || [];
+}
+/** The feed group for a herd group: the one linked to it, else (feed groups made before the link
+ *  existed) one with the same name or exactly the same cattle on farm — linked when next saved. */
+export function feedForGroup(feedGroups, group, data) {
+  const live = (feedGroups || []).filter((f) => !f.deleted); if (!group) return null;
+  const linked = live.find((f) => f.groupId === group.id); if (linked) return linked;
+  const free = live.filter((f) => !f.groupId);
+  const name = String(group.name || "").trim().toLowerCase();
+  const byName = name && free.find((f) => String(f.name || "").trim().toLowerCase() === name); if (byName) return byName;
+  if (!data) return null;
+  const on = new Set((data.animals || []).filter(onFarm).map((a) => a.id));
+  const mine = (data.animals || []).filter((a) => on.has(a.id) && a.groupId === group.id).map((a) => a.id).sort().join();
+  return (mine && free.find((f) => (f.animalIds || []).filter((id) => on.has(id)).sort().join() === mine)) || null;
+}
+/** The ration in force on `day`. */
+export const rationOn = (g, day) => (g?.rations || []).filter((x) => x.from <= day).sort((a, b) => b.from.localeCompare(a.from))[0] || null;
+
 /** Meal today from feed groups (v9: group.animalIds + dated rations {from, meal kg/head}). */
 export function mealToday(feedGroups, adjust, data, today) {
   let kg = 0; const rows = [];
@@ -73,7 +95,7 @@ export function mealToday(feedGroups, adjust, data, today) {
   for (const g of feedGroups || []) {
     if (g.deleted) continue;
     const r = (g.rations || []).filter((x) => x.from <= today).sort((a, b) => b.from.localeCompare(a.from))[0];
-    const heads = (g.animalIds || []).filter((id) => live.has(id)).length;
+    const heads = feedMembers(g, data).filter((id) => live.has(id)).length;
     let meal = r ? n(r.meal) * heads : 0;
     const adj = (adjust || []).find((x) => !x.deleted && x.groupId === g.id && x.date === today);
     if (adj && adj.meal != null && adj.meal !== "") meal = n(adj.meal);
@@ -98,7 +120,7 @@ export function feedEaten(feedGroups, adjust, data, from, today, blockKg) {
   const out = { meal: 0, silage: 0 }; if (!from) return out;
   const adj = new Map((adjust || []).filter((a) => !a.deleted).map((a) => [a.groupId + "|" + a.date, a]));
   for (const g of feedGroups || []) {
-    if (g.deleted) continue; const ids = new Set(g.animalIds || []);
+    if (g.deleted) continue; const ids = new Set(feedMembers(g, data));
     const rs = (g.rations || []).slice().sort((a, b) => a.from.localeCompare(b.from)); if (!rs.length) continue;
     let d = rs[0].from < from ? from : rs[0].from;
     for (let i = 0; d <= today && i < 3660; d = addDays(d, 1), i++) {

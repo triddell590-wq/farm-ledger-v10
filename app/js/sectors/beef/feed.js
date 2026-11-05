@@ -14,8 +14,8 @@ import { backLink, largeTitle, groupLabel, emptyState } from "../../screens/comm
 import { liveSnap } from "./data.js";
 import { entrySheet, cattleRow } from "./flows/common.js";
 import { setMeta, softDelete, setMarketPrices } from "./actions.js";
-import { pitGeom, silageList, headByClass, fodderBudget, mealToday, feedEaten, silageStock } from "./model/feed.js";
-import { CLASS_NAMES } from "./model/animals.js";
+import { pitGeom, silageList, headByClass, fodderBudget, mealToday, feedEaten, silageStock, rationOn, mealFor } from "./model/feed.js";
+import { CLASS_NAMES, onFarm } from "./model/animals.js";
 import { SOURCES } from "./model/rules.js";
 
 export default async function feed(ctx) {
@@ -119,21 +119,31 @@ function priceSheet(snap) {
   const body = el(html`<form novalidate><div class="form-group">${textField({ name: "p", label: "Meal price (£ per tonne)", value: snap.s.meal.pricePerTonne || "", inputmode: "decimal" })}</div></form>`);
   entrySheet({ title: "Meal price", body, label: "Save", missing: () => null, save(v, sh) { setMarketPrices(snap.lid, snap, { pricePerTonne: +v.p || null }); sh.close(true, { force: true }); toast("Saved"); } });
 }
-/** Feed group (v9 shape): name, animalIds, rations [{ from, meal, silage, blocks, every }]. */
-function groupFeedSheet(snap, g = null) {
-  const r = g ? (g.rations || []).slice().sort((a, b) => b.from.localeCompare(a.from))[0] || {} : {};
-  const body = el(html`<form novalidate><div class="form-group" data-who>${textField({ name: "name", label: "Name", value: g?.name || "", placeholder: "e.g. Shed 2 finishers" })}</div>
+/** Feed group (v9 shape): name, animalIds, rations [{ from, meal, silage, blocks, every }]. Linked to a
+ *  herd group (groupId) it feeds whoever is in that group — set from Herd → Groups (Tom, 5 Nov). */
+export function groupFeedSheet(snap, g = null, { herdGroup = null } = {}) {
+  const hg = herdGroup || (g?.groupId ? snap.ix.groups.get(g.groupId) : null);
+  const r = g ? rationOn(g, "9999-12-31") || {} : {};
+  const heads = hg ? snap.data.animals.filter((a) => onFarm(a) && a.groupId === hg.id).length : 0;
+  const quality = (() => { const d = +(silageList(snap.meta.silage)[0]?.dValue) || 0; return d >= 70 ? "good" : d && d < 65 ? "poor" : "average"; })();
+  const body = el(html`<form novalidate><div class="form-group" data-who>${hg ? "" : textField({ name: "name", label: "Name", value: g?.name || "", placeholder: "e.g. Shed 2 finishers" })}</div>
+    ${hg ? html`<p class="hint" style="margin-top:0">Feeds everyone in <b>${hg.name}</b> — ${heads === 1 ? "1 head" : `${heads} head`} now. Cattle moved in or out are fed from the day they move.</p>` : ""}
     <p class="form-label">Ration per head per day</p><div class="form-group">${textField({ name: "from", label: "From", type: "date", value: snap.today })}${textField({ name: "meal", label: "Meal (kg)", value: r.meal ?? "", inputmode: "decimal" })}${textField({ name: "silage", label: "Silage (kg)", value: r.silage ?? "", inputmode: "decimal", optional: true })}${textField({ name: "blocks", label: "Or silage blocks for the group", value: r.blocks ?? "", inputmode: "decimal", optional: true })}${textField({ name: "every", label: "…every (days)", value: r.every ?? 1, inputmode: "numeric", optional: true })}</div>
-    <p class="hint">A change of ration starts from the date you give; earlier days keep the old ration.</p>${g ? html`<button type="button" class="text-btn" data-del>Remove this feed group</button>` : ""}</form>`);
-  const who = cattleRow(snap, { label: "Cattle", ids: (g?.animalIds || []).filter((id) => snap.ix.byId.get(id)) });
-  body.querySelector("[data-who]").append(who.node);
-  const { sheet } = entrySheet({ title: g ? "Feed group" : "Add a feed group", body, label: "Save feed group", missing: (v) => (!v.name ? "Name the group" : !who.ids().length ? "Choose the cattle" : null),
+    <p class="form-label">Meal guide <span class="ink-3">${quality} silage · 500 kg steer</span></p>
+    <div class="chips" style="flex-wrap:wrap">${[0.8, 1, 1.2].map((gain) => html`<button type="button" class="chip" data-gain="${gain}">${mealFor(quality, gain)} kg for ${gain.toFixed(1)} kg/day</button>`)}</div>
+    <p class="hint">A change of ration starts from the date you give; earlier days keep the old ration.</p>${g ? html`<button type="button" class="text-btn" data-del>${hg ? "Stop recording feed for this group" : "Remove this feed group"}</button>` : ""}</form>`);
+  body.querySelectorAll("[data-gain]").forEach((b) => (b.onclick = () => { const f = body.querySelector("input[name=meal]"); f.value = String(mealFor(quality, +b.dataset.gain)); f.dispatchEvent(new Event("input", { bubbles: true })); }));
+  const who = hg ? null : cattleRow(snap, { label: "Cattle", ids: (g?.animalIds || []).filter((id) => snap.ix.byId.get(id)) });
+  if (who) body.querySelector("[data-who]").append(who.node);
+  const ids = () => (hg ? snap.data.animals.filter((a) => onFarm(a) && a.groupId === hg.id).map((a) => a.id) : who.ids());
+  const { sheet } = entrySheet({ title: hg ? `${hg.name}: feed` : g ? "Feed group" : "Add a feed group", body, label: "Save feed", missing: (v) => (!hg && !v.name ? "Name the group" : !hg && !who.ids().length ? "Choose the cattle" : v.meal === "" && !+v.silage && !+v.blocks ? "Add the meal or silage" : null),
     save(v, sh) {
-      const ration = { from: v.from, meal: v.meal === "" ? 0 : +v.meal, silage: v.blocks ? 0 : +v.silage || 0, blocks: +v.blocks || 0, every: +v.every || 1 };
-      const rations = [...(g?.rations || []).filter((x) => x.from !== v.from), ration].sort((a, b) => a.from.localeCompare(b.from));
-      if (g) updateRecord(snap.lid, "feedGroups", g, { name: v.name, animalIds: who.ids(), rations }); else addRecord(snap.lid, "feedGroups", { name: v.name, animalIds: who.ids(), rations });
-      sh.close(true, { force: true }); toast("Feed group saved");
+      const ration = { from: v.from || snap.today, meal: v.meal === "" ? 0 : +v.meal, silage: v.blocks ? 0 : +v.silage || 0, blocks: +v.blocks || 0, every: +v.every || 1 };
+      const rations = [...(g?.rations || []).filter((x) => x.from !== ration.from), ration].sort((a, b) => a.from.localeCompare(b.from));
+      const rec = { name: hg ? hg.name : v.name, animalIds: ids(), rations, ...(hg ? { groupId: hg.id } : {}) };
+      if (g) updateRecord(snap.lid, "feedGroups", g, rec); else addRecord(snap.lid, "feedGroups", rec);
+      sh.close(true, { force: true }); toast(hg ? `${hg.name}: feed saved` : "Feed group saved");
     } });
-  body.querySelector("[data-del]")?.addEventListener("click", () => { softDelete(snap.lid, "feedGroups", g.id); sheet.close(true, { force: true }); toast("Feed group removed"); });
+  body.querySelector("[data-del]")?.addEventListener("click", () => { softDelete(snap.lid, "feedGroups", g.id); sheet.close(true, { force: true }); toast(hg ? "Feed stopped" : "Feed group removed"); });
   void addDays;
 }

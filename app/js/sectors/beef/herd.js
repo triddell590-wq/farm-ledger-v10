@@ -11,7 +11,7 @@ import { daysBetween } from "../../core/dates.js";
 import { num } from "../../ui/format.js";
 import { largeTitle, groupLabel, emptyState } from "../../screens/common.js";
 import { liveSnap } from "./data.js";
-import { animalRow, urgentPill, herdViews } from "./ui.js";
+import { animalRow, urgentPill, herdViews, toolLinks } from "./ui.js";
 import { onFarm, classOf, CLASS_NAMES, withdrawal, lastWeight, dlwg, ageDays } from "./model/animals.js";
 import { tagMatches } from "./model/tags.js";
 import { rankMatches, cattleKeys } from "../../core/rank.js";
@@ -88,6 +88,7 @@ function render(snap, st, repaint) {
       ${active.length ? html`<div class="chips active-filters" aria-label="Showing">${active.map(([k, label]) => html`<button type="button" class="chip" aria-pressed="true" data-clear="${k}" aria-label="${label}, remove">${label} ${raw(icon("close", { size: 16 }))}</button>`)}</div>` : ""}
       </div>` : ""}
     <div data-list></div>
+    ${snap.data.animals.length ? toolLinks(snap.lid, `/l/${snap.lid}/herd`, "Herd", [["dose", "Dose by weight"], ["wean", "200-day weight"]]) : ""}
   </div>`);
   const box = node.querySelector("[data-list]");
   if (!snap.data.animals.length) {
