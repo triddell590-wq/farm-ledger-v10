@@ -13,7 +13,7 @@ import { liveSnap } from "./data.js";
 import { entrySheet } from "./flows/common.js";
 import { setMeta, setMarketPrices, updateAnimal } from "./actions.js";
 import { tagParts } from "./model/tags.js";
-import { pill, tagHtml, herdViews } from "./ui.js";
+import { pill, tagHtml, herdViews, toolLinks } from "./ui.js";
 import { deadlineAnimals, finishingFacts } from "./model/finishing.js";
 import { ageText, classOf } from "./model/animals.js";
 import { BCRS_PAYMENT } from "./model/rules.js";
@@ -46,6 +46,7 @@ function render(snap) {
     ${money && list.length ? html`<button type="button" class="card pad value-line" data-price>${s.price.perKgDead ? html`<span>Value today (at £${s.price.perKgDead}/kg dead, entered ${listDate(s.price.enteredOn).slice(4)}): <b>${moneyText(total)}</b></span>${priceAge > 14 ? html`<span class="due-ink"> Price is ${Math.round(priceAge / 7)} weeks old — update</span>` : ""}` : html`<span>Add today's price per kg dead to see what they're worth ›</span>`}</button>` : ""}
     ${money ? html`<p class="hint">BCRS pays £${BCRS_PAYMENT} for each clean NI-born animal killed within the age limit (${s.bcrsMonths || "yearly"} months) after 60 of the last 100 days with you.</p>` : ""}
     <div class="act-grid"><a class="btn secondary" href="#/l/${lid}/paperwork/finishing-list">${raw(icon("print"))}Finishing list</a><a class="btn secondary" href="#/l/${lid}/targets">Processor spec</a></div>
+    ${toolLinks(lid, `/l/${lid}/finishing`, "Finishing", [["finish", "Finishing date"], ["max-bid", "Buy-in max bid"]])}
   </div>`);
   node.querySelector("[data-price]")?.addEventListener("click", () => priceSheet(snap));
   // Book in (design/10 §7): adds the animal to a load; the load becomes the factory kill sheet.
