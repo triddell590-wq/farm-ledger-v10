@@ -168,6 +168,3 @@ body:has(.select-bar) .fab{display:none}
 .grp-card .grp-feed{width:100%;text-align:left;border-top:1px solid var(--hair);background:none}
 .grp-card .grp-feed .primary{font-weight:600}
 .grp-card .grp-feed[disabled]{cursor:default;opacity:1}
-.tool-links{margin-top:28px}
-.tool-links .chips{display:flex;flex-wrap:wrap;gap:8px}
-.tool-links .chip{color:var(--ink);text-decoration:none}

@@ -15,6 +15,7 @@ import { go } from "../core/router.js";
 import { makeScreen, largeTitle, groupLabel, emptyState } from "./common.js";
 import { ROLE_DISPLAY } from "./roles.js";
 import { WORDS } from "../sectors/meta.js";
+import { toolsHere, toolStrip, toolCameFrom } from "../sectors/tool-links.js";
 
 export function ledgerTabs(ledger, mod) {
   return mod.tabs.filter((t) => !t.roles || t.roles.includes(ledger.role)).map((t) => ({ ...t, href: `#/l/${ledger.id}/${t.id}` }));
@@ -47,6 +48,17 @@ export default async function ledgerScreen({ params }) {
     sector: ledger.type, destroy: s.destroy, mounted: s.mounted,
     chrome: { tabs, tab: isTab ? tab.id : s.tab || null, fab: s.fab || (isTab && tab.id !== "more" && mod.fab ? () => mod.fab(ctx) : null), compactTitle: s.title || (tab && tab.label) },
   });
+  // "Tools for this": the More tools that belong on this screen (Tom, 5 Nov). Under the page, so a
+  // screen that redraws itself doesn't wipe it.
+  if (!(tab && tab.id === "more") && !/^tools(\/|$)/.test(rest)) {
+    const where = rest || (tab ? tab.id : "");
+    const strip = toolStrip(ledger.id, where, s.title || (tab && tab.label) || "Back", toolsHere(ledger.type, where, ledger.role));
+    if (strip) screen.page.appendChild(strip);
+  } else if (/^tools\/./.test(rest)) {
+    // a tool opened from a screen's strip: its back link goes back to that screen, not the Tools list
+    const came = toolCameFrom(ctx); const b = came && screen.page.querySelector(".back-link");
+    if (b) { b.setAttribute("href", came.href); b.lastChild.textContent = came.label; }
+  }
   return screen;
 }
 
