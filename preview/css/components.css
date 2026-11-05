@@ -403,7 +403,30 @@ button.num-tile{box-shadow:var(--e-1)}
   .side .rail .rail-pill{width:100%}
   .side .rail .rail-add{width:100%;height:auto;min-height:44px;border-radius:var(--r-full);justify-content:flex-start;padding:8px 12px;display:flex;gap:8px;align-items:center;font-size:14px;font-weight:600}
   .side .rail .rail-add-lbl{display:inline}
-  .tabbar{left:calc(50% + 130px)}
+}
+/* Laptops and desktops (Tom, 5 Nov): a proper desktop layout rather than a stretched phone. Herds and
+   flocks down the left, the section tabs across the top bar, the + button in the bottom corner. */
+@media (min-width:1024px){
+  /* a blurred bar traps fixed children inside it, which clipped the sidebar to the bar's height */
+  .side .topbar{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--bg);border-bottom:1px solid var(--hair)}
+  .side .topbar-in{max-width:none;min-height:60px;padding-right:var(--gutter)}
+  :root.demo .side .rail,:root.preview .side .rail{top:40px}
+  .side .rail .rail-pill{height:48px;font-size:16px}
+  .side .rail .rail-pill:hover:not([aria-current=page]){background:color-mix(in srgb,var(--surface) 60%,transparent);color:var(--ink)}
+  .side .tabbar{top:calc(4px + var(--safe-t));bottom:auto;left:calc(260px + var(--gutter) - 12px);right:auto;transform:none;width:auto;max-width:calc(100% - 260px - var(--gutter) - 170px);overflow:hidden;height:52px;
+    border:0;border-radius:var(--r-full);box-shadow:none;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;gap:4px}
+  :root.demo .side .tabbar,:root.preview .side .tabbar{top:44px}
+  .side .tabbar .tab{flex:none;flex-direction:row;gap:8px;padding:0 14px;font-size:15px;line-height:20px}
+  .side .tabbar .tab span{overflow:visible}
+  .side .tabbar .tab svg{width:22px;height:22px}
+  .side .tabbar .tab:hover:not([aria-selected=true]){color:var(--ink)}
+  .side .tabbar .tab-pill{top:6px;height:40px}
+  .side .fab{right:32px;bottom:calc(32px + var(--safe-b))}
+  .side .screen{padding-bottom:calc(48px + var(--safe-b))}
+  #app.side.has-fab .screen:not(.no-chrome){padding-bottom:calc(64px + 32px + 48px + var(--safe-b))}
+  .toast-wrap{bottom:calc(32px + var(--safe-b))}
+  .toast-wrap.beside-fab{padding-right:calc(32px + 64px + 16px)}
+  .page{max-width:760px}
 }
 
 /* ---- Notifications (builder-notify): bell in the top bar, notification centre ---- */
