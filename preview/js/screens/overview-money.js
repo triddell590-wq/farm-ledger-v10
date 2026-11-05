@@ -60,11 +60,11 @@ export default async function moneyTab(farm) {
     const v = await vatPeriodFor(ledgers, 0);
     if (!v) { vb.replaceChildren(); return; }
     const { boxes, period: p } = v;
-    vb.replaceChildren(el(html`<div class="section">${groupLabel("VAT", p.label)}<a class="card pad vat-card" href="#/farm/vat">
-      <div class="vat-figs"><div><span class="t-callout ink-2">VAT to reclaim</span><span class="v">${money(boxes[4], true)}</span></div>
-        <div><span class="t-callout ink-2">Purchases ex VAT</span><span class="v">${money(boxes[7])}</span></div></div>
-      <div class="vat-foot"><span class="t-callout ink-2">${boxes[5] < 0 ? "To reclaim" : "To pay"} this period: <b style="color:var(--ink)">${moneyText(Math.abs(boxes[5]), true)}</b></span>
-        <span class="t-callout ink-2" style="display:inline-flex;align-items:center">Full details<span class="chev">${raw(icon("chevron"))}</span></span></div></a></div>`));
+    vb.replaceChildren(el(html`<div class="section">${groupLabel("VAT", p.label)}<a class="card vat-card" href="#/farm/vat">
+      <span class="vat-line"><span>VAT to reclaim</span><b>${moneyText(boxes[4], true)}</b></span>
+      <span class="vat-line"><span>Purchases ex VAT</span><b>${moneyText(boxes[7])}</b></span>
+      <span class="vat-line total"><span>${boxes[5] < 0 ? "To reclaim from HMRC" : "To pay HMRC"}</span><b>${moneyText(Math.abs(boxes[5]), true)}</b></span>
+      <span class="vat-open">See full VAT details${raw(icon("chevron"))}</span></a></div>`));
   };
   const repaint = () => { paint(); paintVat(); };
   const f = wireForm(body.querySelector("[data-seg]")); f.onChange(() => { period = f.values().period; shown = 40; paint(); });

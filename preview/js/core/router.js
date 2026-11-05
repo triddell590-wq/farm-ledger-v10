@@ -53,6 +53,9 @@ export function kindBetween(a, b) {
 async function render(path) {
   const my = ++navId;
   if (guard) { const to = await guard(path); if (my !== navId) return; if (to && to !== path) { go(to, { replace: true }); return; } }
+  // A page this copy doesn't know is usually one a newer version (installed while the app was open)
+  // links to: reload into that version once before saying "not found" (Tom, 5 Nov: VAT page).
+  if (!match(path) && path !== "/404" && reloadOnce(path)) return;
   const hit = match(path) || match("/404");
   if (!hit) return;
   let screen;
@@ -89,3 +92,11 @@ export function start(stageEl) {
 }
 /** Re-render the current route in place (after a role change etc.). */
 export function refresh() { if (current) { const p = current.path; current = { ...current, path: p }; render(p); } }
+
+function reloadOnce(path) {
+  try {
+    const k = "fl10-reload:" + path;
+    if (sessionStorage.getItem(k)) return false;
+    sessionStorage.setItem(k, "1"); location.reload(); return true;
+  } catch (e) { return false; }
+}
