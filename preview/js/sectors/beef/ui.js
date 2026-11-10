@@ -111,6 +111,6 @@ import { viewPills } from "../../ui/view-pills.js";
  *  tool's back link returns to. items = [[tool, label]]; tool "fodder" is the Feed & silage page. */
 export function toolLinks(lid, from, back, items) {
   const q = `?from=${encodeURIComponent(from)}&back=${encodeURIComponent(back)}`;
-  return html`<div class="tool-links"><h2 class="group-label"><span>Tools for this</span></h2><div class="chips">${items.map(([k, label]) => html`<a class="chip" href="${k === "fodder" ? `#/l/${lid}/feed` : `#/l/${lid}/tools/${k}${q}`}">${raw(icon(k === "dose" ? "syringe" : k === "fodder" || k === "meal" ? "feed" : k === "max-bid" ? "money" : "grid", { size: 18 }))}${label}</a>`)}</div></div>`;
+  return html`<div class="tool-links"><h2 class="group-label"><span>Tools for this</span></h2><div class="chips">${items.map(([k, label]) => html`<a class="chip" href="${k === "fodder" ? `#/l/${lid}/feed${q}` : `#/l/${lid}/tools/${k}${q}`}">${raw(icon(k === "dose" ? "syringe" : k === "fodder" || k === "meal" ? "feed" : k === "max-bid" ? "money" : "grid", { size: 18 }))}${label}</a>`)}</div></div>`;
 }
 export const herdViews = (lid, current) => viewPills(lid, [["herd", "All cattle"], ["groups", "Groups"], ["finishing", "Finishing"]], current, "Herd views");

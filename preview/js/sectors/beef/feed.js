@@ -4,7 +4,7 @@ import { html, raw } from "../../core/html.js";
 import { el } from "../../ui/dom.js";
 import { icon } from "../../ui/icons.js";
 import { openSheet } from "../../ui/sheet.js";
-import { textField, stepperField, wireForm } from "../../ui/form.js";
+import { textField, stepperField, wireForm, segmented } from "../../ui/form.js";
 import { toast } from "../../ui/toast.js";
 import { canRead, canWrite, canWriteMeta } from "../../core/policy.js";
 import { addDays, shortDate } from "../../core/dates.js";
@@ -30,8 +30,8 @@ function winterStart(today) { const y = Number(today.slice(0, 4)); const md = to
 function render(snap) {
   const { data, s, ix, today, lid, meta } = snap; const money = canRead(snap.role, "finance");
   const sil = meta.silage || {}; const pits = silageList(sil); const bud = snap.silage; const heads = headByClass(data, ix, today);
-  const meal = mealToday(data.feedGroups, data.feedAdjust, data, today); const price = +s.meal.pricePerTonne || 0;
-  const firstPit = pitGeom(pits[0] || {});
+  const firstPit = pitGeom(pits[0] || {}); const blockKg = firstPit ? firstPit.blockKg : 0;
+  const meal = mealToday(data.feedGroups, data.feedAdjust, data, today, blockKg); const price = +s.meal.pricePerTonne || 0;
   const winter = feedEaten(data.feedGroups, data.feedAdjust, data, winterStart(today), today, firstPit ? firstPit.blockKg : 0);
   const canSil = canWriteMeta(snap.role, "silage"); const canFeed = canWrite(snap.role, "feedGroups");
   const node = el(html`<div>${backLink(`#/l/${lid}/today`, "Today")}${largeTitle("Feed & silage", `Winter ${winterStart(today).slice(0, 4)}/${String(Number(winterStart(today).slice(0, 4)) + 1).slice(2)}`)}
@@ -48,12 +48,10 @@ function render(snap) {
     ${pits.length ? html`<div class="section">${groupLabel("Silage pits")}${pits.map((p, i) => pitCard(p, i, bud && i === 0 ? silageStock(sil, { feedGroups: data.feedGroups, adjust: data.feedAdjust, data, today }) : null, canSil))}</div>` : ""}
     ${(sil.bales || []).length ? html`<div class="section">${groupLabel("Bales")}<div class="list">${sil.bales.map((b) => html`<div class="row no-lead kv-row"><span class="main"><span class="primary">${b.name || "Bales"}</span></span><span class="kv-v">${b.count} × ${b.kg} kg = ${num((b.count * b.kg) / 1000, 1)} t</span></div>`)}</div></div>` : ""}
     ${canSil ? html`<div class="act-grid">${pits.length ? html`<button type="button" class="btn secondary" data-addpit>Add a pit</button>` : ""}<button type="button" class="btn secondary" data-bales>${(sil.bales || []).length ? "Change bales" : "Add bales"}</button></div>` : ""}
-    <div class="section">${groupLabel("Meal")}
-      <div class="tiles"><div class="num-tile"><span class="label">Meal today</span><span class="value">${num(meal.kg)} kg</span><span class="delta">${money && price ? moneyText((meal.kg / 1000) * price) : `${meal.rows.length} group${meal.rows.length === 1 ? "" : "s"}`}</span></div>
-      <div class="num-tile"><span class="label">This winter so far</span><span class="value">${num(winter.meal / 1000, 1)} t</span><span class="delta">${money && price ? moneyText((winter.meal / 1000) * price) : "since 1 Sep"}</span></div></div>
-      ${meal.rows.length ? html`<div class="list" style="margin-top:12px">${meal.rows.map((r) => html`<button type="button" class="row no-lead" data-fg="${r.group.id}"><span class="main"><span class="primary">${r.group.name}</span><span class="secondary">${r.heads} head · ${r.perHead} kg/head meal${rationSil(r.group, today)}</span></span><span class="kv-v">${num(r.meal)} kg</span></button>`)}</div>` : html`<div class="card pad ink-2" style="margin-top:12px">No feed groups yet. A feed group is who gets the same meal — e.g. “Shed 2 finishers, 5 kg”.</div>`}
+    ${feedTable(snap, meal, winter, "silage", { blockKg, canFeed })}
+    ${feedTable(snap, meal, winter, "meal", { price: money ? price : 0, canFeed })}
       ${canFeed ? html`<div class="act-grid"><button type="button" class="btn secondary" data-newfg>Add a feed group</button><a class="btn secondary" href="#/l/${lid}/tools/meal">Meal calculator</a></div>` : ""}
-      ${money && canWrite(snap.role, "finance") ? html`<p class="hint">Meal price: ${price ? `£${price}/t` : "not set"} · <button type="button" class="text-btn" data-price>Change</button></p>` : ""}</div>
+      ${money && canWrite(snap.role, "finance") ? html`<p class="hint">Meal price: ${price ? `£${price}/t` : "not set"} · <button type="button" class="text-btn" data-price>Change</button></p>` : ""}
     ${money ? html`<div class="section">${groupLabel("Feed bought")}<a class="row card no-lead" href="#/l/${lid}/paperwork/feedrecords"><span class="main"><span class="primary">Feed records (3 years)</span><span class="secondary">From Money, category Feed. Keep the receipts.</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div>` : ""}
   </div>`);
   node.querySelector("[data-turnout]")?.addEventListener("click", () => canSil && dateSheet(snap, "Turnout planned", sil.turnout, (d) => setMeta(lid, "silage", { turnout: d })));
@@ -67,7 +65,24 @@ function render(snap) {
   node.querySelector("[data-price]")?.addEventListener("click", () => priceSheet(snap));
   return node;
 }
-function rationSil(g, today) { const r = (g.rations || []).filter((x) => x.from <= today).sort((a, b) => b.from.localeCompare(a.from))[0]; if (!r) return ""; return +r.blocks ? ` · ${r.blocks} block${+r.blocks > 1 ? "s" : ""}${+r.every > 1 ? ` every ${r.every} days` : " a day"}` : +r.silage ? ` · ${r.silage} kg silage` : ""; }
+/** Silage or meal (Tom, 10 Nov): the same layout for both — today and this winter, then every
+ *  group's whole-group amount a day with what each head gets, then the total a day. */
+function feedTable(snap, today, winter, kind, { blockKg = 0, price = 0, canFeed }) {
+  const isMeal = kind === "meal"; const rows = today.rows.filter((r) => r.ration && (isMeal ? r.meal : r.silage || r.blocks));
+  const total = isMeal ? today.kg : today.silage; const season = isMeal ? winter.meal : winter.silage;
+  const kg = (v) => (v >= 1000 ? `${num(v / 1000, 2)} t` : `${num(v, v < 10 ? 1 : 0)} kg`);
+  const cost = (v) => (price ? moneyText((v / 1000) * price, true) : "");
+  return html`<div class="section">${groupLabel(isMeal ? "Meal" : "Silage")}
+    <div class="tiles"><div class="num-tile"><span class="label">${isMeal ? "Meal" : "Silage"} a day</span><span class="value">${kg(total)}</span><span class="delta">${isMeal && price ? cost(total) : `${rows.length} group${rows.length === 1 ? "" : "s"}`}</span></div>
+    <div class="num-tile"><span class="label">This winter so far</span><span class="value">${num(season / 1000, 1)} t</span><span class="delta">${isMeal && price ? cost(season) : "since 1 Sep"}</span></div></div>
+    ${rows.length ? html`<div class="list feed-table" style="margin-top:12px">${rows.map((r) => { const v = isMeal ? r.meal : r.silage; const head = isMeal ? r.perHead : r.silageHead;
+        return html`<button type="button" class="row no-lead" data-fg="${r.group.id}" ${canFeed ? "" : "disabled"}><span class="main"><span class="primary">${r.group.name}</span>
+          <span class="secondary">${r.heads} head · ${kg(head)} a head${!isMeal && r.blocks ? ` · ${num(r.blocks, 1)} block${r.blocks === 1 ? "" : "s"} a day` : ""}${isMeal && price ? ` · ${cost(head)} a head` : ""}</span></span>
+          <span class="ft-v"><b>${!isMeal && r.blocks && !blockKg ? `${num(r.blocks, 1)} blocks` : kg(v)}</b><span>${isMeal && price ? `${cost(v)} a day` : "a day"}</span></span></button>`; })}
+      <div class="row no-lead ft-total"><span class="main"><span class="primary">Total a day</span></span><span class="ft-v"><b>${kg(total)}</b>${isMeal && price ? html`<span>${cost(total)}</span>` : ""}</span></div></div>
+      ${!isMeal && rows.some((r) => r.blocks) && !blockKg ? html`<p class="hint">Measure the pit to turn blocks into kg.</p>` : ""}`
+    : html`<div class="card pad ink-2" style="margin-top:12px">${isMeal ? "No meal set for any group." : "No silage set for any group."} Set each group's feed here or in Herd → Groups.</div>`}</div>`;
+}
 
 function pitCard(p, i, stock, can) {
   const g = pitGeom(p); if (!g) return html`<div class="card pad">${p.name || "Pit"}: ${num(+p.pitTonnes || 0)} t ${can ? html`<button type="button" class="text-btn" data-pit="${i}">Measure it</button>` : ""}</div>`;
@@ -124,21 +139,57 @@ function priceSheet(snap) {
 export function groupFeedSheet(snap, g = null, { herdGroup = null } = {}) {
   const hg = herdGroup || (g?.groupId ? snap.ix.groups.get(g.groupId) : null);
   const r = g ? rationOn(g, "9999-12-31") || {} : {};
-  const heads = hg ? snap.data.animals.filter((a) => onFarm(a) && a.groupId === hg.id).length : 0;
+  const groupHeads = hg ? snap.data.animals.filter((a) => onFarm(a) && a.groupId === hg.id).length : 0;
+  const price = canRead(snap.role, "finance") ? +snap.s.meal.pricePerTonne || 0 : 0; const money = canRead(snap.role, "finance");
+  const blockKg = pitGeom(silageList(snap.meta.silage)[0] || {})?.blockKg || 0;
   const quality = (() => { const d = +(silageList(snap.meta.silage)[0]?.dValue) || 0; return d >= 70 ? "good" : d && d < 65 ? "poor" : "average"; })();
-  const body = el(html`<form novalidate><div class="form-group" data-who>${hg ? "" : textField({ name: "name", label: "Name", value: g?.name || "", placeholder: "e.g. Shed 2 finishers" })}</div>
-    ${hg ? html`<p class="hint" style="margin-top:0">Feeds everyone in <b>${hg.name}</b> — ${heads === 1 ? "1 head" : `${heads} head`} now. Cattle moved in or out are fed from the day they move.</p>` : ""}
-    <p class="form-label">Ration per head per day</p><div class="form-group">${textField({ name: "from", label: "From", type: "date", value: snap.today })}${textField({ name: "meal", label: "Meal (kg)", value: r.meal ?? "", inputmode: "decimal" })}${textField({ name: "silage", label: "Silage (kg)", value: r.silage ?? "", inputmode: "decimal", optional: true })}${textField({ name: "blocks", label: "Or silage blocks for the group", value: r.blocks ?? "", inputmode: "decimal", optional: true })}${textField({ name: "every", label: "…every (days)", value: r.every ?? 1, inputmode: "numeric", optional: true })}</div>
-    <p class="form-label">Meal guide <span class="ink-3">${quality} silage · 500 kg steer</span></p>
-    <div class="chips" style="flex-wrap:wrap">${[0.8, 1, 1.2].map((gain) => html`<button type="button" class="chip" data-gain="${gain}">${mealFor(quality, gain)} kg for ${gain.toFixed(1)} kg/day</button>`)}</div>
+  // the form takes the WHOLE GROUP's amounts (Tom, 10 Nov); older rations were kept per head
+  const h0 = groupHeads || (g?.animalIds || []).filter((id) => snap.ix.byId.get(id) && onFarm(snap.ix.byId.get(id))).length;
+  const r1 = (v) => (v ? String(Math.round(v * 10) / 10) : "");
+  const mealG = r.mealGroup ?? (r.meal != null && h0 ? r1(+r.meal * h0) : ""), silG = r.silageGroup ?? (+r.silage && h0 ? r1(+r.silage * h0) : "");
+  const how = +r.blocks ? "blocks" : "kg";
+  const body = el(html`<form novalidate class="ration-form"><div class="form-group" data-who>${hg ? "" : textField({ name: "name", label: "Name", value: g?.name || "", placeholder: "e.g. Shed 2 finishers" })}</div>
+    ${hg ? html`<p class="hint" style="margin-top:0">Feeds everyone in <b>${hg.name}</b>. Cattle moved in or out are fed from the day they move.</p>` : ""}
+    <div class="form-group">${textField({ name: "from", label: "Starting", type: "date", value: snap.today })}</div>
+    <h3 class="ration-h">Meal <span>the whole group, each day</span></h3>
+    <div class="form-group">${textField({ name: "mealGroup", label: "Meal for the group (kg a day)", value: mealG, inputmode: "decimal", placeholder: "0" })}</div>
+    <div class="chips ration-guide" data-guide></div>
+    <h3 class="ration-h">Silage <span>the whole group, each day</span></h3>
+    <div class="seg-wrap">${segmented("how", [{ value: "kg", label: "Weighed in kg" }, { value: "blocks", label: "Grab blocks" }], how)}</div>
+    <div class="form-group" data-kg>${textField({ name: "silageGroup", label: "Silage for the group (kg a day)", value: silG, inputmode: "decimal", placeholder: "0", optional: true })}</div>
+    <div class="form-group" data-blocks>${textField({ name: "blocks", label: "Blocks for the group", value: r.blocks || "", inputmode: "decimal", optional: true })}${textField({ name: "every", label: "Every (days)", value: r.every ?? 1, inputmode: "numeric", optional: true })}</div>
+    <div class="card pad ration-sum" data-sum aria-live="polite"></div>
     <p class="hint">A change of ration starts from the date you give; earlier days keep the old ration.</p>${g ? html`<button type="button" class="text-btn" data-del>${hg ? "Stop recording feed for this group" : "Remove this feed group"}</button>` : ""}</form>`);
-  body.querySelectorAll("[data-gain]").forEach((b) => (b.onclick = () => { const f = body.querySelector("input[name=meal]"); f.value = String(mealFor(quality, +b.dataset.gain)); f.dispatchEvent(new Event("input", { bubbles: true })); }));
-  const who = hg ? null : cattleRow(snap, { label: "Cattle", ids: (g?.animalIds || []).filter((id) => snap.ix.byId.get(id)) });
+  const who = hg ? null : cattleRow(snap, { label: "Cattle", ids: (g?.animalIds || []).filter((id) => snap.ix.byId.get(id)), onChange: () => paint() });
   if (who) body.querySelector("[data-who]").append(who.node);
   const ids = () => (hg ? snap.data.animals.filter((a) => onFarm(a) && a.groupId === hg.id).map((a) => a.id) : who.ids());
-  const { sheet } = entrySheet({ title: hg ? `${hg.name}: feed` : g ? "Feed group" : "Add a feed group", body, label: "Save feed", missing: (v) => (!hg && !v.name ? "Name the group" : !hg && !who.ids().length ? "Choose the cattle" : v.meal === "" && !+v.silage && !+v.blocks ? "Add the meal or silage" : null),
+  const heads = () => (hg ? groupHeads : who.ids().filter((id) => onFarm(snap.ix.byId.get(id) || {})).length);
+  const form = wireForm(body);
+  const kg = (v) => `${num(v, v < 10 ? 2 : 1)} kg`; const cost = (v) => moneyText((v / 1000) * price, true);
+  function paint() {
+    const v = form.values(); const n = heads(); const blocks = v.how === "blocks";
+    body.querySelector("[data-kg]").hidden = blocks; body.querySelector("[data-blocks]").hidden = !blocks;
+    body.querySelector("[data-guide]").replaceChildren(...(n ? [0.8, 1, 1.2].map((gain) => { const per = mealFor(quality, gain);
+      return el(html`<button type="button" class="chip" data-gain="${per * n}">Guide for ${gain.toFixed(1)} kg/day gain: ${num(per * n, 1)} kg (${per} kg a head)</button>`); }) : []));
+    const meal = +v.mealGroup || 0; const every = +v.every > 1 ? +v.every : 1;
+    const silage = blocks ? ((+v.blocks || 0) / every) * blockKg : +v.silageGroup || 0;
+    const lines = [];
+    lines.push(html`<div class="rs-head">${n ? `${n} head in the group` : "No cattle in the group yet"}</div>`);
+    if (n && meal) lines.push(html`<div class="rs-line"><span>Meal a head</span><b>${kg(meal / n)} a day</b></div>`);
+    if (n && meal && price) lines.push(html`<div class="rs-line"><span>Meal cost a head</span><b>${cost(meal / n)} a day</b></div>`, html`<div class="rs-line"><span>Meal cost for the group</span><b>${cost(meal)} a day · ${cost(meal * 7)} a week</b></div>`);
+    else if (n && meal && money) lines.push(html`<div class="rs-line ink-2"><span>Add a meal price on Feed & silage to see the cost</span></div>`);
+    if (n && silage) lines.push(html`<div class="rs-line"><span>Silage a head</span><b>${kg(silage / n)} a day</b></div>`, html`<div class="rs-line"><span>Silage for the group</span><b>${kg(silage)} a day</b></div>`);
+    if (n && blocks && +v.blocks && !blockKg) lines.push(html`<div class="rs-line ink-2"><span>Measure the pit to turn blocks into kg</span></div>`);
+    body.querySelector("[data-sum]").replaceChildren(el(html`<div>${lines}</div>`));
+    body.querySelectorAll("[data-gain]").forEach((b) => (b.onclick = () => { const f = body.querySelector("input[name=mealGroup]"); f.value = r1(+b.dataset.gain); f.dispatchEvent(new Event("input", { bubbles: true })); }));
+  }
+  form.onChange(paint); paint();
+  const { sheet } = entrySheet({ title: hg ? `${hg.name}: feed` : g ? "Feed group" : "Add a feed group", body, label: "Save feed",
+    missing: (v) => (!hg && !v.name ? "Name the group" : !hg && !who.ids().length ? "Choose the cattle" : !+v.mealGroup && !(v.how === "blocks" ? +v.blocks : +v.silageGroup) ? "Add the meal or silage" : null),
     save(v, sh) {
-      const ration = { from: v.from || snap.today, meal: v.meal === "" ? 0 : +v.meal, silage: v.blocks ? 0 : +v.silage || 0, blocks: +v.blocks || 0, every: +v.every || 1 };
+      const n = heads(); const blocks = v.how === "blocks"; const meal = +v.mealGroup || 0; const sil = blocks ? 0 : +v.silageGroup || 0;
+      // whole-group amounts, plus per head at the time for older readers (v9 / Morning Board)
+      const ration = { from: v.from || snap.today, mealGroup: meal, silageGroup: blocks ? null : sil, meal: n ? Math.round((meal / n) * 100) / 100 : 0, silage: n && !blocks ? Math.round((sil / n) * 100) / 100 : 0, blocks: blocks ? +v.blocks || 0 : 0, every: blocks ? +v.every || 1 : 1 };
       const rations = [...(g?.rations || []).filter((x) => x.from !== ration.from), ration].sort((a, b) => a.from.localeCompare(b.from));
       const rec = { name: hg ? hg.name : v.name, animalIds: ids(), rations, ...(hg ? { groupId: hg.id } : {}) };
       if (g) updateRecord(snap.lid, "feedGroups", g, rec); else addRecord(snap.lid, "feedGroups", rec);

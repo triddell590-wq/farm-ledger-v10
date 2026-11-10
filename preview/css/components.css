@@ -540,3 +540,39 @@ html{scroll-padding-bottom:calc(var(--kb,0px) + 24px)}
 .tool-links .chip{color:var(--ink);text-decoration:none;height:auto;min-height:44px;padding-top:8px;padding-bottom:8px;line-height:20px}
 .tool-links .chip svg{flex:none}
 .page > :has(+ .tool-links){padding-bottom:0;margin-bottom:0} /* the screen's own bottom space clears the + button */
+
+/* Big calendar (Tom, 10 Nov): replaces the phone's small one for every date box. Large day buttons. */
+.dp-layer{position:fixed;inset:0;z-index:95;display:flex;align-items:flex-end;justify-content:center}
+.dp-scrim{position:absolute;inset:0;background:rgba(0,0,0,.4)}
+.dp{position:relative;width:100%;max-width:520px;max-height:100dvh;overflow-y:auto;background:var(--sheet,var(--surface));color:var(--ink);
+  border-radius:var(--r-xl) var(--r-xl) 0 0;padding:16px 16px calc(16px + var(--safe-b));box-shadow:var(--e-float);overscroll-behavior:contain}
+@media (min-width:640px){.dp-layer{align-items:center}.dp{max-width:440px;border-radius:var(--r-xl);padding-bottom:16px}}
+.dp-label{font-size:15px;font-weight:600;color:var(--ink-2)}
+.dp-chosen{font-size:24px;line-height:30px;font-weight:800;letter-spacing:-.01em;margin-top:2px}
+.dp-quick{display:flex;gap:8px;margin-top:12px}
+.dp-quick .chip{flex:1;justify-content:center;font-size:17px;height:48px}
+.dp-quick .chip:disabled{opacity:.4}
+.dp-nav{display:flex;align-items:center;gap:8px;margin-top:16px}
+.dp-arrow{flex:none;width:52px;height:56px;border-radius:var(--r-md);background:var(--surface);box-shadow:inset 0 0 0 1px var(--hair);font-size:32px;line-height:1;font-weight:700;color:var(--ink)}
+.dp-arrow:disabled{opacity:.3}
+.dp-nav select{flex:1;min-width:0;height:56px;border-radius:var(--r-md);border:0;box-shadow:inset 0 0 0 1px var(--hair);background:var(--surface);color:var(--ink);font-size:18px;font-weight:700;padding:0 4px 0 10px}
+.dp-nav select.dp-year{flex:0 0 86px}
+.dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px}
+.dp-dow{text-align:center;font-size:14px;font-weight:700;color:var(--ink-2);padding:4px 0}
+.dp-day{aspect-ratio:1/1;min-height:44px;border-radius:var(--r-md);font-size:20px;font-weight:600;color:var(--ink);background:none;font-variant-numeric:tabular-nums}
+.dp-day:not(:disabled):active{transform:scale(.94)}
+@media (hover:hover){.dp-day:not(:disabled):not(.on):hover{background:var(--surface)}}
+.dp-day.today{box-shadow:inset 0 0 0 2px var(--grass);color:var(--grass);font-weight:800}
+.dp-day.on{background:var(--grass);color:var(--on-grass);box-shadow:none;font-weight:800}
+.dp-day:disabled{opacity:.25}
+.dp-foot{display:flex;gap:8px;margin-top:16px}
+.dp-foot .btn{flex:1}
+:root.hi-vis .dp{zoom:var(--text-zoom)}
+/* typed dates (Tom, 10 Nov): a number box + calendar button in front of the hidden real date box */
+.dp-wrap{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:4px;position:relative}
+.dp-wrap .dp-text{flex:1;min-width:0;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.dp-wrap .dp-text[aria-invalid=true]{color:var(--late-ink);text-decoration:underline wavy var(--late);text-underline-offset:4px}
+.dp-btn{flex:none;width:44px;height:44px;margin-right:-8px;border-radius:var(--r-md);display:grid;place-items:center;color:var(--grass)}
+.dp-btn:active{background:var(--surface)}
+.dp-real{position:absolute !important;right:0;top:0;width:1px !important;min-width:0 !important;height:1px !important;min-height:0 !important;opacity:0;pointer-events:none;flex:none !important}
+:not(.field) > .dp-wrap{border-bottom:1px solid var(--hair)}

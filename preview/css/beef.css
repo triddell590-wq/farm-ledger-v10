@@ -168,3 +168,20 @@ body:has(.select-bar) .fab{display:none}
 .grp-card .grp-feed{width:100%;text-align:left;border-top:1px solid var(--hair);background:none}
 .grp-card .grp-feed .primary{font-weight:600}
 .grp-card .grp-feed[disabled]{cursor:default;opacity:1}
+/* Feed & silage: silage and meal by group, the same layout (Tom, 10 Nov) */
+.feed-table .ft-v{flex:none;display:flex;flex-direction:column;align-items:flex-end;text-align:right;margin-left:12px}
+.feed-table .ft-v b{font-size:19px;white-space:nowrap}
+.feed-table .ft-v span{font-size:14px;color:var(--ink-2);white-space:nowrap}
+.feed-table .ft-total{background:color-mix(in srgb,var(--surface) 70%,var(--bg))}
+.feed-table .ft-total .primary{font-weight:700}
+.feed-table button.row[disabled]{cursor:default}
+/* ration form: whole-group amounts with per head and cost worked out (Tom, 10 Nov) */
+.ration-h{font-size:19px;line-height:24px;font-weight:800;margin:20px 4px 8px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ration-h span{font-size:15px;font-weight:600;color:var(--ink-2)}
+.ration-guide{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.ration-guide .chip{justify-content:flex-start;height:auto;min-height:44px;padding:8px 14px;text-align:left;line-height:20px}
+.ration-form .seg-wrap{margin-bottom:8px}
+.ration-sum{margin-top:16px}
+.ration-sum .rs-head{font-weight:800;font-size:17px;margin-bottom:4px}
+.ration-sum .rs-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;border-top:1px solid var(--hair)}
+.ration-sum .rs-line b{white-space:nowrap;text-align:right}
