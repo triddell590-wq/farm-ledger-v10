@@ -29,3 +29,20 @@ test("finding a herd group's feed: linked first, then same name, then same cattl
   assert.equal(feedForGroup([{ ...linked, deleted: true }], g1, data), null);
   assert.equal(feedForGroup([{ id: "w", name: "x", animalIds: ["a"] }], g1, data), null); // only some of the cattle
 });
+
+// Whole-group rations (Tom, 10 Nov): the group's total a day is entered; per head is worked out.
+import { rationDay } from "../../app/js/sectors/beef/model/feed.js";
+test("a whole-group ration splits across the cattle there that day", () => {
+  const r = { from: "2026-11-01", mealGroup: 30, silageGroup: 150, meal: 10, silage: 50 }; // per-head copies are ignored
+  assert.deepEqual(rationDay(r, 3, 0), { meal: 30, silage: 150, mealHead: 10, silageHead: 50 });
+  assert.deepEqual(rationDay(r, 0, 0), { meal: 0, silage: 0, mealHead: 0, silageHead: 0 });
+  const fg = { id: "f", groupId: "g1", rations: [r] };
+  const t = mealToday([fg], [], data, "2026-11-05");
+  assert.equal(t.kg, 30); assert.equal(t.silage, 150); assert.equal(t.rows[0].perHead, 15); assert.equal(t.rows[0].silageHead, 75); // 2 head on farm
+});
+test("older per-head rations and grab blocks still work", () => {
+  assert.equal(rationDay({ meal: 4, silage: 20 }, 2, 0).meal, 8);
+  assert.equal(rationDay({ meal: 4, silage: 20 }, 2, 0).silage, 40);
+  assert.equal(rationDay({ blocks: 2, every: 2 }, 5, 600).silage, 600);
+  assert.equal(rationDay({ blocks: 2, every: 1 }, 5, 600).silageHead, 240);
+});

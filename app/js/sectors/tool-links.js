@@ -77,7 +77,7 @@ export function toolsHere(type, where, role) {
 export function toolStrip(lid, where, back, items) {
   if (!items.length) return null;
   const q = `?from=${encodeURIComponent(`/l/${lid}${where ? "/" + where : ""}`)}&back=${encodeURIComponent(back || "Back")}`;
-  return el(html`<div class="tool-links"><h2 class="group-label"><span>Tools for this</span></h2><div class="chips">${items.map(([k, label, ic, , href]) => html`<a class="chip" href="#/l/${lid}/${href || `tools/${k}${q}`}">${raw(icon(ic || "grid", { size: 18 }))}${label}</a>`)}</div></div>`);
+  return el(html`<div class="tool-links"><h2 class="group-label"><span>Tools for this</span></h2><div class="chips">${items.map(([k, label, ic, , href]) => html`<a class="chip" href="#/l/${lid}/${href ? href + q : `tools/${k}${q}`}">${raw(icon(ic || "grid", { size: 18 }))}${label}</a>`)}</div></div>`);
 }
 
 /** Back link target for a tool opened from a screen's strip: { href, label } or null. */
