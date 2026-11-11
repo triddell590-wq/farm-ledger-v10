@@ -27,6 +27,7 @@ import { tickGenerated, saveSettings } from "../actions.js";
 import { toast } from "../../../ui/toast.js";
 import { dayName } from "../model/sows.js";
 import { moneyFigures, costPerPigSold } from "../model/money.js";
+import { pigsMoneyCard } from "../today-money.js";
 
 const flow = (file, fn = "default") => async (snap, extra) => (await import(`../flows/${file}.js`))[fn](snap, extra);
 const offsets = new Map(); // per ledger: week offset of the strip
@@ -154,6 +155,7 @@ async function paint(body, snap) {
     ${banners.map((b) => html`<div class="pg-banner info">${raw(icon("info"))}<span>${b.text}</span></div>`)}
     <div class="section" data-strip-wrap>${stripHtml(snap, off)}</div>
     ${alerts.length ? html`<div class="section">${alerts.map((a) => alertCard(a, false))}</div>` : ""}
+    ${pigsMoneyCard(snap)}
     <div class="section">${groupLabel("This week")}${snap.s.breeding ? tilesBreeding(snap) : tilesFinishing(snap)}</div>
     <div class="section">${headRow("Rooms", html`<a class="text-btn" href="${L("rooms")}">See all</a>`)}
       ${allEmpty ? html`<p class="pg-quiet">All rooms empty — record pigs in or a weaning to start.</p>` : ""}<div class="pg-rb">${board.map((x) => roomTile(lid, x))}</div></div>

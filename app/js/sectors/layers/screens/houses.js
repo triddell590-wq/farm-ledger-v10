@@ -22,6 +22,7 @@ import { todayTasks } from "../model/duties.js";
 import { aiState, systemName } from "../model/house.js";
 import { AI_STATUS, freeRangeText } from "../model/content.js";
 import { tickGenerated, turnStage, TURN_STAGES } from "../actions.js";
+import { layersMoneyCard } from "../today-money.js";
 
 export function contextLine(snap) {
   const hs = sortedHouses(snap.c); const hens = hs.reduce((t, h) => { const f = flockIn(snap.c, h.id); return t + (f ? aliveAt(snap.c, f, snap.today) : 0); }, 0);
@@ -113,6 +114,7 @@ async function paint(body, snap) {
     ${(() => { const b = aiBanner(snap); return b ? html`<div class="section">${b}</div>` : ""; })()}
     ${cards.filter((k) => k.sp).map((k) => html`<div class="section">${spikeCard(snap, k)}</div>`)}
     ${classB.length || lateOther.length ? html`<div class="section">${[...classB, ...lateOther].map((a) => alertCard(a, false))}</div>` : ""}
+    ${layersMoneyCard(snap)}
     <div class="section ${compact ? "ly-compact" : ""}">${cards.map((k) => card(snap, k, { compact }))}</div>
     <div class="section" data-tasks></div>
     <div class="section">${groupLabel("House logs")}<div class="list"><a class="row" href="${L("range")}"><span class="tile">${raw(icon("map"))}</span><span class="main"><span class="primary">Range and housing</span><span class="secondary">Pop-holes, days housed, birds per hectare</span></span><span class="chev">${raw(icon("chevron"))}</span></a><a class="row" href="${L("lighting")}"><span class="tile">${raw(icon("bulb"))}</span><span class="main"><span class="primary">Lighting programme</span><span class="secondary">Hours of light by week of age</span></span><span class="chev">${raw(icon("chevron"))}</span></a><a class="row" href="${L("logs/feed")}"><span class="tile">${raw(icon("feed"))}</span><span class="main"><span class="primary">Feed deliveries</span><span class="secondary">UFAS · samples kept</span></span><span class="chev">${raw(icon("chevron"))}</span></a><a class="row" href="${L("logs/alarm")}"><span class="tile">${raw(icon("bell"))}</span><span class="main"><span class="primary">Alarm tests</span><span class="secondary">Ventilation alarm, every 7 days</span></span><span class="chev">${raw(icon("chevron"))}</span></a><a class="row" href="${L("logs/manure")}"><span class="tile">${raw(icon("truck"))}</span><span class="main"><span class="primary">Manure and litter</span><span class="secondary">Tonnes out, where to</span></span><span class="chev">${raw(icon("chevron"))}</span></a><a class="row" href="${L("houses-setup")}"><span class="tile">${raw(icon("house"))}</span><span class="main"><span class="primary">Houses and flocks</span><span class="secondary">House sizes, trap points, place a flock</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div></div>

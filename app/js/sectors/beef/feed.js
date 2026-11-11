@@ -17,6 +17,7 @@ import { setMeta, softDelete, setMarketPrices } from "./actions.js";
 import { pitGeom, silageList, headByClass, fodderBudget, mealToday, feedEaten, silageStock, rationOn, mealFor } from "./model/feed.js";
 import { CLASS_NAMES, onFarm } from "./model/animals.js";
 import { SOURCES } from "./model/rules.js";
+import { costsFor, costSection } from "./feed-cards.js";
 
 export default async function feed(ctx) {
   const body = el(html`<div class="beef-page"></div>`);
@@ -51,7 +52,8 @@ function render(snap) {
     ${feedTable(snap, meal, winter, "silage", { blockKg, canFeed })}
     ${feedTable(snap, meal, winter, "meal", { price: money ? price : 0, canFeed })}
       ${canFeed ? html`<div class="act-grid"><button type="button" class="btn secondary" data-newfg>Add a feed group</button><a class="btn secondary" href="#/l/${lid}/tools/meal">Meal calculator</a></div>` : ""}
-      ${money && canWrite(snap.role, "finance") ? html`<p class="hint">Meal price: ${price ? `£${price}/t` : "not set"} · <button type="button" class="text-btn" data-price>Change</button></p>` : ""}
+      ${money ? html`<button type="button" class="card pad fc-prices" id="prices" data-price ${canWrite(snap.role, "finance") ? "" : "disabled"}><span class="mc-line"><span>Meal price</span><b>${price ? `£${num(price)} a tonne` : "not set"}</b></span><span class="mc-line"><span>Silage value</span><b>${+s.meal.silagePerTonne ? `£${num(+s.meal.silagePerTonne)} a tonne` : "not set"}</b></span>${canWrite(snap.role, "finance") ? html`<span class="mc-open">Change prices${raw(icon("chevron"))}</span>` : ""}</button>` : ""}
+    ${costSection(snap, costsFor(snap), { lid })}
     ${money ? html`<div class="section">${groupLabel("Feed bought")}<a class="row card no-lead" href="#/l/${lid}/paperwork/feedrecords"><span class="main"><span class="primary">Feed records (3 years)</span><span class="secondary">From Money, category Feed. Keep the receipts.</span></span><span class="chev">${raw(icon("chevron"))}</span></a></div>` : ""}
   </div>`);
   node.querySelector("[data-turnout]")?.addEventListener("click", () => canSil && dateSheet(snap, "Turnout planned", sil.turnout, (d) => setMeta(lid, "silage", { turnout: d })));
@@ -131,8 +133,9 @@ function whatIf(snap, heads) {
   openSheet({ title: "What if?", body, cancelText: "Done" });
 }
 function priceSheet(snap) {
-  const body = el(html`<form novalidate><div class="form-group">${textField({ name: "p", label: "Meal price (£ per tonne)", value: snap.s.meal.pricePerTonne || "", inputmode: "decimal" })}</div></form>`);
-  entrySheet({ title: "Meal price", body, label: "Save", missing: () => null, save(v, sh) { setMarketPrices(snap.lid, snap, { pricePerTonne: +v.p || null }); sh.close(true, { force: true }); toast("Saved"); } });
+  const body = el(html`<form novalidate><div class="form-group">${textField({ name: "p", label: "Meal price (£ a tonne)", value: snap.s.meal.pricePerTonne || "", inputmode: "decimal" })}${textField({ name: "sv", label: "Silage value (£ a tonne)", value: snap.s.meal.silagePerTonne || "", inputmode: "decimal", optional: true })}</div>
+    <p class="hint">The silage value is what a tonne of your silage cost to make (contractor, fertiliser, plastic) or would sell for — about £30–45 a tonne fresh. It's only used for each group's feed cost and margin, never added to Money.</p></form>`);
+  entrySheet({ title: "Feed prices", body, label: "Save", missing: () => null, save(v, sh) { setMarketPrices(snap.lid, snap, { pricePerTonne: +v.p || null, silagePerTonne: +v.sv || null }); sh.close(true, { force: true }); toast("Saved"); } });
 }
 /** Feed group (v9 shape): name, animalIds, rations [{ from, meal, silage, blocks, every }]. Linked to a
  *  herd group (groupId) it feeds whoever is in that group — set from Herd → Groups (Tom, 5 Nov). */

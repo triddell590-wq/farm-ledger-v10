@@ -576,3 +576,18 @@ html{scroll-padding-bottom:calc(var(--kb,0px) + 24px)}
 .dp-btn:active{background:var(--surface)}
 .dp-real{position:absolute !important;right:0;top:0;width:1px !important;min-width:0 !important;height:1px !important;min-height:0 !important;opacity:0;pointer-events:none;flex:none !important}
 :not(.field) > .dp-wrap{border-bottom:1px solid var(--hair)}
+
+/* Margin card on every Today (Tom, 10 Nov) and the beef feed cost section */
+.money-card{display:block;color:var(--ink);text-decoration:none;padding-bottom:0}
+.money-card .mc-label{display:block;font-size:15px;font-weight:700;color:var(--ink-2);margin-bottom:2px}
+.money-card .mc-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--hair)}
+.money-card .mc-line>b{font-size:20px;white-space:nowrap;text-align:right}
+.money-card .mc-note{display:block;color:var(--ink-2);font-size:15px;line-height:20px;padding:8px 0}
+.money-card .mc-open{display:flex;align-items:center;justify-content:space-between;min-height:48px;color:var(--grass);font-weight:600}
+.fc-groups .fc-v{flex:none;display:flex;flex-direction:column;align-items:flex-end;text-align:right;margin-left:12px}
+.fc-groups .fc-v b{font-size:19px;white-space:nowrap}
+.fc-groups .fc-v span{font-size:13px;color:var(--ink-2);white-space:nowrap}
+.fc-check{display:flex;flex-direction:column;gap:6px;line-height:21px}
+.fc-prompt{display:flex;flex-direction:column;gap:4px;color:var(--ink);text-decoration:none;position:relative;padding-right:44px}
+.fc-prompt svg{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--grass)}
+.fc-prompt span{color:var(--ink-2)}

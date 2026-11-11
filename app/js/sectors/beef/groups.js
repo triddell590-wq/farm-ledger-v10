@@ -11,6 +11,7 @@ import { herdViews, toolLinks } from "./ui.js";
 import { liveSnap } from "./data.js";
 import { onFarm, CLASS_NAMES } from "./model/animals.js";
 import { feedForGroup, rationOn, mealToday, pitGeom, silageList } from "./model/feed.js";
+import { costsFor, groupCostLine } from "./feed-cards.js";
 
 const plural = (n, one, many) => `${num(n)} ${n === 1 ? one : many}`;
 const kgT = (v) => `${num(v, v < 10 ? 1 : 0)} kg`;
@@ -37,19 +38,22 @@ function render(snap) {
   const loose = data.animals.filter((a) => onFarm(a) && !a.groupId).length;
   const blockKg = pitGeom(silageList(snap.meta.silage)[0] || {})?.blockKg || 0;
   const meal = mealToday(data.feedGroups, data.feedAdjust, data, today, blockKg); const rowOf = new Map(meal.rows.map((r) => [r.group.id, r]));
-  const bud = snap.silage;
+  const bud = snap.silage; const k = costsFor(snap); const p2 = (v) => `£${v.toFixed(2)}`;
   const node = el(html`<div>${largeTitle("Groups and sheds", `${plural(gs.length, "group", "groups")} · ${loose === 1 ? "1 animal" : num(loose) + " cattle"} not in a group`)}${herdViews(lid, "groups")}
     ${gs.length ? html`<a class="card pad grp-feedsum" href="#/l/${lid}/feed">
         <span class="grp-fs-line"><span>Meal a day</span><b>${kgT(meal.kg)}</b></span>
         ${meal.silage ? html`<span class="grp-fs-line"><span>Silage a day</span><b>${meal.silage >= 1000 ? `${num(meal.silage / 1000, 2)} t` : kgT(meal.silage)}</b></span>` : ""}
         ${bud ? html`<span class="grp-fs-line"><span>Silage lasts until</span><b>${bud.runOut ? listDateY(bud.runOut).slice(4) : "—"}</b></span>` : ""}
-        <span class="grp-fs-open">Fodder budget and silage${raw(icon("chevron"))}</span></a>` : ""}
+        ${k && k.priced && k.rows.length ? html`<span class="grp-fs-line"><span>Feed cost</span><b>${p2(k.dayCost)} a day</b></span>
+        <span class="grp-fs-line"><span>Margin over feed</span><b class="${k.marginDay == null ? "" : k.marginDay >= 0 ? "ok-ink" : "late-ink"}">${k.marginDay == null ? "weigh to see" : `${k.marginDay < 0 ? "−" : ""}${p2(Math.abs(k.marginDay))} a day`}</b></span>` : ""}
+        <span class="grp-fs-open">Fodder budget, costs and margins${raw(icon("chevron"))}</span></a>` : ""}
     ${gs.length ? html`<div class="grp-list">${gs.map((g) => { const n = count(g); const fg = feedForGroup(data.feedGroups, g, data); const r = fg && rationOn(fg, today); const L = r && rationLines(rowOf.get(fg.id));
         return html`<div class="card grp-card">
           <div class="row"><a class="main" href="#/l/${lid}/herd?f=group:${g.id}"><span class="primary">${g.name}</span><span class="secondary">${plural(n, "head", "head")}${g.class ? ` · ${CLASS_NAMES[g.class]}` : ""}${g.shed && g.shed !== g.name ? ` · ${g.shed}` : ""}${g.spaces ? ` · ${g.spaces} spaces${n > g.spaces ? " — over!" : ""}` : ""}</span></a>${can ? html`<button type="button" class="icon-btn" data-edit="${g.id}" aria-label="Edit ${g.name}">${raw(icon("edit"))}</button>` : ""}</div>
           <button type="button" class="row grp-feed" data-feed="${g.id}" ${canFeed ? "" : "disabled"}><span class="tile neutral">${raw(icon("feed"))}</span><span class="main">
             <span class="primary">${L ? L.group : "Feed not set"}</span>
-            <span class="secondary">${L ? `${L.head}${fg.rations.length > 1 ? ` · since ${listDateY(r.from).slice(4)}` : ""}` : canFeed ? "Tap to set what this group eats" : "Nobody has set this group's feed"}</span></span>${canFeed ? html`<span class="chev">${raw(icon("chevron"))}</span>` : ""}</button></div>`; })}</div>`
+            <span class="secondary">${L ? `${L.head}${fg.rations.length > 1 ? ` · since ${listDateY(r.from).slice(4)}` : ""}` : canFeed ? "Tap to set what this group eats" : "Nobody has set this group's feed"}</span>
+            ${L && k && k.priced && k.byGroup.get(fg.id) ? html`<span class="secondary grp-cost">${groupCostLine(k.byGroup.get(fg.id))}</span>` : ""}</span>${canFeed ? html`<span class="chev">${raw(icon("chevron"))}</span>` : ""}</button></div>`; })}</div>`
       : emptyState({ sector: "beef", title: "No groups yet", body: "Groups are how you treat, weigh, feed and move cattle together — e.g. “Shed 2 finishers”." })}
     ${can ? html`<div class="act-grid"><button type="button" class="btn" data-new>Add a group</button><button type="button" class="btn secondary" data-move>Move cattle</button></div>` : ""}
     ${toolLinks(lid, `/l/${lid}/groups`, "Groups", [["fodder", "Fodder budget"], ["meal", "Meal calculator"], ["slurry", "Slurry storage"]])}</div>`);

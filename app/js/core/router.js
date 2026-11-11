@@ -54,6 +54,8 @@ export function kindBetween(a, b) {
 
 async function render(path) {
   const my = ++navId;
+  // "#/l/x/targets#fodder": a page and a place on it — open the page, then scroll to id="fodder"
+  let spot = null; const hashAt = path.indexOf("#"); if (hashAt > 0) { spot = path.slice(hashAt + 1); path = path.slice(0, hashAt); }
   if (guard) { const to = await guard(path); if (my !== navId) return; if (to && to !== path) { go(to, { replace: true }); return; } }
   // A page this copy doesn't know is usually one a newer version (installed while the app was open)
   // links to: reload into that version once before saying "not found" (Tom, 5 Nov: VAT page).
@@ -84,6 +86,7 @@ async function render(path) {
   await transition(stage, oldEl || null, screen.el, oldEl ? kind : "fade", { scrollTo: restore });
   if (prev && prev.screen.destroy) { try { prev.screen.destroy(); } catch (e) { console.error(e); } }
   screen.mounted && screen.mounted();
+  if (spot) { const t = /^[\w-]+$/.test(spot) && document.getElementById(spot); if (t) t.scrollIntoView({ block: "start" }), window.scrollBy(0, -128); }
   emit("router:done", { path, kind });
 }
 

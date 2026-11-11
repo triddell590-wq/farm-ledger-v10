@@ -1,4 +1,4 @@
-// build fl10-d4c739bba9ad
+// build fl10-ace06c4dc266
 // Farm Ledger 10 service worker: keeps a full copy of the app on the phone so it opens with no
 // signal. The page and every other app file come from the saved copy first (refreshed behind);
 // satellite map tiles are cached as you look at them. Firebase traffic is left to Firebase's

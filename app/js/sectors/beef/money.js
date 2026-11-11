@@ -14,6 +14,7 @@ import { loadBeef } from "./data.js";
 import { margins, marginDoc } from "./model/reports.js";
 import { printDoc } from "./ui.js";
 import { SOURCES } from "./model/rules.js";
+import { costsFor, costSection } from "./feed-cards.js";
 
 export default async function moneyScreen(ctx) {
   const { ledger } = ctx; const isTab = ctx.tabId === "money";
@@ -32,6 +33,7 @@ export default async function moneyScreen(ctx) {
     const node = el(html`<div>${isTab ? "" : backLink(`#/l/${ledger.id}/more`, "More")}${largeTitle("Money & margins", `${ledger.name} · ${st.year}`)}
       <div class="seg-wrap">${segmented("year", [st.year, st.year - 1].map((y) => ({ value: String(y), label: y === Number(new Date().toISOString().slice(0, 4)) ? "This year" : "Last year" })), String(st.year))}</div>
       <div class="card pad" style="margin-top:16px"><div class="money-sum"><span class="ink-2">Money in</span><span class="v">${moneyHtml(tIn)}</span><span class="ink-2">Money out</span><span class="v">${moneyHtml(tOut)}</span><span class="ink-2">Left over</span><span class="v">${moneyHtml(tIn - tOut)}</span></div></div>
+      ${snap ? costSection(snap, costsFor(snap), { lid: ledger.id, title: "Feed groups: cost and margin" }) : ""}
       ${m ? html`<div class="section">${groupLabel("Margins", "herd year")}<div class="tiles">
         <div class="num-tile"><span class="label">Cost per cow</span><span class="value">${m.costPerCow != null ? moneyText(m.costPerCow) : "—"}</span><span class="delta">${m.cows} cows on average</span></div>
         <div class="num-tile"><span class="label">Cost per calf weaned</span><span class="value">${m.costPerCalf != null ? moneyText(m.costPerCalf) : "—"}</span><span class="delta">${m.weaned} weaned</span></div>

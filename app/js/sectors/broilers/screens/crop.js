@@ -24,6 +24,7 @@ import { broilerAlerts, checkState, mortalityAlarm } from "../model/alerts.js";
 import { todayTasks, comingUp } from "../model/duties.js";
 import { TURNAROUND_STEPS } from "../model/content.js";
 import { tickGenerated } from "../actions.js";
+import { broilersMoneyCard } from "../today-money.js";
 
 export function contextLine(snap) {
   const s = snap.s; const n = snap.ix.houses.length;
@@ -66,6 +67,7 @@ function paint(snap) {
     ${s.houseNote ? html`<div class="br-pin">${raw(icon("info"))}<span><b>House instructions</b>${s.houseNote}</span></div>` : ""}
     ${banners.map((b) => html`<div class="br-banner">${raw(icon("info"))}<span>${b.text}</span></div>`)}
     ${mort.length ? html`<div class="section">${mort.map((a) => mortCard(snap, a))}</div>` : ""}
+    ${broilersMoneyCard(snap)}
     ${late.length ? html`<div class="section br-alerts">${late.map((a) => alertCard(a, false))}</div>` : ""}
     <div class="section br-houses">${ix.houses.map((h) => houseCard(snap, h, can, alerts))}</div>
     ${up.length ? html`<div class="section">${groupLabel("Coming up")}<div class="list">${up.map((x) => html`<a class="row" href="${x.href}"><span class="tile">${raw(icon(x.icon))}</span><span class="main"><span class="primary">${x.title}</span><span class="secondary">${x.sub}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>`)}</div></div>` : ""}

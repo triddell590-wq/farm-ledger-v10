@@ -22,7 +22,7 @@ export function buildSnap(ledger, data, meta, extra = {}) {
   s.region = ledger.region || "NI";
   // £ lives only in finance (model/prices.js): roles without money get no prices at all.
   const prices = priceBook(data.finance); const mk = prices.market || {};
-  s.price = { perKgDead: mk.perKgDead ?? null, enteredOn: mk.enteredOn ?? null }; s.meal = { pricePerTonne: mk.pricePerTonne ?? null };
+  s.price = { perKgDead: mk.perKgDead ?? null, enteredOn: mk.enteredOn ?? null }; s.meal = { pricePerTonne: mk.pricePerTonne ?? null, silagePerTonne: mk.silagePerTonne ?? null };
   const ix = indexHerd(data);
   const store = mergeStores(extra.farmStore || [], data.medProducts); // one store (review A #9): the farm's product wins on the same name
   const doneKeys = new Set(data.tasks.filter((t) => t.sourceRef && t.done).map((t) => t.sourceRef));
