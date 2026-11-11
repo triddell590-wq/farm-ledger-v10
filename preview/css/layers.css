@@ -1,0 +1,203 @@
+/* Poultry – Layers ledger (design/14 + mockups/layers.html). Only what the shared components don't
+   give. Every class is ly- prefixed so it can't collide with the other ledgers' sheets.
+   Accent --layers (whin) is for fills, icons and chart lines; text uses --layers-ink. */
+.ly-page{padding-bottom:104px} /* nothing sits under the + button (design/14 §19) */
+.ly-page .section{margin-top:20px}
+.ly-page.push{padding-bottom:calc(64px + 12px + 32px + env(safe-area-inset-bottom) + 96px)}
+.ly-head{display:flex;justify-content:space-between;align-items:center;margin:0 4px 8px;gap:8px}
+.ly-head .group-label{margin:0}
+.ly-note{font-size:13px;line-height:18px;color:var(--ink-2);margin:8px 4px 0}
+.ly-law{font-size:13px;line-height:18px;color:var(--ink-2);margin:10px 4px}
+.ly-sub{font-size:15px;line-height:20px;color:var(--ink-2);margin:0 4px 12px}
+.ly-src{font-size:13px;opacity:.85;margin-top:4px}
+.ly-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ly-acts .btn{flex:1 1 auto;width:auto}
+.btn.small{height:40px;min-height:40px;padding:0 14px;font-size:15px;width:auto}
+.ly-ink-late{color:var(--late-ink)!important}.ly-ink-due{color:var(--due-ink)!important}.ly-ink-ok{color:var(--ok-ink)!important}
+.ly-kv .v{font-size:17px;font-weight:700;text-align:right;max-width:62%;overflow-wrap:anywhere}
+.ly-kv .v.due{color:var(--due-ink)}.ly-kv .v.late{color:var(--late-ink)}.ly-kv .v.ok{color:var(--ok-ink)}
+.ly-kv .main{min-width:0;flex:1 0 34%}
+
+/* house card (signature §3.1) */
+.ly-hc{position:relative;background:var(--surface);border-radius:var(--r-lg);margin:0 0 12px;padding:14px 16px 14px 20px;overflow:hidden}
+.ly-hc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:transparent}
+.ly-hc.due::before{background:var(--due)}.ly-hc.late::before{background:var(--late)}
+.ly-hc .t{display:block;font-size:17px;font-weight:700;color:var(--ink);text-decoration:none}
+.ly-hc .t span{font-weight:500;color:var(--ink-2);font-size:15px}
+.ly-mid{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;margin:8px 0 6px}
+.ly-big{font-size:48px;line-height:50px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.ly-big small{font-size:22px}
+.ly-big.sm{font-size:32px;line-height:36px}
+.ly-vs{font-size:13px;font-weight:700;text-align:right;margin:2px 0 0;color:var(--ink-2)}
+.ly-vs.ok{color:var(--ok-ink)}.ly-vs.due{color:var(--due-ink)}
+.ly-mini{width:100%;height:56px;display:block}
+.ly-mini.empty{display:grid;place-items:center;font-size:13px;color:var(--ink-3);background:var(--surface-2);border-radius:10px}
+.ly-facts{font-size:15px;color:var(--ink-2);margin:0 0 12px}
+.ly-facts b{color:var(--ink);font-weight:700}.ly-facts .w,.ly-hc .w{color:var(--due-ink);font-weight:700}
+.ly-hc .btn{height:52px}
+.ly-done{display:flex;align-items:center;gap:8px;height:52px;padding:0 16px;border-radius:var(--r-md);background:var(--ok-soft);color:var(--ok-ink);font-weight:700;text-decoration:none}
+.ly-done svg{width:20px;height:20px}
+.ly-empty-h{background:transparent;box-shadow:inset 0 0 0 1.5px var(--hair)}
+.ly-stages{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.ly-stages .chip{min-height:36px;font-size:14px}
+.ly-compact .ly-hrow{display:flex;flex-direction:column;gap:2px;background:var(--surface);border-radius:var(--r-md);padding:12px 16px;margin-bottom:8px;color:var(--ink);text-decoration:none;position:relative;overflow:hidden}
+.ly-hrow b{font-size:17px}.ly-hrow span{font-size:15px;color:var(--ink-2)}
+.ly-hrow.due::before,.ly-hrow.late::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
+.ly-hrow.due::before{background:var(--due)}.ly-hrow.late::before{background:var(--late)}
+.ly-spike .ly-acts .btn{flex:0 1 auto}
+.ly-ai .a-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+.ly-ai .a-actions span{font-weight:700}
+
+/* daily sheet */
+.ly-sheet .group-label{margin-top:16px}
+.ly-step .label small,.ly-big label small,.ly-pop label small{display:block;font-size:13px;color:var(--ink-3);font-weight:400}
+.ly-step .label{flex:1;min-width:0}
+.field.ly-big{align-items:center}
+.field.ly-big label{flex:1;min-width:0}
+.field.ly-big input{flex:none;width:150px;height:48px;border:0;border-radius:12px;background:var(--surface-2);text-align:right;padding:0 12px;font-size:20px;font-weight:700;color:var(--ink)}
+.field.ly-big input:focus{outline:none;box-shadow:inset 0 0 0 2px var(--layers)}
+.ly-unit{flex:none;font-size:15px;color:var(--ink-2);margin-left:6px}
+.ly-ctl{color:var(--layers-ink)!important;font-weight:600!important}
+.ly-causes{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;font:inherit;color:var(--ink);text-align:left;cursor:pointer}
+.ly-causes .label{flex:none}
+.ly-cv{flex:1;min-width:0;text-align:right;color:var(--ink-2);font-size:15px}
+.ly-causes svg{flex:none;width:18px;height:18px;color:var(--ink-3)}
+.ly-pop{align-items:center}
+.ly-times{display:flex;align-items:center;gap:6px}
+.ly-times input{width:104px;height:44px;border:0;border-radius:10px;background:var(--surface-2);padding:0 8px;font-size:16px;color:var(--ink)}
+.ly-sumbar{margin:0 0 10px;padding:12px 16px;border-radius:var(--r-md);background:var(--layers-soft);color:var(--layers-ink);font-size:15px;line-height:21px}
+.ly-sumbar b{font-size:19px}
+.ly-sumbar .warn{color:var(--late-ink);font-weight:700}
+.ly-foot{display:flex;flex-direction:column;gap:0}
+.ly-grade{gap:8px}
+.ly-grade label{flex:1}
+.ly-grade input{width:96px;flex:none;text-align:right;height:44px;border:0;border-radius:10px;background:var(--surface-2);padding:0 10px;font-size:17px;color:var(--ink)}
+.ly-recon{margin-top:12px}
+
+/* charts */
+.ly-chart{width:100%;height:auto;display:block}
+.ly-chart text,.ly-bars text{font-family:var(--font);font-size:11px;fill:var(--ink-3)}
+.ly-chartcard{padding:14px 12px 10px}
+.ly-segs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px 4px}
+.ly-segs::-webkit-scrollbar{display:none}
+.ly-segs .chip{flex:none}
+.ly-bars{width:120px;height:28px;display:block}
+.ly-hbars{display:flex;flex-direction:column;gap:8px;padding:12px 16px;background:var(--surface);border-radius:var(--r-lg)}
+.ly-hb{display:grid;grid-template-columns:minmax(0,9.5em) 1fr auto;gap:10px;align-items:center;font-size:14px}
+.ly-hb .k{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ly-hb .b{height:10px;border-radius:5px;background:var(--surface-2);overflow:hidden}
+.ly-hb .b i{display:block;height:100%;background:var(--layers);border-radius:5px}
+.ly-hb .n{font-weight:700;min-width:2.5em;text-align:right}
+@media (prefers-reduced-motion:no-preference){:root:not(.reduce-motion) .ly-draw{stroke-dasharray:1200;stroke-dashoffset:1200;animation:ly-draw .9s cubic-bezier(.22,1,.36,1) .1s forwards}}
+@keyframes ly-draw{to{stroke-dashoffset:0}}
+
+/* timeline chips (§5.2, §7.3) */
+.ly-tline{display:flex;gap:6px;flex-wrap:wrap;padding:12px 14px}
+.ly-tline span,.ly-tline a,.ly-tline button{font:inherit;font-size:13px;font-weight:700;padding:6px 10px;border-radius:999px;background:var(--ok-soft);color:var(--ok-ink);border:0;text-decoration:none;cursor:default}
+.ly-tline a,.ly-tline button{cursor:pointer}
+.ly-tline .d{background:var(--due-soft);color:var(--due-ink)}
+.ly-tline .l{background:var(--late-soft);color:var(--late-ink)}
+.ly-tline .f{background:var(--surface-2);color:var(--ink-2)}
+
+/* red-mite trap map (signature §7.2) */
+.ly-trapmap{position:relative;display:grid;gap:10px;padding:26px 14px 18px;border-radius:var(--r-lg);background:var(--surface);box-shadow:inset 0 0 0 2px var(--hair)}
+.ly-door{position:absolute;top:6px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
+.ly-trap{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;justify-self:center;border:0;font-size:17px;font-family:inherit;padding:0}
+button.ly-trap{cursor:pointer}
+.ly-trap.na{background:transparent;color:var(--ink-3);box-shadow:inset 0 0 0 1.5px var(--hair)}
+.ly-trap.s0{background:var(--surface-2);color:var(--ink-3)}
+.ly-trap.s1{background:var(--layers-soft);color:var(--layers-ink)}
+.ly-trap.s2{background:var(--due-soft);color:var(--due-ink)}
+.ly-trap.s3,.ly-trap.s4{background:var(--late-soft);color:var(--late-ink);box-shadow:inset 0 0 0 2px var(--late)}
+.ly-trap.cur{outline:3px solid var(--layers);outline-offset:3px}
+.ly-trapno{text-align:center;font-size:17px;font-weight:700;margin:14px 0 10px}
+.ly-scorebtns{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.ly-score{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:76px;border:0;border-radius:16px;background:var(--surface);font:inherit;color:var(--ink);cursor:pointer;box-shadow:inset 0 0 0 1.5px var(--hair)}
+.ly-score b{font-size:28px;line-height:30px}
+.ly-score span{font-size:12px;color:var(--ink-2)}
+.ly-score.s1{background:var(--layers-soft)}.ly-score.s2{background:var(--due-soft)}.ly-score.s3,.ly-score.s4{background:var(--late-soft)}
+.ly-score:active{transform:scale(.96)}
+
+/* keypad (weights) and tally (feather) */
+.ly-kp-show{display:flex;align-items:baseline;justify-content:center;gap:6px;margin:6px 0}
+.ly-kp-show b{font-size:52px;line-height:56px;font-weight:800;font-variant-numeric:tabular-nums}
+.ly-kp-stats{text-align:center;font-size:15px;color:var(--ink-2);min-height:22px}
+.ly-kp-stats .warn{color:var(--due-ink)}
+.ly-kp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.ly-kp-grid button{height:60px;border:0;border-radius:14px;background:var(--surface);font:inherit;font-size:24px;font-weight:700;color:var(--ink);cursor:pointer;box-shadow:inset 0 0 0 1.5px var(--hair)}
+.ly-kp-grid button svg{width:24px;height:24px}
+.ly-kp-grid .next{background:var(--layers);color:#fff;box-shadow:none;font-size:19px}
+:root[data-theme=dark] .ly-kp-grid .next{color:#1B221D}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .ly-kp-grid .next{color:#1B221D}}
+.ly-kp-list{text-align:center;font-size:14px;color:var(--ink-3);margin-top:10px;min-height:20px}
+.ly-tally{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ly-tally button{min-height:120px;border:0;border-radius:18px;background:var(--surface);font:inherit;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;box-shadow:inset 0 0 0 1.5px var(--hair)}
+.ly-tally b{font-size:40px;line-height:44px}
+.ly-tally span{font-size:14px;color:var(--ink-2)}
+.ly-tally .t0{background:var(--ok-soft)}.ly-tally .t1{background:var(--due-soft)}.ly-tally .t2{background:var(--late-soft)}
+
+/* tables */
+.ly-tblwrap{background:var(--surface);border-radius:var(--r-lg);padding:4px 8px;overflow-x:auto}
+.ly-tbl{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+.ly-tbl th{font-size:12px;font-weight:600;color:var(--ink-2);text-align:left;padding:10px 6px;border-bottom:1px solid var(--hair);white-space:nowrap}
+.ly-tbl td{padding:11px 6px;border-bottom:1px solid var(--hair)}
+.ly-tbl tr:last-child td{border-bottom:0}
+.ly-tbl .n{text-align:right}
+.ly-tbl .due{color:var(--due-ink);font-weight:700}
+.ly-tbl b{font-weight:800}
+
+/* tiles */
+.ly-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ly-tiles .num-tile{min-height:92px;padding:12px;color:var(--ink);text-decoration:none}
+.ly-tiles .num-tile .value{font-size:26px;line-height:32px}
+.ly-tiles .num-tile .value.due{color:var(--due-ink)}.ly-tiles .num-tile .value.late{color:var(--late-ink)}.ly-tiles .num-tile .value.ok{color:var(--ok-ink)}
+.ly-tiles2{grid-template-columns:1fr 1fr}
+
+.ly-banner{display:flex;gap:10px;align-items:flex-start;border-radius:var(--r-md);padding:12px 14px;font-size:15px;line-height:20px;font-weight:600;background:var(--layers-soft);color:var(--layers-ink)}
+.ly-banner svg{flex:none;width:20px;height:20px;margin-top:1px}
+.ly-banner.late{background:var(--late-soft);color:var(--late-ink)}
+.ly-banner.due{background:var(--due-soft);color:var(--due-ink)}
+.ly-banner.ok{background:var(--ok-soft);color:var(--ok-ink)}
+.ly-check .row{align-items:flex-start}
+.ly-check .secondary{white-space:normal}
+.ly-header-note{font-size:13px;line-height:18px;color:var(--ink-2);background:var(--surface-2);border-radius:var(--r-md);padding:10px 12px;margin:0 0 12px}
+.ly-plan{display:grid;grid-template-columns:56px 60px 1fr 1fr 40px;gap:6px;align-items:center}
+.ly-plan .icon-btn{width:40px;height:40px}
+.ly-plan input{width:100%;height:44px;border:0;border-radius:10px;background:var(--surface-2);padding:0 8px;font-size:16px;color:var(--ink);min-width:0}
+.ly-plan .h{font-size:12px;color:var(--ink-2);font-weight:600}
+.ly-pick{display:flex;gap:6px;flex-wrap:wrap}
+.ly-seg{margin:0 0 12px}.ly-seg .segmented{width:100%}
+.ly-stat{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:12px 16px;border-bottom:1px solid var(--hair)}
+.ly-stat:last-child{border-bottom:0}
+.ly-stat .k{font-size:15px;color:var(--ink)}.ly-stat .k small{display:block;font-size:13px;color:var(--ink-2)}
+.ly-stat .v{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ly-stat .v.due{color:var(--due-ink)}.ly-stat .v.late{color:var(--late-ink)}.ly-stat .v.ok{color:var(--ok-ink)}
+.ly-cap{font-size:13px;line-height:18px;color:var(--ink-2);margin:6px 4px 0}
+
+/* resume 2026-10-26: steppers on the daily sheet and causes sheet leave room for the label */
+.ly-step .stepper{padding:0;gap:4px;flex:none}
+.ly-step .stepper .step-btn{width:48px;height:48px}
+.ly-step .stepper input{width:76px;font-size:26px;height:48px}
+.ly-step .label{flex:1 1 auto;min-width:92px}
+.ly-step .spacer{display:none}
+.field.ly-big{font-size:16px;line-height:1.3;font-weight:600;letter-spacing:0}
+.ly-r{font-size:15px;font-weight:600;color:var(--ink-2);white-space:nowrap;margin-left:8px}
+.ly-tblwrap .ly-wide{min-width:560px}
+.ly-tblwrap .ly-reg{min-width:760px;font-size:13px}
+.ly-tblwrap .ly-reg td{vertical-align:top}
+.ly-tbl a{color:var(--layers-ink);font-weight:600;text-decoration:none}
+.group-label .text-btn{padding-top:0;padding-bottom:0;min-height:0}
+.ly-tblwrap .ly-wide:not(.ly-reg) td{white-space:nowrap}
+.ly-regrows .secondary{line-height:1.45}
+.ly-rk{color:var(--ink-3);font-size:12px;font-weight:600;text-transform:none}
+.ly-tiles:not(.ly-tiles2) .num-tile .value{font-size:22px;line-height:28px;white-space:nowrap}
+.field.ly-area{flex-direction:column;align-items:stretch;gap:8px}
+.field.ly-area label{flex:none}
+.ly-area textarea,.ly-textarea{width:100%;min-height:104px;border:0;border-radius:12px;background:var(--surface-2);padding:10px 12px;font:inherit;font-size:16px;color:var(--ink);box-sizing:border-box;resize:vertical}
+.ly-lsub{display:block;font-size:13px;color:var(--ink-3);font-weight:400}
+.field.ly-chips{flex-direction:column;align-items:stretch;gap:8px}
+.field.ly-chips > .label:empty{display:none}
+.field.ly-chips .chips{justify-content:flex-start}
+.field.ly-chips .help{display:block;font-size:13px;color:var(--ink-3);margin-top:-2px}
+.field.ly-chips{padding:10px 16px 14px}
+.field.ly-chips > .label{max-width:none;font-size:14px;color:var(--ink-2);font-weight:500}
