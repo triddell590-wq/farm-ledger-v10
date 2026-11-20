@@ -32,3 +32,18 @@ test("feed invoices this month against meal fed; prices and sales aren't invoice
   assert.deepEqual(c, { invoices: 1, bought: 600, fed: 300, diff: 300 });
   assert.equal(feedCheck(fin, { from: "2026-11-01", today: "2026-11-10", mealFedKg: 1000, mealPrice: 0 }).fed, null);
 });
+
+// Weighing is optional (Tom, 20 Nov): weights by eye, an expected gain, or the herd's target gain.
+test("no scales: by-eye weights, then the expected gain, then the target gain — each labelled", () => {
+  const base = { feedGroups: [fg], adjust: [], data: { animals }, today: "2026-11-10", mealPrice: 300, silagePrice: 40, valuePerKgLive: 3 };
+  const eye = { weights: new Map([["a", [{ date: "2026-10-01", kg: 400, est: true }, { date: "2026-10-31", kg: 430, est: true }]]]) };
+  assert.equal(groupCosts({ ...base, ix: eye }).rows[0].gainSource, "eye");
+  const none = { weights: new Map() };
+  const exp = groupCosts({ ...base, ix: none, feedGroups: [{ ...fg, expectedGain: 1.2 }], targetGain: () => 0.9 }).rows[0];
+  assert.equal(exp.gainSource, "expected"); assert.equal(exp.gain, 1.2);
+  const tgt = groupCosts({ ...base, ix: none, targetGain: () => 0.9 });
+  assert.equal(tgt.rows[0].gainSource, "target"); assert.equal(tgt.rows[0].gain, 0.9); assert.equal(tgt.estimated, true);
+  assert.ok(Math.abs(tgt.rows[0].marginHeadDay - (0.9 * 3 - 2.5)) < 1e-9);
+  const cows = groupCosts({ ...base, ix: none, targetGain: () => null });
+  assert.equal(cows.rows[0].marginHeadDay, null, "no gain for cows — no margin, not a made-up one");
+});

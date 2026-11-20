@@ -9,6 +9,7 @@ import { moneyText, num } from "../../ui/format.js";
 import { groupLabel } from "../../screens/common.js";
 import { vatOf } from "../../services/vat.js";
 import { pitGeom, silageList } from "./model/feed.js";
+import { classOf } from "./model/animals.js";
 import { groupCosts, feedCheck } from "./model/feed-costs.js";
 import { moneyCard, moneyPrompt } from "../money-card.js";
 
@@ -22,7 +23,9 @@ export function costsFor(snap) {
   const blockKg = pitGeom(silageList(meta.silage)[0] || {})?.blockKg || 0;
   const mealPrice = +s.meal.pricePerTonne || 0, silagePrice = +s.meal.silagePerTonne || 0;
   const valuePerKgLive = (+s.price.perKgDead || 0) * ((+s.processor.ko.Steer || 55) / 100);
-  const c = groupCosts({ feedGroups: data.feedGroups, adjust: data.feedAdjust, data, ix, today, blockKg, mealPrice, silagePrice, valuePerKgLive });
+  // no scales? the herd's target gain for the class most of the group are in (cows have none)
+  const targetGain = (members) => { const by = {}; for (const a of members) { const c = classOf(ix, a, today); by[c] = (by[c] || 0) + 1; } const top = Object.entries(by).sort((x, y) => y[1] - x[1])[0]?.[0]; return top ? +s.dlwgTarget[top] || null : null; };
+  const c = groupCosts({ feedGroups: data.feedGroups, adjust: data.feedAdjust, data, ix, today, blockKg, mealPrice, silagePrice, valuePerKgLive, targetGain });
   const check = feedCheck(data.finance, { from: c.from, today, mealFedKg: c.meal, mealPrice }, (e) => vatOf(e).net);
   return { ...c, check, mealPrice, silagePrice, valuePerKgLive, byGroup: new Map(c.rows.map((r) => [r.group.id, r])) };
 }
@@ -33,7 +36,7 @@ export function groupCostLine(r) {
   const parts = [];
   if (r.headDay != null) parts.push(`${p2(r.headDay)} a head a day`);
   if (r.marginHeadDay != null) parts.push(`margin ${signed(r.marginHeadDay)} a head a day`);
-  else if (r.headDay != null) parts.push("weigh twice to see the margin");
+  if (r.marginHeadDay != null && r.gainSource !== "weighed") parts.push({ eye: "(from weights by eye)", expected: "(from your expected gain)", target: "(from the target gain)" }[r.gainSource]);
   return parts.join(" · ");
 }
 
@@ -46,11 +49,11 @@ export function costSection(snap, k, { lid, title = "Feed cost and margin", show
   return html`<div class="section fc" id="costs">${groupLabel(title, `this month · ${k.days} day${k.days === 1 ? "" : "s"}`)}
     <div class="tiles">
       <div class="num-tile"><span class="label">Feed used</span><span class="value">${moneyText(k.cost)}</span><span class="delta">${p2(k.dayCost)} a day now${k.heads ? ` · ${p2(k.dayCost / k.heads)} a head` : ""}</span></div>
-      <div class="num-tile"><span class="label">Margin over feed</span><span class="value ${k.marginDay == null ? "" : k.marginDay >= 0 ? "ok-ink" : "late-ink"}">${k.marginDay == null ? "—" : `${signed(k.marginDay)}`}</span><span class="delta">${k.marginDay == null ? (k.valuePerKgLive ? "weigh the groups twice" : "add today's £/kg price") : "a day, from weight gain"}</span></div></div>
+      <div class="num-tile"><span class="label">Margin over feed</span><span class="value ${k.marginDay == null ? "" : k.marginDay >= 0 ? "ok-ink" : "late-ink"}">${k.marginDay == null ? "—" : `${signed(k.marginDay)}`}</span><span class="delta">${k.marginDay == null ? (k.valuePerKgLive ? "set an expected gain" : "add today's £/kg price") : k.estimated ? "a day · estimate" : "a day, from weighings"}</span></div></div>
     <div class="list fc-groups" style="margin-top:12px">${k.rows.map((r) => html`<a class="row no-lead" href="#/l/${lid}/groups"><span class="main"><span class="primary">${r.group.name}</span>
-        <span class="secondary">${r.heads} head · ${r.headDay != null ? `${p2(r.headDay)} a head a day` : "no feed today"}${r.gain != null ? ` · gaining ${num(r.gain, 2)} kg a day` : ""}</span>
+        <span class="secondary">${r.heads} head · ${r.headDay != null ? `${p2(r.headDay)} a head a day` : "no feed today"}${r.gain != null ? ` · ${r.gainSource === "weighed" ? "gaining" : "about"} ${num(r.gain, 2)} kg a day${{ weighed: " (weighed)", eye: " (by eye)", expected: " (your estimate)", target: " (target)" }[r.gainSource]}` : ""}</span>
         <span class="secondary">${moneyText(r.cost)} this month</span></span>
-        <span class="fc-v"><b class="${r.marginHeadDay == null ? "" : r.marginHeadDay >= 0 ? "ok-ink" : "late-ink"}">${r.marginHeadDay == null ? "—" : signed(r.marginHeadDay)}</b><span>${r.marginHeadDay == null ? (r.gain == null ? "weigh twice" : "add a price") : "margin a head a day"}</span></span></a>`)}</div>
+        <span class="fc-v"><b class="${r.marginHeadDay == null ? "" : r.marginHeadDay >= 0 ? "ok-ink" : "late-ink"}">${r.marginHeadDay == null ? "—" : signed(r.marginHeadDay)}</b><span>${r.marginHeadDay == null ? (r.gain == null ? "no gain set" : "add a price") : r.gainSource === "weighed" ? "margin a head a day" : "margin a head a day (est.)"}</span></span></a>`)}</div>
     ${showCheck ? html`<div class="card pad fc-check" style="margin-top:12px"><b>Feed invoices against feed used</b>
       <span>Feed invoices this month (ex VAT): <b>${moneyText(ck.bought)}</b>${ck.invoices ? ` from ${ck.invoices} invoice${ck.invoices === 1 ? "" : "s"}` : ""}</span>
       ${ck.fed != null ? html`<span>Meal fed this month: <b>${moneyText(ck.fed)}</b></span>
@@ -64,5 +67,5 @@ export function costTodayCard(snap, k) {
   if (!k.priced) return moneyPrompt("Feed cost and margin", "Add a meal price and a silage value to see what feeding costs a head and the margin.", `#/l/${snap.lid}/feed#prices`);
   return moneyCard({ title: "Feed cost and margin", href: `#/l/${snap.lid}/feed#costs`, open: "Each group's cost and margin",
     lines: [["Feed", `${p2(k.dayCost)} a day`], ["Per head", `${k.heads ? p2(k.dayCost / k.heads) : "—"} a day`],
-      ["Margin over feed", k.marginDay == null ? "weigh to see" : `${signed(k.marginDay)} a day`, k.marginDay == null ? "" : k.marginDay >= 0 ? "ok" : "late"]] });
+      [k.estimated ? "Margin over feed (est.)" : "Margin over feed", k.marginDay == null ? "set an expected gain" : `${signed(k.marginDay)} a day`, k.marginDay == null ? "" : k.marginDay >= 0 ? "ok" : "late"]] });
 }

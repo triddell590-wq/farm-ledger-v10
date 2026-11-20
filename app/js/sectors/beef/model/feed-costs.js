@@ -16,7 +16,10 @@ export const isFeedInvoice = (e) => e && !e.deleted && e.kind === "expense" && /
  * head; margin over feed a head a day = (average daily gain of the group's cattle × value of a kg
  * live) − today's feed cost a head. valuePerKgLive = £/kg dead × kill-out %.
  */
-export function groupCosts({ feedGroups, adjust, data, ix, today, blockKg = 0, mealPrice = 0, silagePrice = 0, valuePerKgLive = 0, from = monthStart(today) }) {
+// Weighing is optional (Tom, 20 Nov): gain comes from weights when there are any (two 14+ days
+// apart — scales, tape or judged by eye, which counts as an estimate), otherwise the gain the farmer expects for the group, otherwise the herd's target gain for
+// the class most of the group are in (Targets). gainSource says which, so estimates are labelled.
+export function groupCosts({ feedGroups, adjust, data, ix, today, blockKg = 0, mealPrice = 0, silagePrice = 0, valuePerKgLive = 0, from = monthStart(today), targetGain = () => null }) {
   const tday = mealToday(feedGroups, adjust, data, today, blockKg);
   const days = daysBetween(from, today) + 1;
   const rows = [];
@@ -26,17 +29,21 @@ export function groupCosts({ feedGroups, adjust, data, ix, today, blockKg = 0, m
     const costOf = (meal, sil) => (meal / 1000) * mealPrice + (sil / 1000) * silagePrice;
     const dayCost = costOf(r.meal, r.silage); const headDay = r.heads ? dayCost / r.heads : null;
     const ids = new Set(feedMembers(g, data));
-    const gains = (data.animals || []).filter((a) => ids.has(a.id) && onFarm(a)).map((a) => dlwg(ix, a)?.value).filter((v) => v != null && isFinite(v));
-    const gain = gains.length ? gains.reduce((t, v) => t + v, 0) / gains.length : null;
+    const members = (data.animals || []).filter((a) => ids.has(a.id) && onFarm(a));
+    const dl = members.map((a) => dlwg(ix, a)).filter((d) => d && isFinite(d.value)); const gains = dl.map((d) => d.value);
+    const expected = +g.expectedGain > 0 ? +g.expectedGain : null; const target = targetGain(members);
+    const gain = gains.length ? gains.reduce((t, v) => t + v, 0) / gains.length : expected ?? (target > 0 ? target : null);
+    const gainSource = gains.length ? (dl.some((d) => d.byEye) ? "eye" : "weighed") : expected != null ? "expected" : gain != null ? "target" : null;
     const valueHeadDay = gain != null && valuePerKgLive ? gain * valuePerKgLive : null;
     const marginHeadDay = valueHeadDay != null && headDay != null ? valueHeadDay - headDay : null;
     rows.push({ group: g, heads: r.heads, mealDay: r.meal, silageDay: r.silage, dayCost, headDay,
-      meal: eaten.meal, silage: eaten.silage, cost: costOf(eaten.meal, eaten.silage), gain, weighed: gains.length, valueHeadDay, marginHeadDay,
+      meal: eaten.meal, silage: eaten.silage, cost: costOf(eaten.meal, eaten.silage), gain, gainSource, weighed: gains.length, valueHeadDay, marginHeadDay,
       marginDay: marginHeadDay != null ? marginHeadDay * r.heads : null });
   }
   const tot = (k) => rows.reduce((t, x) => t + (x[k] || 0), 0);
   const withMargin = rows.filter((x) => x.marginDay != null);
-  return { from, days, rows, cost: tot("cost"), dayCost: tot("dayCost"), meal: tot("meal"), silage: tot("silage"), heads: tot("heads"),
+  const estimated = withMargin.some((x) => x.gainSource !== "weighed");
+  return { from, days, rows, estimated, cost: tot("cost"), dayCost: tot("dayCost"), meal: tot("meal"), silage: tot("silage"), heads: tot("heads"),
     marginDay: withMargin.length ? withMargin.reduce((t, x) => t + x.marginDay, 0) : null, priced: !!(mealPrice || silagePrice) };
 }
 
