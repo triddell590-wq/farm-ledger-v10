@@ -3,8 +3,11 @@
 // Where an entry lives (Builder decision, see ARCHITECTURE.md §3): in the ledger it belongs to;
 // "Whole farm" entries (rates, insurance, shared diesel) in the farm space. A whole-farm entry
 // may carry split: [{ ledgerId, pct }] and then shows pro-rata in each ledger's Money tab.
-import { listRecords } from "./records.js";
+import { listRecords, getRecord, addRecord, updateRecord } from "./records.js";
 import { canRead } from "../core/policy.js";
+import { farmSpace } from "./ledger-data.js";
+import { VAT_SETTINGS_ID, vatPeriods, vatReturn } from "./vat.js";
+import { todayStr } from "../core/dates.js";
 
 export const EXPENSE_CATEGORIES = ["Animal Purchase", "Feed", "Vet & medicine", "Medicine", "Fertiliser", "Diesel", "Contractor", "Machinery Maintenance", "Bedding", "Rent & rates", "Insurance", "Wages", "Miscellaneous"];
 export const REVENUE_CATEGORIES = ["Livestock Sales", "Milk", "Eggs", "Crop Sales", "Subsidy", "Other Income"];
@@ -26,7 +29,7 @@ export async function moneyFor(ledgers, [from, to]) {
   const rows = [];
   await Promise.all(ledgers.map(async (l) => {
     if (!canRead(l.role, "finance")) return;
-    try { (await listRecords(l.id, "finance")).forEach((r) => { if (r.kind !== "prices" && (!from || r.date >= from) && (!to || r.date <= to)) rows.push({ ...r, ledger: l }); }); } catch (e) { /* no access */ }
+    try { (await listRecords(l.id, "finance")).forEach((r) => { if ((r.kind === "revenue" || r.kind === "expense") && (!from || r.date >= from) && (!to || r.date <= to)) rows.push({ ...r, ledger: l }); }); } catch (e) { /* no access */ }
   }));
   const byLedger = new Map(); const byCat = new Map(); let totalIn = 0, totalOut = 0;
   for (const r of rows) {
@@ -37,4 +40,29 @@ export async function moneyFor(ledgers, [from, to]) {
   }
   rows.sort((a, b) => String(b.date).localeCompare(String(a.date)));
   return { rows, byLedger: [...byLedger.values()], byCat: [...byCat.entries()].sort((a, b) => b[1] - a[1]), totalIn, totalOut };
+}
+
+// The farm's VAT set-up, shared by everyone who sees the money (so it lives in the farm space's
+// finance, where the accountant can read it): registered "yes" | "no", returns, stagger (vat.js).
+const VAT_DEFAULTS = { registered: "yes", returns: "quarterly", stagger: 1 };
+const spaceOf = (ledger) => (ledger.type === "farm" ? ledger : farmSpace(ledger));
+export async function vatSettings(ledger) {
+  const space = spaceOf(ledger); if (!space) return { ...VAT_DEFAULTS };
+  const r = await getRecord(space.id, "finance", VAT_SETTINGS_ID).catch(() => null);
+  return { ...VAT_DEFAULTS, ...(r || {}) };
+}
+export async function saveVatSettings(ledger, s) {
+  const space = spaceOf(ledger); if (!space) return;
+  const data = { kind: "settings", registered: s.registered, returns: s.returns, stagger: +s.stagger || 1 };
+  const old = await getRecord(space.id, "finance", VAT_SETTINGS_ID).catch(() => null);
+  return old ? updateRecord(space.id, "finance", old, data, { history: false }) : addRecord(space.id, "finance", data, VAT_SETTINGS_ID);
+}
+
+/** The VAT return for one period (0 = the current one, 1 = the one before…), or null when the farm isn't VAT registered. */
+export async function vatPeriodFor(ledgers, at = 0) {
+  const s = ledgers.length ? await vatSettings(ledgers[0]) : null;
+  if (!s || s.registered === "no") return null;
+  const periods = vatPeriods(s, todayStr(), 8); const p = periods[Math.min(at, periods.length - 1)];
+  const m = await moneyFor(ledgers, [p.from, p.to]);
+  return { periods, period: p, ...vatReturn(m.rows, p.from, p.to) };
 }

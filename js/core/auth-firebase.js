@@ -1,8 +1,9 @@
 // Firebase Email/Password auth (compat 10.7.0). Auth state is kept on the phone (LOCAL
 // persistence), so a farmer who signed in once opens straight into the app with no signal.
+import { fbApp } from "./channel.js";
 export function createFirebaseAuth() {
   const firebase = window.firebase;
-  const a = firebase.auth();
+  const a = fbApp(firebase).auth();
   try { a.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch (e) { /* default is LOCAL */ }
   const pub = (u) => (u ? { uid: u.uid, email: u.email, displayName: u.displayName || "", emailVerified: !!u.emailVerified } : null);
   const actionSettings = () => ({ url: location.href.split("#")[0] + "#/signin", handleCodeInApp: false });

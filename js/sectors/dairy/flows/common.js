@@ -41,4 +41,3 @@ export function entrySheet({ title, body, label, checks, missing, save, size }) 
   const rebase = () => { start = JSON.stringify(f.values()); };
   return { sheet: sh, form: f, refresh, btn, rebase };
 }
-export const dateTimeFields = (date, time) => html`<div class="field"><label>Date</label><input type="date" name="date" value="${date}"></div><div class="field"><label>Time</label><input type="time" name="time" value="${time}"></div>`;

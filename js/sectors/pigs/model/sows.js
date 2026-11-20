@@ -21,7 +21,6 @@ export function indexHerd(data) {
 }
 export const listOf = (m, sow) => m.get(sow.id) || [];
 export const sowLabel = (s) => s.sowNo || (s.tag || "").split(/\s+/).pop() || "—";
-export const isBoar = (s) => s.type === "boar";
 export const onFarm = (s) => !s.cull?.date && !s.died && !s.deleted;
 export function sowMatches(s, q) { return matchScore({ no: s.sowNo, name: s.name, tag: s.tag }, q) != null; }
 export const sortByNo = (a, b) => String(a.sowNo || "").localeCompare(String(b.sowNo || ""), "en", { numeric: true });

@@ -4,6 +4,7 @@ import { el } from "../ui/dom.js";
 import { icon } from "../ui/icons.js";
 import { illustration } from "../ui/illustrations.js";
 import { session } from "../services/session.js";
+import { PREVIEW } from "../core/channel.js";
 
 /** Build a Screen object for the router. */
 export function makeScreen({ body, title = "", area = "farm", tab = null, depth = 0, chrome = {}, sector = null, destroy, mounted, transition, remember }) {
@@ -12,7 +13,7 @@ export function makeScreen({ body, title = "", area = "farm", tab = null, depth 
   const page = document.createElement("div"); page.className = "page";
   if (body) page.appendChild(body instanceof Node ? body : el(body));
   node.appendChild(page);
-  if (title) document.title = `${title} · Farm Ledger`;
+  if (title) document.title = `${title} · Farm Ledger${PREVIEW ? " TEST" : ""}`;
   return { el: node, page, title, area, tab, depth, chrome: { compactTitle: title, ...chrome }, sector, destroy, mounted, transition, remember };
 }
 
@@ -49,9 +50,6 @@ export function emptyState({ sector, iconName, title, body, action, href, actAtt
 }
 export function sectorTile(type, size = "") {
   return html`<span class="tile ${size}" data-sector="${type}">${raw(icon(type, size === "lg" ? { size: 40, stroke: 1.75 } : {}))}</span>`;
-}
-export function sectorTag(type, label) {
-  return html`<span class="sector-tag" data-sector="${type}">${raw(icon(type, { size: 16 }))}${label}</span>`;
 }
 /** Needs a signal (design/01 §13): returns an error string when offline, else null. */
 export function needsSignal(what = "This") { return navigator.onLine ? null : `${what} needs a signal. Try again when you have one bar.`; }

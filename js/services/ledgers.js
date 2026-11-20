@@ -4,7 +4,7 @@
 import { store } from "../core/store.js";
 import { auth } from "../core/auth.js";
 import { SECTORS, LEDGER_TYPES } from "../core/policy.js";
-import { collectionsFor, metaFor, SUBCOLLECTIONS, sectorName } from "../sectors/registry.js";
+import { collectionsFor, SUBCOLLECTIONS, sectorName } from "../sectors/registry.js";
 
 const me = () => auth.user;
 const memberDoc = (user, role) => ({ uid: user.uid, role, addedAt: new Date(), addedBy: user.uid, displayName: user.displayName || "", email: user.email || "" });
@@ -80,7 +80,6 @@ export function groupByFarm(ledgers) {
 }
 
 export const getLedger = (lid) => store.get(`ledgers/${lid}`);
-export const watchLedger = (lid, cb, onErr) => store.watchDoc(`ledgers/${lid}`, cb, onErr);
 export const updateLedger = (lid, partial) => store.update(`ledgers/${lid}`, { ...partial, updatedAt: new Date() });
 
 /** Rename the farm everywhere I can (farm space + every ledger of that farm I may edit). */
@@ -149,5 +148,3 @@ export async function deleteLedger(lid, onProgress = () => {}) {
   onProgress("Deleted");
 }
 
-/** For tests/debug: every collection and meta name a ledger type can hold. */
-export function storageMap(type) { return { collections: collectionsFor(type), meta: metaFor(type) }; }

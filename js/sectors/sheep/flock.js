@@ -27,6 +27,7 @@ import { cycleFor } from "./model/year.js";
 import { addDays } from "../../core/dates.js";
 import { activeMobs } from "./model/mobs.js";
 import { tickGenerated } from "./actions.js";
+import { sheepMoneyCard } from "./today-money.js";
 
 const LS = (lid) => `fl10-sheep-stage-${lid}`;
 function savedStage(lid) { try { return localStorage.getItem(LS(lid)) || "auto"; } catch (e) { return "auto"; } }
@@ -72,6 +73,7 @@ async function paint(body, snap) {
     ${notIn ? html`<p class="ynote">Rams not in yet · planned ${short(snap.cy.ramsIn)}${auto ? "" : ` · showing ${STAGE_NAMES[shown].toLowerCase()} (set by you)`}</p>` : html`<p class="ynote">Today: day ${stage.day} of ${STAGE_NAMES[stage.stage].toLowerCase()}${auto ? "" : ` · showing ${STAGE_NAMES[shown].toLowerCase()} (set by you)`}</p>`}
     <button type="button" class="stage-chip" data-stage>${raw(icon("clock"))}Stage: ${STAGE_NAMES[shown]} · change</button>
     ${restricted ? banner("late", restricted.title, restricted.body) : ""}
+    ${sheepMoneyCard(snap)}
     ${bannerA.map((a) => banner("info", a.title, " " + a.body))}
     ${alerts.length ? html`<div class="section" data-alerts>${alerts.slice(0, 3).map((a) => alertCard(a, false))}${alerts.length > 3 ? html`<button type="button" class="text-btn" data-more-alerts style="margin-top:4px">${alerts.length - 3} more ${alerts.length - 3 === 1 ? "thing needs" : "things need"} attention ›</button>` : ""}</div>` : ""}
     <div class="section">${groupLabel(STAGE_NAMES[shown])}${board(shown, snap)}</div>

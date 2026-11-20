@@ -17,6 +17,7 @@ import { qvrState } from "../model/paperwork.js";
 import { signChecklist } from "../actions.js";
 import { evidenceButton, wireEvidenceButtons } from "../../../ui/photo-strip.js";
 import { readyScore, readyHero, readyLists, wireReady } from "../../../ui/ready-check.js";
+import { printView } from "../../../ui/print.js";
 
 const TILES = [["pm1", "Movement book (PM1)", "truck"], ["pm2", "Holding register (PM2)", "records"], ["medicines", "Medicines", "syringe"], ["mortality", "Mortality", "alert"], ["tailbites", "Tail biting", "pigs"], ["enrichment", "Enrichment", "check"], ["alarms", "Alarm tests", "bell"], ["visitors", "Visitors", "people"], ["wash", "Wash and disinfection", "water"], ["feed", "Feed deliveries", "feed"]];
 const PACK = ["pm1", "herd", "medicines", "mortality", "tailbites", "enrichment", "alarms", "visitors", "wash", "feed", "vermin", "water"];
@@ -73,10 +74,6 @@ export function packHtml(snap) {
   return cover + PACK.map((k) => registerDoc(snap, k)).filter(Boolean).map((d) => `<section class="pack-doc">${toHtmlTable(within(d, d.title.startsWith("Medicines") ? five : three))}</section>`).join("");
 }
 function printPack(snap) {
-  const w = document.createElement("div"); w.className = "print-view print-float pack"; w.innerHTML = packHtml(snap);
-  document.body.appendChild(w); document.body.classList.add("printing");
-  const done = () => { w.remove(); document.body.classList.remove("printing"); removeEventListener("afterprint", done); };
-  addEventListener("afterprint", done);
-  setTimeout(() => { try { window.print(); } catch (err) { done(); } setTimeout(() => { if (w.isConnected && !matchMedia("print").matches) done(); }, 1500); }, 50);
+  printView(packHtml(snap), "pack");
 }
 export { el };

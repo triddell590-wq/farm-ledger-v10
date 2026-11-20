@@ -1,10 +1,9 @@
 // The per-cow fertility loop (design/12 §5): calved → waiting period → heat → serve → repeat?
 // → PD → dry off → calve. Pure date maths over the herd index; formulas shown in the UI.
-import { addDays, daysBetween } from "../../../core/dates.js";
+import { addDays, daysBetween, MONTHS as MON } from "../../../core/dates.js";
 import { onFarm, calvedDate, isDry, groupOf, ageMonths, isFemale, listOf, lactation } from "./cows.js";
 import { gestationDays } from "./settings.js";
 
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export const dm = (iso) => (iso ? `${+iso.slice(8, 10)} ${MON[+iso.slice(5, 7) - 1]}` : "");
 
 /** This lactation's fertility facts for one female. */

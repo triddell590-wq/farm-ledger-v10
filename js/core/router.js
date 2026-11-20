@@ -19,7 +19,8 @@ export function define(pattern, loader, opts = {}) { routes.push({ pattern, load
 export function setGuard(fn) { guard = fn; }
 export function onScreenChange(fn) { onScreen = fn; }
 export const currentPath = () => (location.hash.replace(/^#/, "") || "/");
-export const currentScreen = () => current && current.screen;
+/** The screen showing now — while a new screen is being built, that's the one being left. */
+export const shownScreen = () => (current ? { path: current.path, title: current.screen && current.screen.title } : null);
 
 export function go(path, { replace = false } = {}) {
   if (!path.startsWith("/")) path = "/" + path;
@@ -53,7 +54,12 @@ export function kindBetween(a, b) {
 
 async function render(path) {
   const my = ++navId;
+  // "#/l/x/targets#fodder": a page and a place on it — open the page, then scroll to id="fodder"
+  let spot = null; const hashAt = path.indexOf("#"); if (hashAt > 0) { spot = path.slice(hashAt + 1); path = path.slice(0, hashAt); }
   if (guard) { const to = await guard(path); if (my !== navId) return; if (to && to !== path) { go(to, { replace: true }); return; } }
+  // A page this copy doesn't know is usually one a newer version (installed while the app was open)
+  // links to: reload into that version once before saying "not found" (Tom, 5 Nov: VAT page).
+  if (!match(path) && path !== "/404" && reloadOnce(path)) return;
   const hit = match(path) || match("/404");
   if (!hit) return;
   let screen;
@@ -80,6 +86,7 @@ async function render(path) {
   await transition(stage, oldEl || null, screen.el, oldEl ? kind : "fade", { scrollTo: restore });
   if (prev && prev.screen.destroy) { try { prev.screen.destroy(); } catch (e) { console.error(e); } }
   screen.mounted && screen.mounted();
+  if (spot) { const t = /^[\w-]+$/.test(spot) && document.getElementById(spot); if (t) t.scrollIntoView({ block: "start" }), window.scrollBy(0, -128); }
   emit("router:done", { path, kind });
 }
 
@@ -90,3 +97,11 @@ export function start(stageEl) {
 }
 /** Re-render the current route in place (after a role change etc.). */
 export function refresh() { if (current) { const p = current.path; current = { ...current, path: p }; render(p); } }
+
+function reloadOnce(path) {
+  try {
+    const k = "fl10-reload:" + path;
+    if (sessionStorage.getItem(k)) return false;
+    sessionStorage.setItem(k, "1"); location.reload(); return true;
+  } catch (e) { return false; }
+}

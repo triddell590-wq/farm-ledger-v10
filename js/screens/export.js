@@ -84,7 +84,7 @@ function printable(data) {
     const all = {}; for (const [c, l] of Object.entries(x.collections)) if (Array.isArray(l)) all[c] = l;
     const L = makeLookup(x.ledger.type, all); const name = x.ledger.type === "farm" ? "Whole farm" : x.ledger.name;
     return Object.entries(all).filter(([c, l]) => !["photos", "tasks", "imports", "events"].includes(c) && l.some((r) => !r.deleted)).map(([c, list]) => {
-      const rows = list.filter((r) => !r.deleted && !(c === "finance" && r.kind === "prices"));
+      const rows = list.filter((r) => !r.deleted && !(c === "finance" && (r.kind === "prices" || r.kind === "settings")));
       if (!rows.length) return "";
       const keys = []; const labels = new Map();
       for (const r of rows) for (const f of fieldsOf(x.ledger.type, c, r, L)) if (!labels.has(f.key)) { keys.push(f.key); labels.set(f.key, f.label); }

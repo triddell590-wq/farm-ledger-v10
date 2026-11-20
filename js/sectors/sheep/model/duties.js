@@ -1,7 +1,7 @@
 // What needs doing: Sheep alerts (design/11 §11) and the generated To-do list (§3.7). Nothing
 // here is stored; ticking a job either does its record action or saves a done task with the
 // job's key as sourceRef (same pattern as every ledger).
-import { addDays, daysBetween } from "../../../core/dates.js";
+import { addDays, daysBetween, MONTHS } from "../../../core/dates.js";
 import { activeMobs, countsAt } from "./mobs.js";
 import { raddleCycles } from "./year.js";
 import { mobWithdrawal, drenchChecksDue, lastLame, repeatLame, fecVerdict, fecReduction, preDoseFec, doses } from "./health.js";
@@ -12,7 +12,7 @@ import { regionRule } from "./region.js";
 import { seasonalFor, DISEASE_BANNER } from "./content.js";
 
 const ORDER = { late: 0, due: 1, info: 2 };
-const short = (iso) => { const d = new Date(iso + "T12:00:00"); return `${d.getDate()} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()]}`; };
+const short = (iso) => { const d = new Date(iso + "T12:00:00"); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; };
 const dowShort = (iso) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(iso + "T12:00:00").getDay()] + " " + short(iso);
 
 /** Alerts. c = { data, s, today, now, lid, cy, stage, store } */

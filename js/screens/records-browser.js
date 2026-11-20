@@ -20,8 +20,7 @@ import { ledgerTabs } from "./ledger.js";
 const RECENT = 20, PER_GROUP = 60;
 const asDate = (d) => (d instanceof Date ? d : d?.toDate ? d.toDate() : d ? new Date(d) : null);
 // Bookkeeping the farmer never typed in: ticked jobs, the price settings doc.
-const internal = (c, r) => (c === "tasks" && r.sourceRef) || (c === "finance" && r.kind === "prices");
-export const collLabel = collHeading;
+const internal = (c, r) => (c === "tasks" && r.sourceRef) || (c === "finance" && (r.kind === "prices" || r.kind === "settings"));
 
 export default async function recordsBrowser({ params }) {
   ensureRecordCss();

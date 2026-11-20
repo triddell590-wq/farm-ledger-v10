@@ -27,7 +27,8 @@ export default async function tools(ctx) {
   const snap = await loadBeef(ctx.ledger); const tool = ctx.match?.groups?.tool;
   if (!tool) return { el: el(html`<div class="beef-page">${backLink(`#/l/${snap.lid}/more`, "More")}${largeTitle("Tools", "Worked out on this phone — no signal needed")}<div class="list">${LIST.map(([k, l, sub]) => html`<a class="row" href="${k === "fodder" ? `#/l/${snap.lid}/feed` : `#/l/${snap.lid}/tools/${k}`}"><span class="tile">${raw(icon(k === "scale" ? "scale" : k === "dose" ? "syringe" : k === "fodder" || k === "meal" ? "feed" : k === "max-bid" ? "money" : "grid"))}</span><span class="main"><span class="primary">${l}</span><span class="secondary">${sub}</span></span><span class="chev">${raw(icon("chevron"))}</span></a>`)}</div></div>`), title: "Tools", depth: 1, tab: "more" };
   const [, label] = LIST.find(([k]) => k === tool) || [tool, "Tool"];
-  const body = el(html`<div class="beef-page">${backLink(`#/l/${snap.lid}/tools`, "Tools")}${largeTitle(label)}<form novalidate class="form-group" data-in></form><div class="card pad tool-out" data-out aria-live="polite"></div></div>`);
+  const q = ctx.params?.query || {}; const from = /^\/l\/[^/]+\/[a-z/-]+$/.test(q.from || "") ? q.from : null; // came from a screen's "Tools for this"
+  const body = el(html`<div class="beef-page">${backLink(from ? `#${from}` : `#/l/${snap.lid}/tools`, from ? q.back || "Back" : "Tools")}${largeTitle(label)}<form novalidate class="form-group" data-in></form><div class="card pad tool-out" data-out aria-live="polite"></div></div>`);
   const T = TOOLS[tool] || { inputs: () => "", out: () => ans("Not found", "This tool isn't available. Go back to Tools.") }; const form = body.querySelector("[data-in]");
   form.append(el(html`<div style="display:contents">${T.inputs(snap)}</div>`));
   const f = wireForm(form); const paint = () => body.querySelector("[data-out]").replaceChildren(el(html`<div>${T.out(f.values(), snap)}</div>`));

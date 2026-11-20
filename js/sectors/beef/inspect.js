@@ -11,6 +11,7 @@ import { toHtmlTable } from "./ui.js";
 import { buildDoc } from "./model/reports.js";
 import { FQA_STANDARD } from "./model/fqa.js";
 import { herdStatus } from "./paperwork.js";
+import { printView } from "../../ui/print.js";
 
 const TILES = [["register", "Herd register", "records"], ["medicine", "Medicines (5 years)", "syringe"], ["plans", "Health plan + review", "shield"], ["tb", "TB and BVD status", "alert"], ["feedrecords", "Feed records", "feed"], ["training", "Training", "people"], ["vetops", "Vet operations", "syringe"], ["movements", "Movements", "truck"]];
 
@@ -37,9 +38,5 @@ export function packHtml(snap) {
   return cover + docs.map((d) => `<section class="pack-doc">${toHtmlTable(d)}</section>`).join("");
 }
 function pack(snap) {
-  const w = document.createElement("div"); w.className = "print-view print-float pack"; w.innerHTML = packHtml(snap);
-  document.body.appendChild(w); document.body.classList.add("printing");
-  const done = () => { w.remove(); document.body.classList.remove("printing"); removeEventListener("afterprint", done); };
-  addEventListener("afterprint", done);
-  setTimeout(() => { try { window.print(); } catch (e) { done(); } setTimeout(() => { if (w.isConnected && !matchMedia("print").matches) done(); }, 1500); }, 50);
+  printView(packHtml(snap), "pack");
 }

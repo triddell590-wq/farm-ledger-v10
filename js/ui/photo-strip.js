@@ -124,12 +124,6 @@ export function photoStrip({ lid, parent, title = "Photos", hint = "", max = 12,
   };
 }
 
-/** Draft strip helper for entry sheets: put the strip at the end of `form`; returns it. */
-export function addPhotoStrip(form, opts) {
-  const s = photoStrip(opts);
-  form.appendChild(s.node);
-  return s;
-}
 
 /**
  * Photo evidence for a checklist item (inspection self-checks): saved at once on the item, so a

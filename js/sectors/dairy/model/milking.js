@@ -2,10 +2,9 @@
 // milk is "OK from <day> <am/pm> milking" — the first milking at or after the end of the
 // withdrawal (last dose + milk withdrawal hours). Robot farms get the exact time.
 // Times are local wall-clock strings "YYYY-MM-DDTHH:MM" so they sort and never shift zone.
-import { addDays } from "../../../core/dates.js";
+import { addDays, MONTHS as MON } from "../../../core/dates.js";
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const pad = (x) => String(x).padStart(2, "0");
 
 export function nowStr(d = new Date()) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }

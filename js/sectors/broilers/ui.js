@@ -6,6 +6,7 @@ import { el } from "../../ui/dom.js";
 import { icon, FL_ICONS } from "../../ui/icons.js";
 import { download } from "../../ui/download.js";
 import { dayLabel, whenLabel, timePart } from "./model/time.js";
+import { MONTHS as MON } from "../../core/dates.js";
 
 Object.assign(FL_ICONS, {
   house: '<path d="M3.5 11 12 4.5l8.5 6.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9 20v-6h6v6"/>',
@@ -22,7 +23,6 @@ export function ensureCss() {
 }
 export const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 export const dm = dayLabel; export const when = whenLabel; export const hm = timePart;
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export const d2 = (iso) => (iso ? `${+iso.slice(8, 10)} ${MON[+iso.slice(5, 7) - 1]}` : "");
 export const n0 = (n) => (n == null || Number.isNaN(+n) ? "—" : Math.round(+n).toLocaleString("en-GB"));
 export const n1 = (n, dp = 1) => (n == null || Number.isNaN(+n) ? "—" : (+n).toFixed(dp));
@@ -116,18 +116,7 @@ export function barChart(values, { ref = null, labels = [], min = 0, line = null
 }
 
 // ---- print / CSV (design/00 §6.18) ----
-export function printDoc(doc) {
-  const w = document.createElement("div"); w.className = "print-view print-float"; w.innerHTML = doc.__html || toHtmlTable(doc);
-  document.body.appendChild(w); document.body.classList.add("printing");
-  const done = () => { w.remove(); document.body.classList.remove("printing"); removeEventListener("afterprint", done); };
-  addEventListener("afterprint", done);
-  setTimeout(() => { try { window.print(); } catch (e) { done(); } setTimeout(() => { if (w.isConnected && !matchMedia("print").matches) done(); }, 1500); }, 50);
-}
-export function toHtmlTable(doc) {
-  return `<div class="ph"><b>${esc(doc.title)}</b><span>${(doc.top || []).map(([k, v]) => `${esc(k)}: ${esc(v)}`).join(" · ")}</span></div>
-    ${(doc.tables || [doc]).map((t) => `${t.sub ? `<h3>${esc(t.sub)}</h3>` : ""}<table><thead><tr>${t.headers.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${t.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${t.headers.length}">Nothing recorded yet.</td></tr>`}</tbody></table>`).join("")}
-    <div class="pf">${esc(doc.note || "")} Printed from Farm Ledger on ${new Date().toLocaleDateString("en-GB")}.</div>`;
-}
+export { printDoc, toHtmlTable } from "../../ui/print.js";
 export function csvDownload(doc) {
   const q = (s) => { s = String(s == null ? "" : s); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const t = doc.tables ? doc.tables[0] : doc;

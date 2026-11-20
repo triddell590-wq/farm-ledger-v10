@@ -10,7 +10,7 @@ import { daysBetween, addDays, shortDate, todayStr } from "../../core/dates.js";
 import { listDate, num, listDateY } from "../../ui/format.js";
 import { largeTitle, groupLabel, emptyState, backLink } from "../../screens/common.js";
 import { liveSnap } from "./data.js";
-import { pill, numTile, tagHtml, animalLabel, sparkBars } from "./ui.js";
+import { pill, numTile, tagHtml, animalLabel, sparkBars, toolLinks } from "./ui.js";
 import { onFarm, lastWeight, ageText } from "./model/animals.js";
 import { breedingFemales, dueInfo, scStatus, SC_WORDS, SC_LEVEL, notSeenBulling, lastCalving, birthsToRegister, replacementHeifers, heiferWindow, HEIFER_WORDS, fertilityKpis, scYearReport, calvingSeason, calvedInSeason } from "./model/breeding.js";
 import { schemeYear, schemeYearLabel, scLimitDays, SC_PAYMENT } from "./model/rules.js";
@@ -65,6 +65,7 @@ function calving(snap) {
     ${sect("Overdue", over, "late-ink")}${sect("This week", week)}${sect("Next 30 days", month)}
     ${later.length ? html`<button type="button" class="disclosure" data-later aria-expanded="false">Later (${later.length}) ${raw(icon("down", { size: 18 }))}</button><div data-later-list hidden><div class="list">${later.map(row)}</div></div>` : ""}
     ${calved.length ? html`<button type="button" class="disclosure" data-calved aria-expanded="false" style="margin-top:12px">Calved (${calved.length}) ${raw(icon("down", { size: 18 }))}</button><div data-calved-list hidden><div class="list">${calved.map(({ dam, c }) => html`<a class="row no-lead" href="#/l/${lid}/animal/${dam?.id}"><span class="main"><span class="primary">${dam ? animalLabel(dam) : "?"} · ${listDate(c.date)}</span><span class="secondary">${(c.calves || []).map((k) => { const calf = k.animalId && ix.byId.get(k.animalId); return `${(k.sex || calf?.sex || "calf").toLowerCase()} ${calf ? tagParts(calf.tag).tail : ""}${k.alive === false ? " (stillborn)" : ""}`; }).join(", ")}${c.ease ? ` · ${EASE[c.ease]}` : ""}</span></span></a>`)}</div></div>` : ""}
+    ${toolLinks(lid, `/l/${lid}/breeding/calving`, "Calving", [["calving", "Calving date"]])}
     ${can ? html`<div class="sticky-foot"><button type="button" class="btn" data-calving>Record a calving</button></div>` : ""}
   </div>`);
   const tog = (b, l) => { const x = out.querySelector(b); if (x) x.onclick = () => { const L = out.querySelector(l); L.hidden = !L.hidden; x.setAttribute("aria-expanded", String(!L.hidden)); }; };
@@ -127,11 +128,12 @@ function register(snap) {
 function heifers(snap) {
   const { data, s, ix, today, lid } = snap;
   const list = replacementHeifers(data, ix, today).map((h) => ({ h, w: heiferWindow(data, s, ix, h, today) })).filter((x) => x.w).sort((a, b) => a.w.serveTo.localeCompare(b.w.serveTo));
-  if (!list.length) return el(emptyState({ sector: "beef", title: "No replacement heifers", body: "Heifers 9 months and older that haven't calved show here with their breeding window." }));
-  return el(html`<div class="list">${list.map(({ h, w }) => { const lw = lastWeight(ix, h); const lvl = { open: "due", served: "neutral", inCalf: "ok", young: "neutral", missed: "late" }[w.status];
+  const tl = toolLinks(lid, `/l/${lid}/breeding/heifers`, "Heifers", [["heifer", "Heifer breeding window"]]);
+  if (!list.length) return el(html`<div>${emptyState({ sector: "beef", title: "No replacement heifers", body: "Heifers 9 months and older that haven't calved show here with their breeding window." })}${tl}</div>`);
+  return el(html`<div><div class="list">${list.map(({ h, w }) => { const lw = lastWeight(ix, h); const lvl = { open: "due", served: "neutral", inCalf: "ok", young: "neutral", missed: "late" }[w.status];
     return html`<a class="row no-lead" href="#/l/${lid}/animal/${h.id}"><span class="main"><span class="primary">${animalLabel(h)} · ${ageText(h, today)}${lw ? ` · ${lw.kg} kg${lw.kg < s.heiferServeKg ? ` (target ${s.heiferServeKg})` : ""}` : ""}</span>
       <span class="secondary">Serve ${listDate(w.serveFrom).slice(4)} – ${listDateY(w.serveTo).slice(4)} to calve between 21 and ${w.maxM} months</span><span class="secondary">Best: serve by ${listDate(w.best).slice(4)} to calve at 24 months</span>
-      ${w.status === "missed" ? html`<span class="secondary">Won't count for £100, but still worth calving.</span>` : ""}</span>${pill(lvl, w.status === "open" ? `Open · ${w.daysLeft} d left` : HEIFER_WORDS[w.status])}</a>`; })}</div>`);
+      ${w.status === "missed" ? html`<span class="secondary">Won't count for £100, but still worth calving.</span>` : ""}</span>${pill(lvl, w.status === "open" ? `Open · ${w.daysLeft} d left` : HEIFER_WORDS[w.status])}</a>`; })}</div>${tl}</div>`);
 }
 
 async function fertility(ctx) {

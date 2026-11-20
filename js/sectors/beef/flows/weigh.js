@@ -5,6 +5,7 @@ import { html, raw } from "../../../core/html.js";
 import { el, vibrate } from "../../../ui/dom.js";
 import { icon } from "../../../ui/icons.js";
 import { openSheet } from "../../../ui/sheet.js";
+import { segmented, wireForm } from "../../../ui/form.js";
 import { toast } from "../../../ui/toast.js";
 import { todayStr, daysBetween } from "../../../core/dates.js";
 import { pickAnimals, tagHtml, animalLabel } from "../ui.js";
@@ -23,7 +24,11 @@ export default async function weighSession(snap, { animalIds, title } = {}) {
   const target = (a) => snap.s.dlwgTarget[classOf(snap.ix, a, snap.today)] ?? snap.s.dlwgTarget.finisher;
   const got = new Map(); let i = 0; let val = "";
   const sessionId = store.newId(); const date = todayStr();
+  // How the weight was found (Tom, 20 Nov): not every farm has scales — a weight judged by eye is
+  // fine, it's kept as an estimate. Remembered for next time on this phone.
+  const MKEY = `fl10-weigh-method:${snap.lid}`; let method = "scale"; try { method = localStorage.getItem(MKEY) || "scale"; } catch (e) { /* private mode */ }
   const body = el(html`<div class="weigh" data-sector="beef">
+    <div class="seg-wrap" data-method>${segmented("method", [{ value: "scale", label: "Scales" }, { value: "tape", label: "Weigh tape" }, { value: "eye", label: "By eye" }], method)}</div>
     <div class="card pad" data-who></div>
     <div class="wv" aria-live="polite"><span data-v>—</span><small>kg</small></div>
     <div class="gain" data-gain></div>
@@ -31,12 +36,13 @@ export default async function weighSession(snap, { animalIds, title } = {}) {
     <div style="display:flex;justify-content:space-between"><button type="button" class="text-btn" data-prev>‹ Back one</button><button type="button" class="text-btn" data-skip>Skip this one</button></div>
   </div>`);
   const sh = openSheet({ title: title || "Weigh", body, cancelText: "Done", isDirty: () => false });
+  const mf = wireForm(body.querySelector("[data-method]")); mf.onChange(() => { method = mf.values().method || "scale"; try { localStorage.setItem(MKEY, method); } catch (e) { /* private mode */ } paint(); });
   const head = sh.el.querySelector(".sheet-head h2");
   const paint = () => {
     const a = list[i]; const lw = lastWeight(snap.ix, a);
     head.textContent = `Weigh · ${i + 1} of ${list.length}`;
     body.querySelector("[data-who]").replaceChildren(el(html`<div><div class="t-title" style="font-size:22px">${tagHtml(a.tag)}</div><div class="ink-2">${describe(snap.ix, a, snap.today)}</div><div class="ink-2">${lw ? `Last: ${lw.kg} kg on ${listDate(lw.date)} (${daysBetween(lw.date, date)} d ago)` : "Not weighed before"}</div></div>`));
-    body.querySelector("[data-v]").textContent = val || "—";
+    body.querySelector("[data-v]").textContent = val ? `${method === "eye" ? "~" : ""}${val}` : "—";
     const g = body.querySelector("[data-gain]");
     if (val && lw && daysBetween(lw.date, date) > 0) { const gain = (+val - lw.kg) / daysBetween(lw.date, date); const t = target(a); g.innerHTML = ""; g.append(el(html`<span class="${gain >= t ? "ok-ink" : "late-ink"}">Gain since last: ${gain.toFixed(2)} kg/day ${gain >= t ? "▲" : "▼"} target ${t}</span>`)); }
     else g.textContent = "";
@@ -65,8 +71,8 @@ export default async function weighSession(snap, { animalIds, title } = {}) {
   function finish(silent) {
     if (finished) return; finished = true;
     const entries = [...got.entries()].map(([animalId, kg]) => ({ animalId, kg }));
-    recordWeights(snap.lid, entries, { date, sessionId });
-    if (silent) { toast(`${entries.length} weight${entries.length === 1 ? "" : "s"} saved`); return; }
+    recordWeights(snap.lid, entries, { date, sessionId, method });
+    if (silent) { toast(`${entries.length} weight${entries.length === 1 ? "" : "s"} saved${method === "eye" ? " (by eye)" : ""}`); return; }
     sh.close(true, { force: true });
     const rows = entries.map((e) => { const a = snap.ix.byId.get(e.animalId); const lw = lastWeight(snap.ix, a); const d = lw ? daysBetween(lw.date, date) : 0; return { a, kg: e.kg, gain: lw && d >= 14 ? (e.kg - lw.kg) / d : null }; });
     const gains = rows.filter((r) => r.gain != null).map((r) => r.gain).sort((x, y) => x - y);

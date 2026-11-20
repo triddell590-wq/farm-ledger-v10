@@ -24,6 +24,7 @@ import { breedingFemales, dueInfo, scStatus, notSeenBulling, replacementHeifers,
 import { deadlineAnimals, finishingFacts } from "./model/finishing.js";
 import { beefAlerts, todayTasks, weekTasks, tbNext } from "./model/duties.js";
 import { mealToday } from "./model/feed.js";
+import { costsFor, costTodayCard } from "./feed-cards.js";
 import { tickGenerated } from "./actions.js";
 import { beefBanner } from "./model/region.js";
 
@@ -77,6 +78,7 @@ async function paint(body, snap) {
     ${alerts.length ? html`<div class="section" data-alerts>${alerts.slice(0, 3).map((a) => alertCard(a, false))}${alerts.length > 3 ? html`<button type="button" class="text-btn" data-more-alerts style="margin-top:4px">${alerts.length - 3} more ${alerts.length - 3 === 1 ? "thing needs" : "things need"} attention ›</button>` : ""}</div>` : ""}
     ${beefBanner(snap.s).filter((b) => newsworthy(b, today)).map((n) => html`<div class="info-card disease-banner ${n.level}" style="margin-top:12px">${raw(icon(n.level === "info" ? "info" : "alert"))}<span>${n.text}</span></div>`)}
     ${snap.meta.settings?.suspicion ? html`<div class="alert late" style="margin-top:12px"><span class="a-icon">${raw(icon("alert"))}</span><div><div class="a-title">Holding restricted: ${snap.meta.settings.suspicion.what} suspicion</div><div class="a-body">Cattle can only go direct to slaughter until the results are back.</div><div class="a-actions"><a class="text-btn" href="#/l/${lid}/disease">Record the result</a></div></div></div>` : ""}
+    ${money ? costTodayCard(snap, costsFor(snap)) : ""}
     ${blocks.map((b) => html`<div class="section">${groupLabel(MODE_NAMES[b])}<div class="season">${seasonBlock(b, snap, money)}</div></div>`)}
     ${blocks.includes("winter") ? "" : feedCard(snap)}
     <div class="section" data-tasks>${groupLabel("To do today", nowCount(tasks, today) || "")}</div>

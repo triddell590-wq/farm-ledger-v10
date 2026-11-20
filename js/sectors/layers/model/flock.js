@@ -1,7 +1,7 @@
 // Flock maths (design/14 §4, §5): bird age in weeks, birds alive, the daily sheet figures,
 // weekly KPIs, hen-housed eggs, the prediction to depop and the flock timeline.
 // Pure functions over a snapshot c = { s, data{houses, flocks, days, birdMoves, feedDeliveries…}, today }.
-import { addDays, daysBetween } from "../../../core/dates.js";
+import { addDays, daysBetween, MONTHS as MON } from "../../../core/dates.js";
 import { standardFor, layBand, band, mid, vsBand } from "./standards.js";
 
 const sum = (a, f = (x) => x) => a.reduce((t, x) => t + (+f(x) || 0), 0);
@@ -25,7 +25,6 @@ export function daysFor(c, flockId) {
   if (!c._days.has(flockId)) c._days.set(flockId, (c.data.days || []).filter((d) => d.flockId === flockId).sort((a, b) => a.date.localeCompare(b.date)));
   return c._days.get(flockId);
 }
-export const dayOn = (c, flockId, date) => daysFor(c, flockId).find((d) => d.date === date) || null;
 
 function moveDelta(c, f, before) {
   return sum((c.data.birdMoves || []).filter((m) => m.flockId === f.id && !["placement", "depop"].includes(m.kind) && before(m.date)), (m) => (m.direction === "out" ? -1 : 1) * (+m.n || 0));
@@ -177,7 +176,6 @@ export function timeline(c, f, today = c.today) {
   if (f.nextPlacement) m.push({ key: "next", label: `Next flock ${dm(f.nextPlacement)}`, date: f.nextPlacement, state: "future", edit: true });
   return m;
 }
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export function dm(iso) { if (!iso) return ""; const [, m, d] = iso.split("-"); return `${+d} ${MON[+m - 1]}`; }
 
 /** Cumulative mortality % and this-week mortality % for a flock. */

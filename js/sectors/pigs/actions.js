@@ -66,7 +66,6 @@ export function moveToFarrowing(snap, moves, date) {
   const room = snap.ix.rooms.get(moves[0]?.roomId);
   if (room && room.wash && room.wash.stage !== "ready" && room.wash.at?.emptied) updateRecord(snap.lid, "rooms", room, { wash: { ...room.wash, exception: { date, by: me() } } });
 }
-export const nestingDone = (snap, litter) => updateRecord(snap.lid, "litters", litter, { nesting: true }, { history: false });
 
 /**
  * Crate card save (design/13 §5.4). v: { sowId, roomId, crate, farrowedAt, bornAlive, stillborn, mummified,

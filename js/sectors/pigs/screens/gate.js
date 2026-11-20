@@ -12,6 +12,7 @@ import { wireForm, guardButton } from "../../../ui/form.js";
 import { canWrite } from "../../../core/policy.js";
 import { largeTitle, backLink, groupLabel, emptyState } from "../../../screens/common.js";
 import { liveScreen } from "./live.js";
+import { printView } from "../../../ui/print.js";
 import { loadPigs } from "../data.js";
 import { d2, dm, pill } from "../ui.js";
 import { qrSvg } from "../model/qr.js";
@@ -48,7 +49,7 @@ async function signScreen(ctx) {
       ${raw(qrSvg(url, { cls: "qr" }))}<p>Scan with your phone camera and fill in the form. Takes a minute.</p><p style="font-weight:700">${ASF}</p><p style="font-size:14px">Visitor records are kept for the farm's assurance scheme and covered by the farm's privacy notice.</p></div>
     <button type="button" class="btn" style="margin-top:16px" data-print>${raw(icon("print"))}Print or PDF</button>
     <p class="hint">The code opens the visitor form for this pig unit. Until sign-in-free forms are switched on, it works on phones signed in to this ledger — keep a phone or tablet at the gate.</p></div>`);
-  body.querySelector("[data-print]").onclick = () => { const w = document.createElement("div"); w.className = "print-view print-float"; w.append(body.querySelector("[data-sign]").cloneNode(true)); document.body.append(w); document.body.classList.add("printing"); const done = () => { w.remove(); document.body.classList.remove("printing"); }; addEventListener("afterprint", done, { once: true }); setTimeout(() => { try { print(); } catch (e) { done(); } setTimeout(() => { if (w.isConnected && !matchMedia("print").matches) done(); }, 1500); }, 50); };
+  body.querySelector("[data-print]").onclick = () => printView(body.querySelector("[data-sign]").cloneNode(true));
   return { el: body, title: "Gate sign", depth: 2, tab: "paperwork" };
 }
 

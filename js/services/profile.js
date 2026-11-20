@@ -10,6 +10,4 @@ export async function ensureProfile(user = auth.user) {
   await store.set(path(user.uid), fresh);
   return { id: user.uid, ...fresh };
 }
-export const getProfile = (uid = auth.user.uid) => store.get(path(uid));
 export const updateProfile = (partial, uid = auth.user.uid) => store.set(path(uid), { ...partial, updatedAt: new Date() }, { merge: true });
-export const watchProfile = (cb, uid = auth.user.uid) => store.watchDoc(path(uid), cb);

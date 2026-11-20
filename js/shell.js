@@ -120,10 +120,13 @@ function placePill() {
   const sel = tabbar.querySelector(".tab[aria-selected=true]"); const pill = tabbar.querySelector(".tab-pill");
   if (!sel) { pill.style.opacity = 0; return; }
   pill.style.opacity = 1;
-  const w = Math.min(sel.offsetWidth - 8, Math.max(52, sel.querySelector("svg").getBoundingClientRect().width + 28));
+  const w = app.classList.contains("side") ? sel.offsetWidth : Math.min(sel.offsetWidth - 8, Math.max(52, sel.querySelector("svg").getBoundingClientRect().width + 28));
   pill.style.width = w + "px";
   pill.style.transform = `translateX(${sel.offsetLeft + (sel.offsetWidth - w) / 2}px)`;
 }
+// Wide screens get the desktop layout; resizing a laptop window switches between the two as it goes.
+const WIDE = matchMedia("(min-width:1024px)");
+WIDE.addEventListener?.("change", () => { if (!lastScreen) return; app.classList.toggle("side", lastScreen.area !== "auth" && WIDE.matches); if (!tabbar.hidden) requestAnimationFrame(placePill); });
 addEventListener("resize", () => tabbar && !tabbar.hidden && placePill());
 
 /** Called by the router for every new screen, before the transition starts. */
@@ -132,7 +135,7 @@ export function updateShell(screen) {
   const chrome = screen.chrome || {};
   const isApp = screen.area !== "auth";
   topbar.hidden = !isApp || chrome.rail === false;
-  app.classList.toggle("side", isApp && matchMedia("(min-width:1024px)").matches);
+  app.classList.toggle("side", isApp && WIDE.matches);
   if (screen.sector) app.dataset.sector = screen.sector; else delete app.dataset.sector;
   topbar.classList.toggle("no-edge", !screen.sector);
   topbar.classList.toggle("no-compact", !chrome.compactTitle);

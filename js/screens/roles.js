@@ -6,13 +6,6 @@ export const ROLE_SHORT_HELP = {
   viewer: "Look, don't change. No money.",
   accountant: "Money only.",
 };
-export const ROLE_LONG = {
-  owner: "Everything, including delete it and hand it over.",
-  manager: "Everything except delete it; can invite Workers, Vet / Advisers and Accountants.",
-  worker: "Add and edit animal, medicine, feed and task records. Can't see money. Can't delete (only remove, which keeps history).",
-  viewer: "Read only. Sees animals, medicines, health records, inspection checklists and reports. Can't see money.",
-  accountant: "Money only: in/out, invoices, VAT and tax-year reports. Can't see animals or medicines.",
-};
 /** "As a Worker you can add and edit cattle, medicine and feed records. You won't see money." */
 export function joinBlurb(role, animals = "animal") {
   return {

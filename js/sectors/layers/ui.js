@@ -6,6 +6,7 @@ import { el } from "../../ui/dom.js";
 import { icon, FL_ICONS } from "../../ui/icons.js";
 import { openSheet } from "../../ui/sheet.js";
 import { download } from "../../ui/download.js";
+import { MONTHS as MON } from "../../core/dates.js";
 
 // Layers icons (mockups/layers.html), same 24 grid / 2px stroke as the shared set.
 Object.assign(FL_ICONS, {
@@ -23,7 +24,6 @@ export function ensureCss() {
   if (cssDone || typeof document === "undefined") return; cssDone = true;
   const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "css/layers.css"; document.head.appendChild(l);
 }
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 /** "Thu 16 Oct" */
 export const dm = (iso) => (iso ? `${DOW[new Date(iso.slice(0, 10) + "T12:00:00Z").getUTCDay()]} ${+iso.slice(8, 10)} ${MON[+iso.slice(5, 7) - 1]}` : "");
@@ -128,20 +128,7 @@ export function pickFrom({ title, items, empty = "Nothing to choose." }) {
   return sh.done.then((r) => (typeof r === "string" ? r : null));
 }
 
-/** Printable table (design/00 §6.18): opens the browser print dialog. */
-export function printDoc(doc) {
-  const w = document.createElement("div"); w.className = "print-view print-float"; w.innerHTML = toHtmlTable(doc);
-  document.body.appendChild(w); document.body.classList.add("printing");
-  const done = () => { w.remove(); document.body.classList.remove("printing"); removeEventListener("afterprint", done); };
-  addEventListener("afterprint", done);
-  setTimeout(() => { try { window.print(); } catch (e) { done(); } setTimeout(() => { if (w.isConnected && !matchMedia("print").matches) done(); }, 1500); }, 50);
-}
-export function toHtmlTable(doc) {
-  const sections = doc.sections || [doc];
-  return sections.map((d) => `<div class="ph"><b>${esc(d.title)}</b><span>${(d.top || []).map(([k, v]) => `${esc(k)}: ${esc(v)}`).join(" · ")}</span></div>
-    <table><thead><tr>${d.headers.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${d.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${d.headers.length}">Nothing recorded yet.</td></tr>`}</tbody></table>
-    <div class="pf">${esc(d.note || "")} Printed from Farm Ledger on ${new Date().toLocaleDateString("en-GB")}.</div>`).join('<div style="page-break-after:always"></div>');
-}
+export { printDoc, toHtmlTable } from "../../ui/print.js";
 export function csvDownload(doc) {
   const q = (s) => { s = String(s == null ? "" : s); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   download(`${doc.title.replace(/[^\w]+/g, "-").toLowerCase()}.csv`, [doc.headers, ...doc.rows].map((r) => r.map(q).join(",")).join("\n"), "text/csv");

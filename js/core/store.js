@@ -32,24 +32,26 @@ function call(name, args) {
   if (!backend) throw new Error("Store backend not set");
   return backend[name](...args);
 }
+/** Writes go through here so short-lived read caches (services/ledger-data.js) know to drop. */
+function write(name, args) { emit("store:write", { op: name, path: args[0] }); return call(name, args); }
 
 export const store = {
   DELETE,
   newId: () => call("newId", []),
   get: (path) => call("get", [path]),
-  set: (path, data, opts) => call("set", [path, data, opts || {}]),
-  update: (path, partial) => call("update", [path, partial]),
-  remove: (path) => call("remove", [path]),
+  set: (path, data, opts) => write("set", [path, data, opts || {}]),
+  update: (path, partial) => write("update", [path, partial]),
+  remove: (path) => write("remove", [path]),
   add(collPath, data) {
     const id = call("newId", []);
-    call("set", [`${collPath}/${id}`, data, {}]).catch((e) => emit("store:error", { op: "add", path: collPath, error: e }));
+    write("set", [`${collPath}/${id}`, data, {}]).catch((e) => emit("store:error", { op: "add", path: collPath, error: e }));
     return id;
   },
   query: (collPath, opts) => call("query", [collPath, opts || {}]),
   queryGroup: (collId, opts) => call("queryGroup", [collId, opts || {}]),
   watchDoc: (path, cb, onErr) => call("watchDoc", [path, cb, onErr || ((e) => emit("store:error", { op: "watch", path, error: e }))]),
   watchQuery: (collPath, opts, cb, onErr) => call("watchQuery", [collPath, opts || {}, cb, onErr || ((e) => emit("store:error", { op: "watch", path: collPath, error: e }))]),
-  batch: () => call("batch", []),
+  batch() { const b = call("batch", []); const commit = b.commit; b.commit = () => { emit("store:write", { op: "batch" }); return commit(); }; return b; },
   /** Fire-and-forget write that reports failure on the bus (for offline-friendly saves). */
   bg(promise, what) { promise.catch((e) => emit("store:error", { op: what || "write", error: e })); return promise; },
 };

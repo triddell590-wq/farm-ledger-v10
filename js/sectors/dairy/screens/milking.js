@@ -28,6 +28,7 @@ import { todayTasks } from "../model/duties.js";
 import { diseaseBanner } from "../model/content.js";
 import { releaseWithhold, undoRelease, tickGenerated } from "../actions.js";
 import { openParlour, parlourText } from "./parlour.js";
+import { dairyMoneyCard } from "../today-money.js";
 
 const flow = (name, fn = "default") => async (snap, extra) => (await import(`../flows/${name}.js`))[fn](snap, extra);
 
@@ -103,6 +104,7 @@ async function paint(body, snap) {
     ${disease.map((d) => html`<div class="banner-line" style="background:var(--info-soft);color:var(--info-ink)">${raw(icon("info"))}<span>${d.text}</span></div>`)}
     ${banner ? html`<div class="banner-line">${raw(icon("birth"))}<span>${banner}</span></div>` : ""}
     ${alerts.length ? html`<div class="section">${alerts.map((a) => alertCard(a, false))}</div>` : ""}
+    ${dairyMoneyCard(snap)}
     ${sectionOf("Today", html`<div class="tiles3">
       ${tile("Heats due", g.heats.length, L("fertility"))}${tile("To serve", g.serve.length, L("fertility"))}${tile("PD due", g.pd.length, L("fertility"))}
       ${tile("Dry off", dryWk.dryOff.filter((x) => x.date <= addDays(today, 7)).length, L("fertility"), "this week")}${tile("Calving", dryWk.calving.length, L("fertility"), "2 weeks")}${tile("Fresh cows", freshDue.length, "#fresh", freshDue.length ? "to check" : "checked")}</div>`)}

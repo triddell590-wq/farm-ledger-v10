@@ -156,3 +156,37 @@ body:has(.select-bar) .fab{display:none}
 [data-sector=beef] .finish-row > .pill{grid-column:2;grid-row:1;margin-top:2px}
 .finish-row .book-in{grid-column:1 / -1;grid-row:2;justify-self:start;flex-basis:100%;text-align:left;padding:4px 0 0 0;min-height:40px;color:var(--grass-deep);font-weight:700}
 .load-card{margin:0 0 12px}
+
+/* Herd → Groups: each group with what it eats (Tom, 5 Nov) */
+.grp-feedsum{display:block;color:var(--ink);text-decoration:none;margin-top:4px;padding-top:4px;padding-bottom:0}
+.grp-fs-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--hair)}
+.grp-fs-line>b{font-size:20px;white-space:nowrap}
+.grp-fs-open{display:flex;align-items:center;justify-content:space-between;min-height:48px;color:var(--grass);font-weight:600}
+.grp-list{margin-top:16px;display:flex;flex-direction:column;gap:12px}
+.grp-card{padding:0;overflow:hidden}
+.grp-card>.row{border-radius:0}
+.grp-card .grp-feed{width:100%;text-align:left;border-top:1px solid var(--hair);background:none}
+.grp-card .grp-feed .primary{font-weight:600}
+.grp-card .grp-feed[disabled]{cursor:default;opacity:1}
+/* Feed & silage: silage and meal by group, the same layout (Tom, 10 Nov) */
+.feed-table .ft-v{flex:none;display:flex;flex-direction:column;align-items:flex-end;text-align:right;margin-left:12px}
+.feed-table .ft-v b{font-size:19px;white-space:nowrap}
+.feed-table .ft-v span{font-size:14px;color:var(--ink-2);white-space:nowrap}
+.feed-table .ft-total{background:color-mix(in srgb,var(--surface) 70%,var(--bg))}
+.feed-table .ft-total .primary{font-weight:700}
+.feed-table button.row[disabled]{cursor:default}
+/* ration form: whole-group amounts with per head and cost worked out (Tom, 10 Nov) */
+.ration-h{font-size:19px;line-height:24px;font-weight:800;margin:20px 4px 8px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ration-h span{font-size:15px;font-weight:600;color:var(--ink-2)}
+.ration-guide{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.ration-guide .chip{justify-content:flex-start;height:auto;min-height:44px;padding:8px 14px;text-align:left;line-height:20px}
+.ration-form .seg-wrap{margin-bottom:8px}
+.ration-sum{margin-top:16px}
+.ration-sum .rs-head{font-weight:800;font-size:17px;margin-bottom:4px}
+.ration-sum .rs-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;border-top:1px solid var(--hair)}
+.ration-sum .rs-line b{white-space:nowrap;text-align:right}
+.fc-prices{display:block;width:100%;text-align:left;margin-top:12px;padding-top:4px;padding-bottom:0;color:var(--ink)}
+.fc-prices .mc-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--hair)}
+.fc-prices .mc-open{display:flex;align-items:center;justify-content:space-between;min-height:48px;color:var(--grass);font-weight:600}
+.fc-prices[disabled]{opacity:1;cursor:default}
+.grp-card .grp-cost{color:var(--ink);font-weight:600}

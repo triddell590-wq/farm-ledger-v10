@@ -88,5 +88,4 @@ export const TURNAROUND_STEPS = [
   ["litterOut", "Litter out"], ["washed", "Washed"], ["disinfected", "Disinfected"], ["swabs", "Hygiene swabs"], ["dry", "Dry"],
   ["pest", "Pest control"], ["waterLines", "Water lines sanitised"], ["rebedded", "Re-bedded"], ["preheat", "Pre-heat on"], ["placed", "Chicks placed"],
 ];
-export const SALM_LABS = ["AFBI Stormont", "AFBI Omagh"]; // editable list in settings (guess-level: confirm DAERA-approved labs)
 export const SALM_RESULTS = [["pending", "Waiting for result"], ["negative", "Negative"], ["SE", "S. Enteritidis"], ["ST", "S. Typhimurium"], ["mST", "Monophasic S. Typhimurium"], ["other", "Other Salmonella"]];

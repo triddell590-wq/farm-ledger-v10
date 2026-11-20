@@ -66,20 +66,57 @@ export function fodderBudget({ leftT, heads, rates, today, turnout }) {
   return { perDay, daysLeft, runOut, short, shortT: short > 0 ? short * perDay : 0 };
 }
 
-/** Meal today from feed groups (v9: group.animalIds + dated rations {from, meal kg/head}). */
-export function mealToday(feedGroups, adjust, data, today) {
-  let kg = 0; const rows = [];
+/** Who a feed group feeds. Linked to a herd group (Tom, 5 Nov: feed set from Herd → Groups) it's
+ *  whoever is in that group, so moving cattle in or out changes the feed; otherwise the picked cattle. */
+export function feedMembers(g, data) {
+  if (g && g.groupId) return (data?.animals || []).filter((a) => a.groupId === g.groupId).map((a) => a.id);
+  return g?.animalIds || [];
+}
+/** The feed group for a herd group: the one linked to it, else (feed groups made before the link
+ *  existed) one with the same name or exactly the same cattle on farm — linked when next saved. */
+export function feedForGroup(feedGroups, group, data) {
+  const live = (feedGroups || []).filter((f) => !f.deleted); if (!group) return null;
+  const linked = live.find((f) => f.groupId === group.id); if (linked) return linked;
+  const free = live.filter((f) => !f.groupId);
+  const name = String(group.name || "").trim().toLowerCase();
+  const byName = name && free.find((f) => String(f.name || "").trim().toLowerCase() === name); if (byName) return byName;
+  if (!data) return null;
+  const on = new Set((data.animals || []).filter(onFarm).map((a) => a.id));
+  const mine = (data.animals || []).filter((a) => on.has(a.id) && a.groupId === group.id).map((a) => a.id).sort().join();
+  return (mine && free.find((f) => (f.animalIds || []).filter((id) => on.has(id)).sort().join() === mine)) || null;
+}
+/** The ration in force on `day`. */
+export const rationOn = (g, day) => (g?.rations || []).filter((x) => x.from <= day).sort((a, b) => b.from.localeCompare(a.from))[0] || null;
+
+const has = (v) => v != null && v !== "";
+/**
+ * One day of a ration for a group of `heads`. Rations saved from 10 Nov hold the WHOLE GROUP's
+ * amounts (mealGroup, silageGroup kg a day, or blocks every N days) — Tom enters what the batch gets
+ * and the per-head figures are worked out. Older rations hold per-head kg (meal, silage) as in v9.
+ */
+export function rationDay(r, heads, blockKg) {
+  if (!r || !heads) return { meal: 0, silage: 0, mealHead: 0, silageHead: 0 };
+  const meal = has(r.mealGroup) ? n(r.mealGroup) : n(r.meal) * heads;
+  const silage = rationSilageKg(r, heads, blockKg);
+  return { meal, silage, mealHead: meal / heads, silageHead: silage / heads };
+}
+
+/** Meal and silage today for every feed group (v9: group.animalIds + dated rations; meal day changes). */
+export function mealToday(feedGroups, adjust, data, today, blockKg = 0) {
+  let kg = 0, silage = 0; const rows = [];
   const live = new Set(data.animals.filter(onFarm).map((a) => a.id));
   for (const g of feedGroups || []) {
     if (g.deleted) continue;
     const r = (g.rations || []).filter((x) => x.from <= today).sort((a, b) => b.from.localeCompare(a.from))[0];
-    const heads = (g.animalIds || []).filter((id) => live.has(id)).length;
-    let meal = r ? n(r.meal) * heads : 0;
+    const heads = feedMembers(g, data).filter((id) => live.has(id)).length;
+    const day = rationDay(r, heads, blockKg); let meal = day.meal;
     const adj = (adjust || []).find((x) => !x.deleted && x.groupId === g.id && x.date === today);
-    if (adj && adj.meal != null && adj.meal !== "") meal = n(adj.meal);
-    kg += meal; rows.push({ group: g, heads, perHead: r ? n(r.meal) : 0, meal });
+    if (adj && has(adj.meal)) meal = n(adj.meal);
+    let sil = day.silage; if (adj && has(adj.silage)) sil = n(adj.silage);
+    kg += meal; silage += sil;
+    rows.push({ group: g, ration: r || null, heads, perHead: heads ? meal / heads : 0, meal, silage: sil, silageHead: heads ? sil / heads : 0, blocks: r && n(r.blocks) > 0 ? n(r.blocks) / (n(r.every) > 1 ? n(r.every) : 1) : 0 });
   }
-  return { kg, rows };
+  return { kg, silage, rows };
 }
 
 /** Meal calculator (design/10 §8.3): editable table, kg/head/day for a 500 kg steer. Guide only. */
@@ -88,8 +125,9 @@ export function mealFor(quality, gain) { const t = MEAL_TABLE[quality] || MEAL_T
 
 /** v9 ration maths: silage kg eaten by the feed groups from `from` to `today` inclusive. */
 export function rationSilageKg(r, heads, blockKg) {
-  if (!r) return 0;
+  if (!r || !heads) return 0;
   if (n(r.blocks) > 0) return blockKg ? (n(r.blocks) / (n(r.every) > 1 ? n(r.every) : 1)) * blockKg : 0;
+  if (has(r.silageGroup)) return n(r.silageGroup);
   return n(r.silage) * heads;
 }
 export const silageEatenKg = (feedGroups, adjust, data, from, today, blockKg) => feedEaten(feedGroups, adjust, data, from, today, blockKg).silage;
@@ -98,13 +136,13 @@ export function feedEaten(feedGroups, adjust, data, from, today, blockKg) {
   const out = { meal: 0, silage: 0 }; if (!from) return out;
   const adj = new Map((adjust || []).filter((a) => !a.deleted).map((a) => [a.groupId + "|" + a.date, a]));
   for (const g of feedGroups || []) {
-    if (g.deleted) continue; const ids = new Set(g.animalIds || []);
+    if (g.deleted) continue; const ids = new Set(feedMembers(g, data));
     const rs = (g.rations || []).slice().sort((a, b) => a.from.localeCompare(b.from)); if (!rs.length) continue;
     let d = rs[0].from < from ? from : rs[0].from;
     for (let i = 0; d <= today && i < 3660; d = addDays(d, 1), i++) {
       const r = rs.filter((x) => x.from <= d).pop(); if (!r) continue;
       const heads = (data?.animals || []).filter((a) => ids.has(a.id) && (!a.offDate || a.offDate > d) && (!a.dob || a.dob <= d)).length;
-      let sil = rationSilageKg(r, heads, blockKg), meal = n(r.meal) * heads; const a = adj.get(g.id + "|" + d);
+      const day = rationDay(r, heads, blockKg); let sil = day.silage, meal = day.meal; const a = adj.get(g.id + "|" + d);
       if (a && a.silage != null && a.silage !== "") sil = n(a.silage);
       if (a && a.meal != null && a.meal !== "") meal = n(a.meal);
       out.silage += sil; out.meal += meal;

@@ -41,7 +41,7 @@ export function indexHerd(data) {
   }
   const weights = new Map();
   const addW = (id, w) => { if (!weights.has(id)) weights.set(id, []); weights.get(id).push(w); };
-  for (const w of data.weighings || []) if (!w.deleted && w.animalId && +w.kg > 0 && w.date) addW(w.animalId, { date: w.date, kg: +w.kg, id: w.id });
+  for (const w of data.weighings || []) if (!w.deleted && w.animalId && +w.kg > 0 && w.date) addW(w.animalId, { date: w.date, kg: +w.kg, id: w.id, method: w.method || "scale", est: w.method === "eye" });
   for (const a of data.animals) if (+a.lastWeightKg > 0 && a.lastWeightDate) addW(a.id, { date: a.lastWeightDate, kg: +a.lastWeightKg, est: !!a.lastWeightEst, v9: true });
   for (const list of weights.values()) list.sort((x, y) => x.date.localeCompare(y.date));
   // withdrawals by tag (medicine records name animals by tag, as v9 did)
@@ -66,7 +66,7 @@ export function lastWeight(ix, a) { const w = weightsOf(ix, a); return w.length 
 export function dlwg(ix, a) {
   const w = weightsOf(ix, a); if (w.length < 2) return null;
   const last = w[w.length - 1];
-  for (let i = w.length - 2; i >= 0; i--) { const days = daysBetween(w[i].date, last.date); if (days >= 14) return { value: (last.kg - w[i].kg) / days, days, from: w[i], to: last }; }
+  for (let i = w.length - 2; i >= 0; i--) { const days = daysBetween(w[i].date, last.date); if (days >= 14) return { value: (last.kg - w[i].kg) / days, days, from: w[i], to: last, byEye: !!(w[i].est || last.est) }; }
   return null;
 }
 export function withdrawal(ix, a, today) { const w = ix.wd.get(normTag(a.tag)); return w && w.until >= today ? w : null; }

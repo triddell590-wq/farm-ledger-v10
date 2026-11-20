@@ -403,7 +403,30 @@ button.num-tile{box-shadow:var(--e-1)}
   .side .rail .rail-pill{width:100%}
   .side .rail .rail-add{width:100%;height:auto;min-height:44px;border-radius:var(--r-full);justify-content:flex-start;padding:8px 12px;display:flex;gap:8px;align-items:center;font-size:14px;font-weight:600}
   .side .rail .rail-add-lbl{display:inline}
-  .tabbar{left:calc(50% + 130px)}
+}
+/* Laptops and desktops (Tom, 5 Nov): a proper desktop layout rather than a stretched phone. Herds and
+   flocks down the left, the section tabs across the top bar, the + button in the bottom corner. */
+@media (min-width:1024px){
+  /* a blurred bar traps fixed children inside it, which clipped the sidebar to the bar's height */
+  .side .topbar{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--bg);border-bottom:1px solid var(--hair)}
+  .side .topbar-in{max-width:none;min-height:60px;padding-right:var(--gutter)}
+  :root.demo .side .rail,:root.preview .side .rail{top:40px}
+  .side .rail .rail-pill{height:48px;font-size:16px}
+  .side .rail .rail-pill:hover:not([aria-current=page]){background:color-mix(in srgb,var(--surface) 60%,transparent);color:var(--ink)}
+  .side .tabbar{top:calc(4px + var(--safe-t));bottom:auto;left:calc(260px + var(--gutter) - 12px);right:auto;transform:none;width:auto;max-width:calc(100% - 260px - var(--gutter) - 170px);overflow:hidden;height:52px;
+    border:0;border-radius:var(--r-full);box-shadow:none;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;gap:4px}
+  :root.demo .side .tabbar,:root.preview .side .tabbar{top:44px}
+  .side .tabbar .tab{flex:none;flex-direction:row;gap:8px;padding:0 14px;font-size:15px;line-height:20px}
+  .side .tabbar .tab span{overflow:visible}
+  .side .tabbar .tab svg{width:22px;height:22px}
+  .side .tabbar .tab:hover:not([aria-selected=true]){color:var(--ink)}
+  .side .tabbar .tab-pill{top:6px;height:40px}
+  .side .fab{right:32px;bottom:calc(32px + var(--safe-b))}
+  .side .screen{padding-bottom:calc(48px + var(--safe-b))}
+  #app.side.has-fab .screen:not(.no-chrome){padding-bottom:calc(64px + 32px + 48px + var(--safe-b))}
+  .toast-wrap{bottom:calc(32px + var(--safe-b))}
+  .toast-wrap.beside-fab{padding-right:calc(32px + 64px + 16px)}
+  .page{max-width:760px}
 }
 
 /* ---- Notifications (builder-notify): bell in the top bar, notification centre ---- */
@@ -456,8 +479,8 @@ html{scroll-padding-bottom:calc(var(--kb,0px) + 24px)}
   background:var(--due-soft);color:var(--due-ink);font-size:14px;border-bottom:1px solid color-mix(in srgb,var(--due) 35%,transparent)}
 .demo-banner span{flex:1;min-width:0}
 .demo-banner a{font-weight:700;color:var(--due-ink);text-decoration:underline;min-height:32px;display:inline-flex;align-items:center}
-:root.demo .topbar{top:40px}
-:root.demo .topbar{padding-top:0}
+:root.demo .topbar,:root.preview .topbar{top:40px}
+:root.demo .topbar,:root.preview .topbar{padding-top:0}
 .welcome .demo-link{align-self:center;margin-top:4px}
 
 /* map: draw bar on one row; credits behind "i"; head counts on fields (review A #27, #28) */
@@ -497,3 +520,74 @@ html{scroll-padding-bottom:calc(var(--kb,0px) + 24px)}
 .herd-list.compact .row .secondary{display:none}
 .herd-filter .chips{flex-wrap:wrap}
 .tag-msg{color:var(--late-ink);margin:4px 16px 8px;font-size:14px;line-height:19px;font-weight:600}
+
+/* VAT: the summary card on Money and the VAT screen (Tom, 4–5 Nov). One figure per line, full-strength
+   text, so nothing squeezes or overlaps at bigger text sizes. */
+.vat-card{display:block;padding:4px 16px;color:var(--ink);text-decoration:none}
+.vat-line{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--hair);font-size:var(--body-size);line-height:24px}
+.vat-line>span{min-width:0}
+.vat-line>b{font-size:20px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.vat-line.total{font-weight:700}
+.vat-line.total>b{font-size:22px}
+.vat-card>.vat-line:last-child{border-bottom:0}
+.vat-open{display:flex;align-items:center;justify-content:space-between;min-height:48px;color:var(--grass);font-weight:600;font-size:var(--body-size)}
+.vat-sub{display:block;font-size:15px;line-height:20px;font-weight:400;color:var(--ink-2)}
+.vat-total{background:var(--surface-2,var(--surface))}
+
+/* "Tools for this" (Tom, 5 Nov): More → Tools offered on the screens they belong to */
+.tool-links{margin-top:28px}
+.tool-links .chips{display:flex;flex-wrap:wrap;gap:8px}
+.tool-links .chip{color:var(--ink);text-decoration:none;height:auto;min-height:44px;padding-top:8px;padding-bottom:8px;line-height:20px}
+.tool-links .chip svg{flex:none}
+.page > :has(+ .tool-links){padding-bottom:0;margin-bottom:0} /* the screen's own bottom space clears the + button */
+
+/* Big calendar (Tom, 10 Nov): replaces the phone's small one for every date box. Large day buttons. */
+.dp-layer{position:fixed;inset:0;z-index:95;display:flex;align-items:flex-end;justify-content:center}
+.dp-scrim{position:absolute;inset:0;background:rgba(0,0,0,.4)}
+.dp{position:relative;width:100%;max-width:520px;max-height:100dvh;overflow-y:auto;background:var(--sheet,var(--surface));color:var(--ink);
+  border-radius:var(--r-xl) var(--r-xl) 0 0;padding:16px 16px calc(16px + var(--safe-b));box-shadow:var(--e-float);overscroll-behavior:contain}
+@media (min-width:640px){.dp-layer{align-items:center}.dp{max-width:440px;border-radius:var(--r-xl);padding-bottom:16px}}
+.dp-label{font-size:15px;font-weight:600;color:var(--ink-2)}
+.dp-chosen{font-size:24px;line-height:30px;font-weight:800;letter-spacing:-.01em;margin-top:2px}
+.dp-quick{display:flex;gap:8px;margin-top:12px}
+.dp-quick .chip{flex:1;justify-content:center;font-size:17px;height:48px}
+.dp-quick .chip:disabled{opacity:.4}
+.dp-nav{display:flex;align-items:center;gap:8px;margin-top:16px}
+.dp-arrow{flex:none;width:52px;height:56px;border-radius:var(--r-md);background:var(--surface);box-shadow:inset 0 0 0 1px var(--hair);font-size:32px;line-height:1;font-weight:700;color:var(--ink)}
+.dp-arrow:disabled{opacity:.3}
+.dp-nav select{flex:1;min-width:0;height:56px;border-radius:var(--r-md);border:0;box-shadow:inset 0 0 0 1px var(--hair);background:var(--surface);color:var(--ink);font-size:18px;font-weight:700;padding:0 4px 0 10px}
+.dp-nav select.dp-year{flex:0 0 86px}
+.dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px}
+.dp-dow{text-align:center;font-size:14px;font-weight:700;color:var(--ink-2);padding:4px 0}
+.dp-day{aspect-ratio:1/1;min-height:44px;border-radius:var(--r-md);font-size:20px;font-weight:600;color:var(--ink);background:none;font-variant-numeric:tabular-nums}
+.dp-day:not(:disabled):active{transform:scale(.94)}
+@media (hover:hover){.dp-day:not(:disabled):not(.on):hover{background:var(--surface)}}
+.dp-day.today{box-shadow:inset 0 0 0 2px var(--grass);color:var(--grass);font-weight:800}
+.dp-day.on{background:var(--grass);color:var(--on-grass);box-shadow:none;font-weight:800}
+.dp-day:disabled{opacity:.25}
+.dp-foot{display:flex;gap:8px;margin-top:16px}
+.dp-foot .btn{flex:1}
+:root.hi-vis .dp{zoom:var(--text-zoom)}
+/* typed dates (Tom, 10 Nov): a number box + calendar button in front of the hidden real date box */
+.dp-wrap{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:4px;position:relative}
+.dp-wrap .dp-text{flex:1;min-width:0;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.dp-wrap .dp-text[aria-invalid=true]{color:var(--late-ink);text-decoration:underline wavy var(--late);text-underline-offset:4px}
+.dp-btn{flex:none;width:44px;height:44px;margin-right:-8px;border-radius:var(--r-md);display:grid;place-items:center;color:var(--grass)}
+.dp-btn:active{background:var(--surface)}
+.dp-real{position:absolute !important;right:0;top:0;width:1px !important;min-width:0 !important;height:1px !important;min-height:0 !important;opacity:0;pointer-events:none;flex:none !important}
+:not(.field) > .dp-wrap{border-bottom:1px solid var(--hair)}
+
+/* Margin card on every Today (Tom, 10 Nov) and the beef feed cost section */
+.money-card{display:block;color:var(--ink);text-decoration:none;padding-bottom:0}
+.money-card .mc-label{display:block;font-size:15px;font-weight:700;color:var(--ink-2);margin-bottom:2px}
+.money-card .mc-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid var(--hair)}
+.money-card .mc-line>b{font-size:20px;white-space:nowrap;text-align:right}
+.money-card .mc-note{display:block;color:var(--ink-2);font-size:15px;line-height:20px;padding:8px 0}
+.money-card .mc-open{display:flex;align-items:center;justify-content:space-between;min-height:48px;color:var(--grass);font-weight:600}
+.fc-groups .fc-v{flex:none;display:flex;flex-direction:column;align-items:flex-end;text-align:right;margin-left:12px}
+.fc-groups .fc-v b{font-size:19px;white-space:nowrap}
+.fc-groups .fc-v span{font-size:13px;color:var(--ink-2);white-space:nowrap}
+.fc-check{display:flex;flex-direction:column;gap:6px;line-height:21px}
+.fc-prompt{display:flex;flex-direction:column;gap:4px;color:var(--ink);text-decoration:none;position:relative;padding-right:44px}
+.fc-prompt svg{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--grass)}
+.fc-prompt span{color:var(--ink-2)}
