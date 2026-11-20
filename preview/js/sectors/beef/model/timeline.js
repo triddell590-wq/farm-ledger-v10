@@ -11,7 +11,7 @@ export function timelineFor(data, ix, a) {
   w.forEach((x, i) => {
     const prev = [...w.slice(0, i)].reverse().find((p) => daysBetween(p.date, x.date) >= 14);
     const g = prev ? (x.kg - prev.kg) / daysBetween(prev.date, x.date) : null;
-    add({ date: x.date, title: `Weighed ${x.kg} kg${g != null ? ` · ${g >= 0 ? "+" : ""}${g.toFixed(2)}/day` : ""}`, coll: "weighings", id: x.id, by: rec(data.weighings, x.id) });
+    add({ date: x.date, title: `${x.method === "eye" ? `Judged by eye about ${x.kg}` : `Weighed ${x.kg}`} kg${g != null ? ` · ${g >= 0 ? "+" : ""}${g.toFixed(2)}/day` : ""}`, coll: "weighings", id: x.id, by: rec(data.weighings, x.id) });
   });
   for (const m of data.medicines) {
     if (m.notUsed) continue;

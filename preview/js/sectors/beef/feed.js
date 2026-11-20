@@ -15,7 +15,7 @@ import { liveSnap } from "./data.js";
 import { entrySheet, cattleRow } from "./flows/common.js";
 import { setMeta, softDelete, setMarketPrices } from "./actions.js";
 import { pitGeom, silageList, headByClass, fodderBudget, mealToday, feedEaten, silageStock, rationOn, mealFor } from "./model/feed.js";
-import { CLASS_NAMES, onFarm } from "./model/animals.js";
+import { CLASS_NAMES, onFarm, classOf } from "./model/animals.js";
 import { SOURCES } from "./model/rules.js";
 import { costsFor, costSection } from "./feed-cards.js";
 
@@ -151,6 +151,9 @@ export function groupFeedSheet(snap, g = null, { herdGroup = null } = {}) {
   const r1 = (v) => (v ? String(Math.round(v * 10) / 10) : "");
   const mealG = r.mealGroup ?? (r.meal != null && h0 ? r1(+r.meal * h0) : ""), silG = r.silageGroup ?? (+r.silage && h0 ? r1(+r.silage * h0) : "");
   const how = +r.blocks ? "blocks" : "kg";
+  // the herd's target gain for the class most of this group are in (Targets) — the default when not weighed
+  const target = (() => { const ms = hg ? snap.data.animals.filter((a) => onFarm(a) && a.groupId === hg.id) : (g?.animalIds || []).map((id) => snap.ix.byId.get(id)).filter((a) => a && onFarm(a)); const by = {}; for (const a of ms) { const c = classOf(snap.ix, a, snap.today); by[c] = (by[c] || 0) + 1; } const top = Object.entries(by).sort((x, y) => y[1] - x[1])[0]?.[0]; return top ? +snap.s.dlwgTarget[top] || null : null; })();
+  const valueKg = (+snap.s.price.perKgDead || 0) * ((+snap.s.processor.ko.Steer || 55) / 100);
   const body = el(html`<form novalidate class="ration-form"><div class="form-group" data-who>${hg ? "" : textField({ name: "name", label: "Name", value: g?.name || "", placeholder: "e.g. Shed 2 finishers" })}</div>
     ${hg ? html`<p class="hint" style="margin-top:0">Feeds everyone in <b>${hg.name}</b>. Cattle moved in or out are fed from the day they move.</p>` : ""}
     <div class="form-group">${textField({ name: "from", label: "Starting", type: "date", value: snap.today })}</div>
@@ -161,6 +164,9 @@ export function groupFeedSheet(snap, g = null, { herdGroup = null } = {}) {
     <div class="seg-wrap">${segmented("how", [{ value: "kg", label: "Weighed in kg" }, { value: "blocks", label: "Grab blocks" }], how)}</div>
     <div class="form-group" data-kg>${textField({ name: "silageGroup", label: "Silage for the group (kg a day)", value: silG, inputmode: "decimal", placeholder: "0", optional: true })}</div>
     <div class="form-group" data-blocks>${textField({ name: "blocks", label: "Blocks for the group", value: r.blocks || "", inputmode: "decimal", optional: true })}${textField({ name: "every", label: "Every (days)", value: r.every ?? 1, inputmode: "numeric", optional: true })}</div>
+    <h3 class="ration-h">Growth <span>optional — no scales needed</span></h3>
+    <div class="form-group">${textField({ name: "expectedGain", label: "Expected gain a head (kg a day)", value: g?.expectedGain ?? "", inputmode: "decimal", optional: true, placeholder: target ? String(target) : "e.g. 1.0" })}</div>
+    <p class="hint" style="margin-top:6px">Used to work out the margin over feed. Leave it blank to use the herd's target${target ? ` (${target} kg a day)` : ""}. If you do weigh, the weighed gain is used instead.</p>
     <div class="card pad ration-sum" data-sum aria-live="polite"></div>
     <p class="hint">A change of ration starts from the date you give; earlier days keep the old ration.</p>${g ? html`<button type="button" class="text-btn" data-del>${hg ? "Stop recording feed for this group" : "Remove this feed group"}</button>` : ""}</form>`);
   const who = hg ? null : cattleRow(snap, { label: "Cattle", ids: (g?.animalIds || []).filter((id) => snap.ix.byId.get(id)), onChange: () => paint() });
@@ -183,6 +189,9 @@ export function groupFeedSheet(snap, g = null, { herdGroup = null } = {}) {
     else if (n && meal && money) lines.push(html`<div class="rs-line ink-2"><span>Add a meal price on Feed & silage to see the cost</span></div>`);
     if (n && silage) lines.push(html`<div class="rs-line"><span>Silage a head</span><b>${kg(silage / n)} a day</b></div>`, html`<div class="rs-line"><span>Silage for the group</span><b>${kg(silage)} a day</b></div>`);
     if (n && blocks && +v.blocks && !blockKg) lines.push(html`<div class="rs-line ink-2"><span>Measure the pit to turn blocks into kg</span></div>`);
+    const gain = +v.expectedGain > 0 ? +v.expectedGain : target;
+    if (n && price && valueKg && gain) { const m = gain * valueKg - (meal / 1000 * price + silage / 1000 * (+snap.s.meal.silagePerTonne || 0)) / n;
+      lines.push(html`<div class="rs-line"><span>Margin over feed a head (est.)</span><b class="${m >= 0 ? "ok-ink" : "late-ink"}">${m < 0 ? "−" : ""}${moneyText(Math.abs(m), true)} a day</b></div>`); }
     body.querySelector("[data-sum]").replaceChildren(el(html`<div>${lines}</div>`));
     body.querySelectorAll("[data-gain]").forEach((b) => (b.onclick = () => { const f = body.querySelector("input[name=mealGroup]"); f.value = r1(+b.dataset.gain); f.dispatchEvent(new Event("input", { bubbles: true })); }));
   }
@@ -194,7 +203,7 @@ export function groupFeedSheet(snap, g = null, { herdGroup = null } = {}) {
       // whole-group amounts, plus per head at the time for older readers (v9 / Morning Board)
       const ration = { from: v.from || snap.today, mealGroup: meal, silageGroup: blocks ? null : sil, meal: n ? Math.round((meal / n) * 100) / 100 : 0, silage: n && !blocks ? Math.round((sil / n) * 100) / 100 : 0, blocks: blocks ? +v.blocks || 0 : 0, every: blocks ? +v.every || 1 : 1 };
       const rations = [...(g?.rations || []).filter((x) => x.from !== ration.from), ration].sort((a, b) => a.from.localeCompare(b.from));
-      const rec = { name: hg ? hg.name : v.name, animalIds: ids(), rations, ...(hg ? { groupId: hg.id } : {}) };
+      const rec = { name: hg ? hg.name : v.name, animalIds: ids(), rations, expectedGain: +v.expectedGain > 0 ? +v.expectedGain : null, ...(hg ? { groupId: hg.id } : {}) };
       if (g) updateRecord(snap.lid, "feedGroups", g, rec); else addRecord(snap.lid, "feedGroups", rec);
       sh.close(true, { force: true }); toast(hg ? `${hg.name}: feed saved` : "Feed group saved");
     } });

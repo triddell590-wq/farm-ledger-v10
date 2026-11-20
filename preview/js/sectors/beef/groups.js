@@ -45,7 +45,7 @@ function render(snap) {
         ${meal.silage ? html`<span class="grp-fs-line"><span>Silage a day</span><b>${meal.silage >= 1000 ? `${num(meal.silage / 1000, 2)} t` : kgT(meal.silage)}</b></span>` : ""}
         ${bud ? html`<span class="grp-fs-line"><span>Silage lasts until</span><b>${bud.runOut ? listDateY(bud.runOut).slice(4) : "—"}</b></span>` : ""}
         ${k && k.priced && k.rows.length ? html`<span class="grp-fs-line"><span>Feed cost</span><b>${p2(k.dayCost)} a day</b></span>
-        <span class="grp-fs-line"><span>Margin over feed</span><b class="${k.marginDay == null ? "" : k.marginDay >= 0 ? "ok-ink" : "late-ink"}">${k.marginDay == null ? "weigh to see" : `${k.marginDay < 0 ? "−" : ""}${p2(Math.abs(k.marginDay))} a day`}</b></span>` : ""}
+        <span class="grp-fs-line"><span>Margin over feed${k.estimated ? " (est.)" : ""}</span><b class="${k.marginDay == null ? "" : k.marginDay >= 0 ? "ok-ink" : "late-ink"}">${k.marginDay == null ? "set an expected gain" : `${k.marginDay < 0 ? "−" : ""}${p2(Math.abs(k.marginDay))} a day`}</b></span>` : ""}
         <span class="grp-fs-open">Fodder budget, costs and margins${raw(icon("chevron"))}</span></a>` : ""}
     ${gs.length ? html`<div class="grp-list">${gs.map((g) => { const n = count(g); const fg = feedForGroup(data.feedGroups, g, data); const r = fg && rationOn(fg, today); const L = r && rationLines(rowOf.get(fg.id));
         return html`<div class="card grp-card">
